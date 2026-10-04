@@ -156,6 +156,29 @@ check('планировщик: на экране есть блоки распр�
   }
 });
 
+check('планировщик: рендерится для всех 5 классов × 5 целей × 3 уровней', () => {
+  const st = views.planner.plannerState;
+  const problems = [];
+  for (const cls of classes.CLASSES) {
+    for (const goal of ['progress', 'farm', 'boss', 'pets', 'retaliation']) {
+      for (const lvl of [1, 45, 200]) {
+        try {
+          st.classId = cls.id; st.goal = goal; st.level = lvl; st.plusAll = 3; st.manual = null; st.mode = 'auto';
+          const root = new El('main');
+          views.planner.render(root);
+          const text = textOf(root).join('\n');
+          if (!text.includes('Скелет персонажа')) problems.push(`${cls.id}/${goal}/${lvl}: нет скелета экипировки`);
+          if (!text.includes('лучшие выбор') && !text.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
+        } catch (e) {
+          problems.push(`${cls.id}/${goal}/${lvl}: ${e.message}`);
+        }
+      }
+    }
+  }
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.plusAll = 0; st.manual = null; st.mode = 'auto';
+  if (problems.length) throw new Error(problems.slice(0, 3).join(' | '));
+});
+
 check('app.js: загружается в строгом DOM и рендерит вкладки', async () => {
   const mod = await import(src('app.js') + '?strict=' + Date.now());
   if (!mod) throw new Error('app.js не загрузился');
