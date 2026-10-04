@@ -44,7 +44,11 @@ const bi = (ru, en) => el('span', {}, [
 const EFFECT_LABELS = {
   cull: 'Порог добивания', ddTriple: 'Тройной урон', critDouble: 'Двойной крит',
   echoTrigger: 'Шанс Shadow Echo', echoDamage: 'Урон эха', echoTwice: 'Второе эхо',
-  dhBonusDmg: 'Бонус доп. удара', petDoubleStrike: 'Двойной удар пета',
+  dhBonusDmg: 'Бонус доп. удара', extraStrike: 'Доп. удар после Double Hit',
+  petDoubleStrike: 'Двойной удар пета', petDmg: 'Урон пета',
+  petDmgFlat: 'Урон пета (плоско)', petMastery: 'Уровни Pet Mastery',
+  maxHpPct: 'Макс. HP, %', defFlat: 'Защита (плоско)', flatToPet: 'Конверсия урона в пета',
+  elemWeak: 'Усиление слабости стихий', petExp: 'Опыт пета',
   magicBlastChance: 'Шанс Magic Blast', magicBlastDmg: 'Урон Magic Blast',
   critExplode: 'Взрыв крита', instakillNonBoss: 'Свести к 1 HP', trap: 'Урон ловушки',
   vsHigh: 'По врагам >50% HP', vsLow: 'По врагам <50% HP', extraKill: 'Extra Kill',
@@ -53,7 +57,11 @@ const EFFECT_LABELS = {
 const EFFECT_EN = {
   cull: 'Culling threshold', ddTriple: 'Triple Damage chance', critDouble: 'Double Critical chance',
   echoTrigger: 'Shadow Echo chance', echoDamage: 'Echo Damage', echoTwice: 'Second Echo chance',
-  dhBonusDmg: 'Bonus extra-hit damage', petDoubleStrike: 'Pet Double Strike chance',
+  dhBonusDmg: 'Bonus extra-hit damage', extraStrike: 'Extra strike after Double Hit',
+  petDoubleStrike: 'Pet Double Strike chance', petDmg: 'Pet Damage',
+  petDmgFlat: 'Flat Pet Damage', petMastery: 'Pet Mastery levels',
+  maxHpPct: 'Max Health %', defFlat: 'Flat Defense', flatToPet: 'Attack → Pet conversion',
+  elemWeak: 'Elemental weakness amp', petExp: 'Pet EXP gain',
   magicBlastChance: 'Magic Blast chance', magicBlastDmg: 'Magic Blast damage',
   critExplode: 'Critical Explosion', instakillNonBoss: 'Reduce to 1 HP', trap: 'Trap Damage',
   vsHigh: 'Damage vs >50% HP', vsLow: 'Damage vs <50% HP', extraKill: 'Extra Kill chance',
@@ -67,8 +75,8 @@ function effectLabel(key) {
   return biText(EFFECT_LABELS[key] || key, EFFECT_EN[key] || '');
 }
 
-const PERCENT_KEYS = new Set(['ad', 'crit', 'critDmg', 'dh', 'dd', 'boss', 'petDmg', 'gold', 'mat', 'itemDrop', 'eggDrop', 'exp', 'matDupe', 'luckyTier', 'ruby', 'rune', 'extraKill', 'cull', 'trap', 'vsHigh', 'vsLow', 'ddTriple', 'critDouble', 'echoTrigger', 'echoDamage', 'echoTwice', 'dhBonusDmg', 'petDoubleStrike', 'magicBlastChance', 'magicBlastDmg', 'critExplode', 'instakillNonBoss', 'block', 'dodge', 'dr', 'retal']);
-const SITUATIONAL = new Set(['cull', 'trap', 'vsHigh', 'vsLow', 'instakillNonBoss', 'critExplode', 'echoTrigger', 'echoDamage', 'echoTwice', 'dhBonusDmg', 'petDoubleStrike', 'magicBlastChance', 'magicBlastDmg', 'ddTriple', 'critDouble']);
+const PERCENT_KEYS = new Set(['ad', 'crit', 'critDmg', 'dh', 'dd', 'boss', 'petDmg', 'petDmgFlat', 'gold', 'mat', 'itemDrop', 'eggDrop', 'exp', 'petExp', 'matDupe', 'luckyTier', 'ruby', 'rune', 'extraKill', 'cull', 'trap', 'vsHigh', 'vsLow', 'ddTriple', 'critDouble', 'echoTrigger', 'echoDamage', 'echoTwice', 'dhBonusDmg', 'extraStrike', 'petDoubleStrike', 'magicBlastChance', 'magicBlastDmg', 'critExplode', 'instakillNonBoss', 'block', 'dodge', 'dr', 'retal', 'defense', 'maxHpPct', 'flatToPet', 'elemWeak']);
+const SITUATIONAL = new Set(['cull', 'trap', 'vsHigh', 'vsLow', 'instakillNonBoss', 'critExplode', 'echoTrigger', 'echoDamage', 'echoTwice', 'dhBonusDmg', 'extraStrike', 'petDoubleStrike', 'magicBlastChance', 'magicBlastDmg', 'ddTriple', 'critDouble', 'elemWeak']);
 const fmtVal = (key, v) => `${Number(v.toFixed(1))}${PERCENT_KEYS.has(key) ? '%' : ''}`;
 
 /* -------------------------------- Каркас шагов -------------------------------- */
@@ -213,55 +221,81 @@ function bumpSkill(root, plan, skill, delta) {
   render(root);
 }
 
+/** Одна строка таблицы навыков: тир, название, шаги очков, максимум и эффективный ранг. */
+function skillRow(root, plan, s) {
+  const pts = plan.allocations[s.id] || 0;
+  const eff = pts + state.plusAll;
+  const detail = plan.skillList.find((d) => d.id === s.id);
+  const capNote = detail && detail.capped.length ? ` · кап: ${detail.capped.join(', ')}` : '';
+  const req = s.requires ? plan.class.skills.find((x) => x.id === s.requires) : null;
+  return el('tr', {}, [
+    el('td', {}, [el('span', { class: `tag T${s.tier || 1}`, text: `T${s.tier || 1}` })]),
+    el('td', {}, [el('div', {}, [
+      el('b', { text: s.ru || s.name }),
+      el('span', { class: 'en', text: ` (${s.name})` }),
+      s.estimated ? el('span', { class: 'tag est', title: s.estimateNote || '', text: 'оценка' }) : null,
+      el('div', { class: 'muted', text: s.text ? s.text.replace(/\{(\w+)\}/g, (_, k) => {
+        const per = s.perPoint?.[k];
+        if (per == null) return '?';
+        const cap = s.cap?.[k];
+        const v = cap != null ? Math.min(per * (eff || 1), cap) : per * (eff || 1);
+        return Number(v.toFixed(2)).toString();
+      }) : '' }),
+      req ? el('div', { class: 'muted small', text: `Требует вложенного очка: ${req.ru || req.name} (${req.name})` }) : null,
+      s.s2 ? el('div', { class: 'muted small', text: `Season 2: ${s.s2}` }) : null,
+    ])]),
+    el('td', {}, [el('div', { class: 'stepper' }, [
+      el('button', { class: 'btn tiny', text: '−', disabled: pts <= 0 ? 'disabled' : null, onclick: () => bumpSkill(root, plan, s, -1) }),
+      el('b', { class: 'pts', text: String(pts) }),
+      el('button', { class: 'btn tiny', text: '+', disabled: pts >= s.max ? 'disabled' : null, onclick: () => bumpSkill(root, plan, s, 1) }),
+    ])]),
+    el('td', {}, [el('div', { class: 'muted' }, [
+      el('div', { text: `макс. ранг ${s.max} очк. · вес цели ${plan.weights[s.id] || 0}` }),
+      el('div', {
+        class: state.plusAll > 0 ? 'plusline' : 'muted',
+        text: `эффективный ранг ${eff}${state.plusAll > 0 ? ` (${pts} + ${state.plusAll})` : ''}${capNote}`,
+      }),
+    ])]),
+  ]);
+}
+
 function skillsStep(root, plan) {
   const cls = plan.class;
   const blocks = cls.branches.map((branch) => {
     const skills = cls.skills.filter((s) => s.branch === branch || (s.branch == null && branch === cls.branches[0]));
     const b = plan.branches[branch];
-    const rows = skills.map((s) => {
-      const pts = plan.allocations[s.id] || 0;
-      const eff = pts + state.plusAll;
-      const detail = plan.skillList.find((d) => d.id === s.id);
-      const capNote = detail && detail.capped.length ? ` · кап: ${detail.capped.join(', ')}` : '';
-      return [
-        el('span', { class: `tag T${s.tier || 1}`, text: s.tier ? `T${s.tier}` : 'T?' }),
-        el('div', {}, [
-          el('b', { text: s.ru || s.name }),
-          el('span', { class: 'en', text: ` (${s.name})` }),
-          s.estimated ? el('span', { class: 'tag est', title: s.estimateNote || '', text: 'оценка' }) : null,
-          el('div', { class: 'muted', text: s.text ? s.text.replace(/\{(\w+)\}/g, (_, k) => {
-            const per = s.perPoint?.[k];
-            if (per == null) return '?';
-            const cap = s.cap?.[k];
-            const v = cap != null ? Math.min(per * (eff || 1), cap) : per * (eff || 1);
-            return Number(v.toFixed(2)).toString();
-          }) : '' }),
-          s.estimated && s.estimateNote ? el('div', { class: 'muted small', text: 'Как считали: ' + s.estimateNote }) : null,
+    const branchMax = skills.reduce((a, s) => a + s.max, 0);
+    const rows = [];
+    for (const t of [1, 2, 3]) {
+      const inTier = skills.filter((s) => (s.tier || 1) === t);
+      if (!inTier.length) continue;
+      const need = t === 1 ? 0 : CLASS_SKILL_RULES.tierUnlock[t];
+      const opened = need === 0 || b.spent >= need;
+      rows.push(el('tr', { class: `tierrow${opened ? '' : ' locked'}` }, [
+        el('td', { colspan: '4' }, [
+          el('b', { text: `Tier ${t}` }),
+          el('span', { class: 'muted', text: need === 0
+            ? ' · доступно сразу'
+            : ` · открывается после ${need} очков в этой же ветке (сейчас ${b.spent})` }),
+          el('span', { class: 'muted', text: ` · максимум в тире: ${inTier.reduce((a, s) => a + s.max, 0)} очк.` }),
         ]),
-        el('div', { class: 'stepper' }, [
-          el('button', { class: 'btn tiny', text: '−', disabled: pts <= 0 ? 'disabled' : null, onclick: () => bumpSkill(root, plan, s, -1) }),
-          el('b', { class: 'pts', text: String(pts) }),
-          el('button', { class: 'btn tiny', text: '+', disabled: pts >= s.max ? 'disabled' : null, onclick: () => bumpSkill(root, plan, s, 1) }),
-        ]),
-        el('div', { class: 'muted' }, [
-          el('div', { text: `макс ${s.max} · вес цели ${plan.weights[s.id] || 0}` }),
-          el('div', {
-            class: state.plusAll > 0 ? 'plusline' : 'muted',
-            text: `эффективный ранг ${eff}${state.plusAll > 0 ? ` (${pts} + ${state.plusAll})` : ''}${capNote}`,
-          }),
-        ]),
-      ];
-    });
+      ]));
+      for (const s of inTier) rows.push(skillRow(root, plan, s));
+    }
     return el('div', { class: 'branch' }, [
       el('header', {}, [
         el('strong', { text: `${cls.branchRu[branch] || branch} · ${branch}` }),
         el('div', { class: 'chips' }, [
-          el('span', { class: 'chip', text: `${b.spent} очк.` }),
+          el('span', { class: 'chip', text: `${b.spent} очк. вложено` }),
+          el('span', { class: 'chip', text: `максимум в ветке: ${branchMax}` }),
           el('span', { class: b.tier2 ? 'chip good' : 'chip warn', text: b.tier2 ? 'Tier 2 открыт' : `до Tier 2: ${b.needTier2}` }),
           el('span', { class: b.tier3 ? 'chip good' : 'chip warn', text: b.tier3 ? 'Tier 3 открыт' : `до Tier 3: ${b.needTier3}` }),
         ]),
       ]),
-      table(['Тир', 'Навык', 'Очки', 'Ранг и доступность'], rows),
+      el('table', {}, [
+        el('thead', {}, [el('tr', {}, ['Тир', 'Навык', 'Очки', 'Ранг и доступность'].map((h) => el('th', { text: h })))]),
+        el('tbody', {}, rows),
+      ]),
     ]);
   });
 
@@ -340,7 +374,7 @@ function skillsStep(root, plan) {
     why,
     plusAll,
     el('h3', { text: 'Классовые навыки — распределение' }),
-    el('p', { class: 'muted', text: `Правила: Tier 2 — после ${CLASS_SKILL_RULES.tierUnlock[2]} очков в ветке, Tier 3 — после ${CLASS_SKILL_RULES.tierUnlock[3]}. Кнопки «+»/«−» включают ручной режим. Значок «оценка» — точной формулы в игре нет, процент посчитан по аналогу (см. пояснение у навыка).` }),
+    el('p', { class: 'muted', text: `Правила: Tier 2 — после ${CLASS_SKILL_RULES.tierUnlock[2]} очков в этой же ветке, Tier 3 — после ${CLASS_SKILL_RULES.tierUnlock[3]}. Кнопки «+»/«−» включают ручной режим. В таблице навыки сгруппированы по своим тирам, у каждого указан настоящий максимальный ранг из игры; +All Class Skills поднимает эффективный ранг сверх него, но не пробивает капы.` }),
     ...blocks,
     totals,
   ];

@@ -368,14 +368,162 @@ check('каталог предметов: 40 семейств, у каждого
   if (perSlot.some((n) => n === 0)) throw new Error('есть пустые слоты: ' + items.SLOT_ORDER.filter((s, i) => perSlot[i] === 0).join(', '));
 });
 
-check('все навыки с пометкой «оценка» объясняют, откуда взято значение', () => {
-  const estimated = classes.CLASSES.flatMap((c) => c.skills.map((s) => ({ ...s, cls: c.id }))).filter((s) => s.estimated);
-  if (estimated.length !== 19) throw new Error(`оценок ${estimated.length}, ожидалось 19 (18 Druid + Counterstrike)`);
-  for (const s of estimated) {
-    if (!s.estimateNote || s.estimateNote.length < 40) throw new Error(`${s.cls}/${s.name}: нет пояснения к оценке`);
-    if (!Object.keys(s.perPoint || {}).length) throw new Error(`${s.cls}/${s.name}: оценка без значений (perPoint пуст)`);
-    if (typeof s.text !== 'string' || !s.text.includes('{')) throw new Error(`${s.cls}/${s.name}: текст без подстановок`);
+/**
+ * Эталон ветки/тира/макс. ранга: 90 классовых навыков (5 классов × 3 ветки × 6 навыков).
+ * Сверено 2026-10-04 с официальным сайтом (idlearc.com/classes — тиры, ранги, правила открытия),
+ * патч-нотами 1.3.1 (Season 2: Counterstrike вместо Victory Rush, Defense у Iron Constitution /
+ * Battle Recovery / Crushing Blows, ослабление крит-навыков Rogue) и данными текущего билда
+ * (IdleArc Companion, skill_tree_data.json — сборка 2026-09-29), включая Druid.
+ * Если игра изменит тиры или максимальные ранги — падает этот тест, а не пользователь.
+ */
+const SKILL_GROUND_TRUTH = {
+  warrior: [
+    ['Culling Strike', 'Might', 1, 5], ['Iron Constitution', 'Might', 1, 10],
+    ['Battle Recovery', 'Might', 2, 5], ['Bloodthirst', 'Might', 2, 5],
+    ['Executioner', 'Might', 3, 5], ['Counterstrike', 'Might', 3, 5],
+    ['Mighty Strikes', 'Strength', 1, 10], ['Battle Focus', 'Strength', 1, 5],
+    ['Crushing Blows', 'Strength', 2, 5], ["Titan's Grip", 'Strength', 2, 5],
+    ['Overwhelm', 'Strength', 3, 5], ['Titanic Blow', 'Strength', 3, 5],
+    ['Berserk', 'Finesse', 1, 10], ['Spoils of War', 'Finesse', 1, 5],
+    ['Keen Edge', 'Finesse', 2, 5], ['Deflection', 'Finesse', 2, 5],
+    ['Lethal Blow', 'Finesse', 3, 5], ['Relentless Assault', 'Finesse', 3, 5],
+  ],
+  archer: [
+    ['Archery', 'Marksmanship', 1, 10], ['Steady Aim', 'Marksmanship', 1, 10],
+    ['Precision', 'Marksmanship', 2, 5], ['Double Nock', 'Marksmanship', 2, 5],
+    ['Headshot', 'Marksmanship', 3, 5], ['Perfect Shot', 'Marksmanship', 3, 5],
+    ['Spike Trap', 'Hunting', 1, 10], ['Barbed Arrows', 'Hunting', 1, 5],
+    ['Venomous Trap', 'Hunting', 2, 5], ['Trap Mastery', 'Hunting', 2, 5],
+    ["Hunter's Mark", 'Hunting', 3, 5], ["Hunter's Instinct", 'Hunting', 3, 5],
+    ['Beast Bond', 'Beastmaster', 1, 5], ['Egg Hunter', 'Beastmaster', 1, 5],
+    ['Pack Leader', 'Beastmaster', 2, 5], ['Foraging Companion', 'Beastmaster', 2, 5],
+    ['Strong Pet Bound', 'Beastmaster', 3, 5], ['Alpha Strike', 'Beastmaster', 3, 5],
+  ],
+  mage: [
+    ['Magic Blast', 'Arcane', 1, 10], ['Arcane Siphon', 'Arcane', 1, 5],
+    ['Arcane Surge', 'Arcane', 2, 5], ['Unstable Energy', 'Arcane', 2, 5],
+    ['Spell Mastery', 'Arcane', 3, 5], ['Arcane Cascade', 'Arcane', 3, 5],
+    ['Fire Infusion', 'Destruction', 1, 10], ['Combustion', 'Destruction', 1, 5],
+    ['Burning Soul', 'Destruction', 2, 5], ['Melting Point', 'Destruction', 2, 5],
+    ['Inferno', 'Destruction', 3, 5], ['Pyroclasm', 'Destruction', 3, 5],
+    ['Wild Magic', 'Chaos', 1, 10], ["Fortune's Favor", 'Chaos', 1, 5],
+    ['Chaos Bolt', 'Chaos', 2, 5], ['Soul Harvest', 'Chaos', 2, 5],
+    ['Reality Warp', 'Chaos', 3, 5], ['Chaos Incarnate', 'Chaos', 3, 5],
+  ],
+  rogue: [
+    ['Precision Strikes', 'Assassin', 1, 5], ['Sharpened Blades', 'Assassin', 1, 5],
+    ['First Strike', 'Assassin', 2, 5], ['Contract Killer', 'Assassin', 2, 5],
+    ['Deadly Ambush', 'Assassin', 3, 5], ['Coup de Grâce', 'Assassin', 3, 10],
+    ['Swift Blades', 'Shadow-walker', 1, 5], ['Umbral Blades', 'Shadow-walker', 1, 5],
+    ['Shadow Echo', 'Shadow-walker', 2, 5], ['Phantom Strike', 'Shadow-walker', 2, 5],
+    ['Echo Mastery', 'Shadow-walker', 3, 10], ['Umbral Cascade', 'Shadow-walker', 3, 10],
+    ['Scavenger', 'Thief', 1, 5], ['Pickpocket', 'Thief', 1, 5],
+    ['Lucky Hands', 'Thief', 2, 5], ['Treasure Hunter', 'Thief', 2, 5],
+    ['Black Market', 'Thief', 3, 5], ['Master Thief', 'Thief', 3, 5],
+  ],
+  druid: [
+    ['Gnaw', 'Lodge', 1, 10], ['Thick Pelt', 'Lodge', 1, 5],
+    ['Dam Builder', 'Lodge', 2, 5], ['Timberfall', 'Lodge', 2, 5],
+    ['Tail Slap', 'Lodge', 3, 5], ['Lodgekeeper', 'Lodge', 3, 5],
+    ['Digger', 'Tunnels', 1, 10], ['Keen Snout', 'Tunnels', 1, 5],
+    ['Hoard', 'Tunnels', 2, 5], ['Earthbind', 'Tunnels', 2, 5],
+    ['Undermine', 'Tunnels', 3, 5], ['Deep Roots', 'Tunnels', 3, 5],
+    ['Kinship', 'Symbiosis', 1, 10], ['Shared Instinct', 'Symbiosis', 1, 5],
+    ['Feral Bond', 'Symbiosis', 2, 5], ['Twin Heart', 'Symbiosis', 2, 5],
+    ['Wild Attunement', 'Symbiosis', 3, 5], ['One Soul', 'Symbiosis', 3, 5],
+  ],
+};
+
+check('навыки: ветка, тир и макс. ранг каждого из 90 навыков совпадают с игрой', () => {
+  if (classes.CLASSES.length !== 5) throw new Error(`классов ${classes.CLASSES.length}`);
+  for (const cls of classes.CLASSES) {
+    const truth = SKILL_GROUND_TRUTH[cls.id];
+    if (!truth) throw new Error(`${cls.id}: нет эталонной таблицы`);
+    if (cls.skills.length !== truth.length) throw new Error(`${cls.id}: навыков ${cls.skills.length}, в эталоне ${truth.length}`);
+    for (const [name, branch, tier, max] of truth) {
+      const s = cls.skills.find((x) => x.name === name);
+      if (!s) throw new Error(`${cls.id}: нет навыка «${name}»`);
+      if (s.branch !== branch) throw new Error(`${cls.id}/${name}: ветка ${s.branch}, ожидалась ${branch}`);
+      if (s.tier !== tier) throw new Error(`${cls.id}/${name}: тир ${s.tier}, ожидался ${tier}`);
+      if (s.max !== max) throw new Error(`${cls.id}/${name}: макс. ранг ${s.max}, ожидался ${max}`);
+      if (!Number.isInteger(s.max) || s.max % 5 !== 0) throw new Error(`${cls.id}/${name}: нестандартный макс. ранг ${s.max}`);
+    }
+    // в каждой ветке ровно по 6 навыков: 2 на тир, и по 2 навыка на каждый тир
+    for (const b of cls.branches) {
+      const inBranch = cls.skills.filter((s) => s.branch === b);
+      if (inBranch.length !== 6) throw new Error(`${cls.id}/${b}: навыков ${inBranch.length}, ожидалось 6`);
+      for (const t of [1, 2, 3]) {
+        const inTier = inBranch.filter((s) => s.tier === t);
+        if (inTier.length !== 2) throw new Error(`${cls.id}/${b}/Tier ${t}: навыков ${inTier.length}, ожидалось 2`);
+      }
+    }
   }
+});
+
+check('навыки: у всех есть значения за очко, текст с подстановками и нет выдуманных «оценок»', () => {
+  for (const cls of classes.CLASSES) {
+    for (const s of cls.skills) {
+      if (s.estimated) throw new Error(`${cls.id}/${s.name}: помечен как «оценка», хотя данные есть в игре`);
+      const keys = Object.keys(s.perPoint || {});
+      if (!keys.length) throw new Error(`${cls.id}/${s.name}: пустой perPoint`);
+      if (!s.ru || !/^[А-Яа-яЁё]/.test(s.ru)) throw new Error(`${cls.id}/${s.name}: нет русского названия`);
+      const holes = [...String(s.text || '').matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+      if (!holes.length) throw new Error(`${cls.id}/${s.name}: текст без подстановок`);
+      for (const k of holes) if (!keys.includes(k)) throw new Error(`${cls.id}/${s.name}: подстановка {${k}} без значения в perPoint`);
+      for (const k of keys) if (s.cap?.[k] != null && !(s.cap[k] > 0)) throw new Error(`${cls.id}/${s.name}: некорректный кап ${k}`);
+    }
+  }
+});
+
+check('таблица навыков в шаге 3 сгруппирована по тирам и показывает максимумы', () => {
+  const root = new El('main');
+  views.planner.render(root);
+  const text = textOf(root);
+  for (const needle of ['Tier 1 · доступно сразу', 'открывается после 5 очков в этой же ветке', 'открывается после 10 очков в этой же ветке',
+    'макс. ранг 10 очк.', 'макс. ранг 5 очк.', 'максимум в ветке', 'максимум в тире']) {
+    if (!text.includes(needle)) throw new Error(`в таблице навыков нет «${needle}»`);
+  }
+  // названия навыков идут вместе со своими тирами
+  for (const [ru, en, tier] of [['Добивающий удар', 'Culling Strike', 1], ['Палач', 'Executioner', 3], ['Титанический удар', 'Titanic Blow', 3]]) {
+    const idx = text.indexOf(`${ru} (${en})`);
+    if (idx === -1) throw new Error(`нет навыка «${ru} (${en})»`);
+    const around = text.slice(Math.max(0, idx - 400), idx);
+    if (!around.includes(`Tier ${tier}`)) throw new Error(`${ru} (${en}) не под заголовком Tier ${tier}`);
+  }
+});
+
+check('таблица навыков: каждый навык стоит под своим тиром и со своим максимумом (все 5 классов)', () => {
+  const st = views.planner.plannerState;
+  for (const cls of classes.CLASSES) {
+    st.classId = cls.id; st.goal = 'progress'; st.level = 60; st.ml = 60; st.plusAll = 0; st.manual = null; st.mode = 'auto';
+    const root = new El('main');
+    views.planner.render(root);
+    let total = 0;
+    // Сканируем только карточки веток (div.branch): там таблица навыков с заголовками Tier 1/2/3.
+    for (const box of root.querySelectorAll('div')) {
+      if (!String(box.className).split(/\s+/).includes('branch')) continue;
+      if (!textOf(box).includes('макс. ранг')) continue; // только таблица классовых навыков, не блоки экипировки
+      let tier = 0;
+      let seen = 0;
+      for (const tr of box.querySelectorAll('tr')) {
+        const txt = textOf(tr);
+        const head = txt.match(/^Tier ([123])/);
+        if (head) { tier = Number(head[1]); continue; }
+        const own = txt.match(/^T([123])/);   // строка навыка начинается со своего бейджа T1/T2/T3
+        if (!own || !txt.includes('макс. ранг')) continue;
+        const rowTier = Number(own[1]);
+        const skill = cls.skills.find((s) => s.tier === rowTier && txt.includes(`${s.ru || s.name} (${s.name})`));
+        if (!skill) throw new Error(`${cls.id}: не удалось сопоставить строку «${txt.slice(0, 60)}…» навыку`);
+        seen += 1;
+        if (rowTier !== tier) throw new Error(`${cls.id}/${skill.name}: строка стоит под заголовком Tier ${tier}, а сам навык — Tier ${rowTier}`);
+        if (!txt.includes(`макс. ранг ${skill.max} очк.`)) throw new Error(`${cls.id}/${skill.name}: в строке нет «макс. ранг ${skill.max} очк.»`);
+      }
+      if (seen !== 6) throw new Error(`${cls.id}: в ветке ${seen} строк навыков, ожидалось 6`);
+      total += seen;
+    }
+    if (total !== 18) throw new Error(`${cls.id}: в таблице ${total} навыков, ожидалось 18`);
+  }
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.plusAll = 0; st.manual = null; st.mode = 'auto';
 });
 
 check('данные и интерфейс не ссылаются на «внешние источники» как на способ получить цифры', () => {

@@ -8,15 +8,16 @@
 export const DATA_META = {
   // BUILD — метка сборки. Меняется при каждом обновлении данных/интерфейса:
   // сервер отдаёт её в /api/build, а интерфейс сравнивает свою метку и предлагает обновиться.
-  build: '2026-10-04.6',
+  build: '2026-10-04.7',
   gameVersion: '1.3.1 (Season 2: The Forge)',
   patchDate: '25 сентября 2026',
-  verified: 'Данные сверены с официальными источниками на 4 октября 2026',
+  verified: 'Данные сверены с официальными источниками и текущим билдом игры на 4 октября 2026',
   sources: [
     { label: 'Официальный сайт IdleArc', url: 'https://idlearc.com/' },
     { label: 'Патч-ноты 1.3.1 (официально)', url: 'https://idlearc.com/patch-notes/1-3-1' },
     { label: 'Официальные классы и скилл-деревья', url: 'https://idlearc.com/classes' },
     { label: 'Официальный симулятор гильд-дерева', url: 'https://idlearc.com/guild-tree' },
+    { label: 'IdleArc Companion: данные дерева навыков (сборка 2026-09-29)', url: 'https://idlearc-companion-web-production.up.railway.app/data/skill_tree_data.json' },
     { label: 'Вики: классы', url: 'https://idlearc.fandom.com/wiki/Classes' },
     { label: 'Вики: статы', url: 'https://idlearc.fandom.com/wiki/Stats' },
     { label: 'Вики: Item Codex', url: 'https://idlearc.fandom.com/wiki/Item_Codex' },

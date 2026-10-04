@@ -92,6 +92,17 @@ th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background
 tr:hover td { background: rgba(91, 167, 255, .06); }
 td.num, th.num { text-align: right; white-space: nowrap; }
 
+/* Строка-заголовок тира в таблице навыков: видно, что навыки идут по своим тирам */
+tr.tierrow td { background: #0d1218; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 6px 8px; }
+tr.tierrow:hover td { background: #0d1218; }
+tr.tierrow b { color: var(--accent); letter-spacing: .5px; text-transform: uppercase; font-size: 12px; }
+tr.tierrow.locked b { color: var(--muted); }
+tr.tierrow.locked td::after { content: ' · тир ещё закрыт'; color: var(--bad); font-size: 12px; }
+td .stepper { display: flex; align-items: center; gap: 6px; }
+.tag.T1 { border-color: #4f8f5f; color: #8fd6a2; }
+.tag.T2 { border-color: #4f7f9f; color: #8fc4e6; }
+.tag.T3 { border-color: #9f7f4f; color: #e6c58f; }
+
 .branch { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
 .branch header { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 6px; }
 .branch header strong { font-size: 14px; }

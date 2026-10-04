@@ -516,7 +516,7 @@ function buildTodo({ cls, classId, goal, level, ml, pointsAvailable, itemTier, s
   out.push({ title: 'Под цель', text: goalTodo[goal] || goalTodo.progress });
   out.push({ title: 'Снаряжение и мелочи', text: `Талисманы: ${(profile.talismans || []).join(' + ') || '—'}. Петы: ${profile.pets || '—'}` });
   out.push({ title: '+All Class Skills', text: 'В шаге 3 укажите реальный бонус (Torch + легендарные петы + Sage Diadem) — эффективные ранги навыков и итоговые бонусы пересчитаются.' });
-  if (classId === 'druid') out.push({ title: 'Druid', text: 'Формулы навыков Druid в игре не опубликованы: значения посчитаны по аналогам других классов (значок «оценка» в дереве).' });
+  if (classId === 'druid') out.push({ title: 'Druid', text: 'Ветки Lodge / Tunnels / Symbiosis: по два навыка на тир, у Gnaw, Digger и Kinship — по 10 очков. Пет-урон идёт из Gnaw / Dam Builder / One Soul, а Kinship и Feral Bond конвертируют ваш плоский урон в урон пета (общий кап 75%).' });
   return out;
 }
 
@@ -560,10 +560,6 @@ export function planBuild({
   if (validation.left > 0) warnings.push(`Нераспределённых очков: ${validation.left}.`);
   for (const p of validation.problems) warnings.push(`${p.skill}: ${p.reason}.`);
   if (!usingManual && auto.leftover > 0) warnings.push(`Осталось ${auto.leftover} очков, которые некуда вложить в рамках весов цели.`);
-  const estimatedUsed = details.filter((d) => d.estimated && d.points > 0);
-  if (estimatedUsed.length) {
-    tips.push(`В плане ${estimatedUsed.length} навык(ов) с пометкой «оценка» (${estimatedUsed.slice(0, 4).map((d) => d.name).join(', ')}${estimatedUsed.length > 4 ? '…' : ''}): точных формул в игре нет, проценты посчитаны по механике — по аналогии с известными навыками и Drop Bonus-ами. Наведите мышь на значок «оценка», чтобы увидеть аналог.`);
-  }
   if (goal === 'retaliation' && classId !== 'warrior') warnings.push('Retaliation вне Warrior слабее: нет щита (Block) и защитных классовых навыков.');
   if (level < 25) tips.push('С ML 25 в пул дропа добавляются двуручное оружие, Claws (Rogue) и сайдгрейды брони.');
   if (level < 50) tips.push('Torch (отдельный слот, +All Class Skills) начинает падать с ML 50 — это главный источник бонуса.');
