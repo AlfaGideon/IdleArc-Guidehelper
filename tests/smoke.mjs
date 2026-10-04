@@ -103,9 +103,18 @@ if (!globalThis.atob) globalThis.atob = (s) => Buffer.from(s, 'base64').toString
 
 /* ---------- Загрузка модулей ---------- */
 let failures = 0;
+const pending = [];
 const check = (name, fn) => {
-  try { fn(); console.log(`  ok  ${name}`); }
-  catch (e) { failures++; console.error(` FAIL ${name}: ${e.message}`); }
+  try {
+    const out = fn();
+    if (out && typeof out.then === 'function') {
+      // асинхронная проверка: дожидаемся её перед итогом
+      pending.push(out.then(() => console.log(`  ok  ${name}`), (e) => { failures++; console.error(` FAIL ${name}: ${e.message}`); }));
+      return null;
+    }
+    console.log(`  ok  ${name}`);
+  } catch (e) { failures++; console.error(` FAIL ${name}: ${e.message}`); }
+  return null;
 };
 
 const views = {
@@ -121,6 +130,7 @@ const items = await import(src('data/items.js'));
 const forge = await import(src('data/forge.js'));
 const art = await import(src('ui/itemArt.js'));
 const store = await import(src('ui/store.js'));
+const artUi = await import(src('ui/art.js'));
 
 /* ---------- Рендер ---------- */
 for (const [name, view] of Object.entries(views)) {
@@ -213,7 +223,7 @@ check('планировщик: на экране есть блоки распр�
     'Лучшие камни под цель',
     'Когда менять основной камень',
     'Другие камни в этом слоте',
-    'Экран персонажа',
+    'Экран снаряжения',
     'Кузница поднимает слот выше тира предмета',
     'Что искать в каждом слоте',
     'Сохранение: данные не теряются при перезагрузке',
@@ -223,8 +233,8 @@ check('планировщик: на экране есть блоки распр�
   ];
   for (const needle of must) if (!text.includes(needle)) throw new Error(`нет блока/строки: «${needle}»`);
   const slots = views.planner.plannerState ? null : null;
-  // ячейки экрана персонажа должны быть перечислены как в игре
-  for (const slot of ['Вторая рука', 'Факел', 'Нагрудник', 'Шлем', 'Перчатки', 'Обувь', 'Амулет', 'Кольцо', 'Пояс', 'Оружие 2']) {
+  // ячейки должны называться как в игровом окне
+  for (const slot of ['Факел', 'Шлем', 'Амулет', 'Оружие', 'Нагрудник', 'Кольцо 1', 'Кольцо 2', 'Пояс', 'Перчатки', 'Обувь', 'Талисман 1', 'Талисман 2']) {
     if (!text.includes(slot)) throw new Error(`в блоке экипировки нет слота «${slot}»`);
   }
 });
@@ -240,7 +250,7 @@ check('планировщик: рендерится для всех 5 класс
           const root = new El('main');
           views.planner.render(root);
           const text = textOf(root);
-          if (!text.includes('Экран персонажа')) problems.push(`${cls.id}/${goal}/${lvl}: нет экрана экипировки`);
+          if (!text.includes('Экран снаряжения')) problems.push(`${cls.id}/${goal}/${lvl}: нет экрана экипировки`);
           if (!text.includes('лучшие выбор') && !text.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
         } catch (e) {
           problems.push(`${cls.id}/${goal}/${lvl}: ${e.message}`);
@@ -668,34 +678,70 @@ check('Кузница: ранг слота 0…100 объединяет все �
   if (forge.FORGE_MAX_RANK !== 100) throw new Error('FORGE_MAX_RANK');
 });
 
-check('экран персонажа: 12 ячеек как в игре и правила классов', () => {
-  if (items.GEAR_CELLS.length !== 12) throw new Error('ячеек ' + items.GEAR_CELLS.length);
-  for (const need of ['torch', 'amulet', 'offhand', 'mainhand', 'chest', 'weapon2', 'ring1', 'ring2', 'belt', 'head', 'hands', 'feet']) {
+check('экран снаряжения: силуэт 3+3+3+4 ячейки, как в игровом окне', () => {
+  if (items.GEAR_CELLS.length !== 13) throw new Error('ячеек ' + items.GEAR_CELLS.length);
+  const rows = [1, 2, 3, 4].map((r) => items.GEAR_CELLS.filter((c) => c.row === r));
+  const shape = rows.map((r) => r.length).join('+');
+  if (shape !== '3+3+3+4') throw new Error('форма силуэта: ' + shape);
+  // как на игровом экране: сверху факел, шлем и амулет; ниже оружие, нагрудник и вторая рука
+  const top = rows[0].map((c) => c.id).join(',');
+  if (top !== 'torch,head,amulet') throw new Error('верхний ряд: ' + top);
+  const mid = rows[1].map((c) => c.id).join(',');
+  if (mid !== 'mainhand,chest,hand2') throw new Error('второй ряд: ' + mid);
+  const low = rows[2].map((c) => c.id).join(',');
+  if (low !== 'ring1,belt,ring2') throw new Error('третий ряд: ' + low);
+  const last = rows[3].map((c) => c.id).join(',');
+  if (last !== 'talisman1,hands,feet,talisman2') throw new Error('нижний ряд: ' + last);
+  for (const need of ['torch', 'amulet', 'hand2', 'mainhand', 'chest', 'ring1', 'ring2', 'belt', 'head', 'hands', 'feet', 'talisman1', 'talisman2']) {
     if (!items.GEAR_CELLS.some((c) => c.id === need)) throw new Error('нет ячейки ' + need);
   }
-  if (!items.CLASS_GEAR_RULES.druid.locked.offhand || !items.CLASS_GEAR_RULES.druid.locked.weapon2) throw new Error('у друида должны быть закрыты оффхенд и второе оружие');
-  if (!items.CLASS_GEAR_RULES.rogue.locked.offhand) throw new Error('у разбойника закрыт щит');
-  if (items.CLASS_GEAR_RULES.warrior.locked.weapon2 === undefined) throw new Error('у воина нет второго оружия');
-  if (items.SLOT_GEM_COUNT.torch !== 4 || items.SLOT_GEM_COUNT.mainhand !== 3 || items.SLOT_GEM_COUNT.ring1 !== 1) throw new Error('камни по слотам');
-  if (items.GEAR_CELLS[0].en !== 'Torch' || items.GEAR_CELLS[5].ru !== 'Оружие 2') throw new Error('подписи ячеек');
+  // вторая рука зависит от класса: щит/книга/колчан, второе оружие у разбойника, двуручное у друида
+  if (items.CLASS_GEAR_RULES.warrior.hand2 !== 'offhand') throw new Error('у воина вторая рука — оффхенд');
+  if (items.CLASS_GEAR_RULES.rogue.hand2 !== 'weapon2') throw new Error('у разбойника второе оружие');
+  if (items.CLASS_GEAR_RULES.druid.hand2 !== 'twohanded' || !items.CLASS_GEAR_RULES.druid.locked.hand2) throw new Error('у друида вторая рука занята двуручным');
+  for (const k of ['offhand', 'weapon2', 'twohanded']) if (!items.HAND2_LABELS[k]) throw new Error('нет подписи ' + k);
+  if (items.SLOT_GEM_COUNT.torch !== 4 || items.SLOT_GEM_COUNT.mainhand !== 3 || items.SLOT_GEM_COUNT.ring !== 1) throw new Error('камни по слотам');
+});
+
+check('экран снаряжения: силуэт человека нарисован под ячейками и строки как в игре', () => {
+  const root = new El('main');
+  views.planner.render(root);
+  const dolls = findByClass(root, 'gear-doll');
+  if (dolls.length !== 1) throw new Error('сеток снаряжения: ' + dolls.length);
+  const figures = findByClass(root, 'doll-figure');
+  if (figures.length !== 1) throw new Error('нет силуэта человека');
+  if (!String(figures[0].innerHTML).includes('<svg')) throw new Error('силуэт без рисунка');
+  const cards = findByClass(root, 'flipcard');
+  const small = cards.filter((c) => String(c.className).includes('small'));
+  if (cards.length !== 13) throw new Error('карточек ' + cards.length);
+  if (small.length !== 4) throw new Error('в нижней строке должно быть 4 ячейки, а не ' + small.length);
+  const text = textOf(root);
+  for (const needle of ['Талисман 1 (Talisman 1)', 'Талисман 2 (Talisman 2)', 'Вторая рука (Off Hand)']) {
+    if (!text.includes(needle)) throw new Error(`нет подписи «${needle}»`);
+  }
 });
 
 check('карточки предметов: картинка + переворот на статы', () => {
   const root = new El('main');
   views.planner.render(root);
   const cards = findByClass(root, 'flipcard');
-  if (cards.length !== 12) throw new Error('карточек ' + cards.length);
+  if (cards.length !== 13) throw new Error('карточек ' + cards.length);
   const faces = findByClass(root, 'face');
-  if (faces.length !== 24) throw new Error('сторон карточек ' + faces.length);
+  if (faces.length !== 26) throw new Error('сторон карточек ' + faces.length);
   const arts = findByClass(root, 'art');
-  if (arts.length !== 12) throw new Error('картинок ' + arts.length);
-  for (const a of arts) if (!String(a.innerHTML).includes('<svg')) throw new Error('иконка без svg');
+  if (arts.length !== 13) throw new Error('картинок ' + arts.length);
+  // в ячейке либо нарисованная SVG-иконка, либо настоящая картинка <img>
+  for (const a of arts) {
+    const hasSvg = (a.children || []).some((c) => String(c.innerHTML || '').includes('<svg'));
+    const hasImg = (a.children || []).some((c) => String(c.tagName) === 'IMG');
+    if (!hasSvg && !hasImg) throw new Error('в ячейке нет ни картинки, ни рисунка');
+  }
   cards[0].dispatch('click');
   if (!cards[0].classList.contains('flipped')) throw new Error('карточка не переворачивается по клику');
   cards[0].dispatch('click');
   if (cards[0].classList.contains('flipped')) throw new Error('карточка не возвращается обратно');
   const text = textOf(root);
-  for (const needle of ['Кузница поднимает слот выше тира предмета', 'Следующий шаг Кузницы', 'аффикс-позиций', 'Awaken']) {
+  for (const needle of ['Кузница поднимает слот выше тира предмета', 'Шаг Кузницы:', 'камней:', 'Awaken', 'Картинки предметов']) {
     if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
   }
 });
@@ -738,6 +784,88 @@ check('сохранение в браузере: состояние пишетс
   st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0; st.manual = null; st.mode = 'auto';
   store.clearState();
 });
+
+check('разворот карточки: стороны непрозрачные, отражённый текст не просвечивает', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'styles', 'app.css'), 'utf8');
+  const face = css.slice(css.indexOf('.flipcard .face {'), css.indexOf('.flipcard .art {'));
+  const bg = (face.match(/background:\s*([^;]+);/) || [])[1] || '';
+  if (/rgba\(|transparent/.test(bg)) throw new Error('фон стороны карточки полупрозрачный: ' + bg);
+  if (!/(#|var\(--bg)/.test(bg)) throw new Error('у стороны карточки нет непрозрачного фона: ' + bg);
+  if (!/backface-visibility:\s*hidden/.test(face)) throw new Error('нет backface-visibility: hidden');
+  if (!/\.flipcard\.flipped \.face\.front \{ visibility: hidden/.test(css)) throw new Error('лицевая сторона не скрывается при развороте');
+  if (!/\.flipcard:not\(\.flipped\) \.face\.back \{ visibility: hidden/.test(css)) throw new Error('обратная сторона не скрывается до разворота');
+  const flip = css.slice(css.indexOf('.flipcard .inner {')); 
+  if (!/preserve-3d/.test(flip)) throw new Error('нет preserve-3d');
+});
+
+check('картинки предметов: игровые, если доступны, иначе нарисованные', () => {
+  const st = artUi.artState;
+  // без интернета карта иконок недоступна — рисуем сами
+  if (st.index) throw new Error('в офлайне карта иконок не должна загрузиться');
+  const src = artUi.artSrc('Broken Sword', 3, 0);
+  if (src !== null) throw new Error('без карты иконок адрес картинки должен быть пустым');
+  const fam = items.familyById('gnarled_stick');
+  const node = artUi.artNode(fam, 5, 0);
+  if (node.tagName !== 'SPAN' || !String(node.innerHTML).includes('<svg')) throw new Error('нет запасной нарисованной иконки');
+  // а с картой — берём игровой файл
+  st.mode = 'local'; st.index = { 'Gnarled Stick': { tiers: { 5: 'runed-stick.webp' }, awakens: { 1: 'ancient-grove-stick.webp' } } };
+  const url = artUi.artSrc('Gnarled Stick', 5, 0);
+  if (url !== 'assets/items/runed-stick.webp') throw new Error('адрес иконки: ' + url);
+  const aw = artUi.artSrc('Gnarled Stick', 5, 1);
+  if (aw !== 'assets/items/ancient-grove-stick.webp') throw new Error('Awaken-иконка: ' + aw);
+  const img = artUi.artNode(fam, 5, 0);
+  if (img.tagName !== 'IMG' || img.attrs.src !== 'assets/items/runed-stick.webp') throw new Error('картинка не подставилась');
+  st.mode = 'cdn';
+  if (artUi.artSrc('Gnarled Stick', 5, 0) !== 'https://idlearc.com/static/images/items/runed-stick.webp') throw new Error('адрес CDN');
+  st.mode = 'none'; st.index = null;
+});
+
+check('сервер: маршруты статуса и загрузки игровых иконок объявлены', () => {
+  const srv = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  for (const needle of ['/api/art/status', '/api/art/fetch', 'art-core.mjs']) {
+    if (!srv.includes(needle)) throw new Error('нет ' + needle);
+  }
+  const core = fs.readFileSync(path.join(ROOT, 'scripts', 'art-core.mjs'), 'utf8');
+  for (const needle of ['collectImages', 'downloadArt', 'buildIndex', 'artStatus']) {
+    const ok = core.includes(`export function ${needle}`) || core.includes(`export async function ${needle}`);
+    if (!ok) throw new Error('art-core: нет ' + needle);
+  }
+  const script = fs.readFileSync(path.join(ROOT, 'scripts', 'fetch-art.mjs'), 'utf8');
+  if (!script.includes('downloadArt')) throw new Error('скрипт загрузки не использует art-core');
+});
+
+check('загрузка иконок через браузер: скачивает codex, картинки и отправляет на сервер', async () => {
+  const realFetch = globalThis.fetch;
+  const calls = { uploads: [] };
+  globalThis.fetch = async (url, opts = {}) => {
+    const u = String(url);
+    if (u.includes('item_codex_data.json')) {
+      return { ok: true, json: async () => ({ item_variants: { 'Torch': { tiers: { 1: { image: 'static/images/items/torch.webp' }, 2: { image: 'static/images/items/torch-2.webp' } }, awakens: { 1: { image: 'static/images/items/torch-7.webp' } } } } }) };
+    }
+    if (u.includes('api/art/upload')) {
+      const body = JSON.parse(opts.body);
+      calls.uploads.push(Object.keys(body.files));
+      return { ok: true, json: async () => ({ ok: true, saved: Object.keys(body.files) }) };
+    }
+    if (u.includes('/static/images/items/')) {
+      const bytes = new Uint8Array(400).fill(9);
+      return { ok: true, arrayBuffer: async () => bytes.buffer };
+    }
+    return { ok: false, status: 404, json: async () => ({}), arrayBuffer: async () => new ArrayBuffer(0) };
+  };
+  try {
+    const out = await artUi.downloadArtViaBrowser(() => {});
+    if (!out.ok || out.saved !== 3) throw new Error(`скачано: ${JSON.stringify(out)}`);
+    const flat = calls.uploads.flat().sort();
+    if (flat.join(',') !== 'torch-2.webp,torch-7.webp,torch.webp') throw new Error('отправлены не те файлы: ' + flat);
+    if (!artUi.artDownload.note.includes('3')) throw new Error('нет отчёта о прогрессе');
+  } finally {
+    globalThis.fetch = realFetch;
+    artUi.artDownload.active = false; artUi.artDownload.note = '';
+  }
+});
+
+await Promise.all(pending);
 
 console.log(failures ? `\n${failures} проверок провалено` : '\nВсе проверки пройдены ✓');
 process.exit(failures ? 1 : 0);

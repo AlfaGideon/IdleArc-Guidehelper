@@ -443,49 +443,65 @@ export const familiesForClass = (cls) => GEAR_FAMILIES.filter((f) => f.cls === '
  * Источники: официальные патч-ноты 1.3.1, вики (Forge, Items), Item Codex → Forge, forge.tracks_by_class.
  */
 export const GEAR_CELLS = [
-  { id: 'torch', slot: 'torch', ru: 'Факел', en: 'Torch' },
-  { id: 'amulet', slot: 'amulet', ru: 'Амулет', en: 'Amulet' },
-  { id: 'offhand', slot: 'offhand', ru: 'Вторая рука', en: 'Off Hand' },
-  { id: 'mainhand', slot: 'mainhand', ru: 'Оружие', en: 'Weapon' },
-  { id: 'chest', slot: 'chest', ru: 'Нагрудник', en: 'Chest' },
-  { id: 'weapon2', slot: 'mainhand', ru: 'Оружие 2', en: 'Weapon 2' },
-  { id: 'ring1', slot: 'ring', ru: 'Кольцо 1', en: 'Ring 1' },
-  { id: 'ring2', slot: 'ring', ru: 'Кольцо 2', en: 'Ring 2' },
-  { id: 'belt', slot: 'belt', ru: 'Пояс', en: 'Belt' },
-  { id: 'head', slot: 'head', ru: 'Шлем', en: 'Head' },
-  { id: 'hands', slot: 'hands', ru: 'Перчатки', en: 'Hands' },
-  { id: 'feet', slot: 'feet', ru: 'Обувь', en: 'Feet' },
+  // Сетка повторяет игровое окно снаряжения построчно (как на скриншоте игрока):
+  //   1) Факел · Шлем · Амулет
+  //   2) Оружие · Нагрудник · Вторая рука (у разбойника — Оружие 2, у друида — «Двуручное»)
+  //   3) Кольцо 1 · Пояс · Кольцо 2
+  //   4) Талисман 1 · Перчатки · Обувь · Талисман 2
+  { id: 'torch', slot: 'torch', ru: 'Факел', en: 'Torch', row: 1, col: 1 },
+  { id: 'head', slot: 'head', ru: 'Шлем', en: 'Head', row: 1, col: 2 },
+  { id: 'amulet', slot: 'amulet', ru: 'Амулет', en: 'Amulet', row: 1, col: 3 },
+  { id: 'mainhand', slot: 'mainhand', ru: 'Оружие', en: 'Weapon', row: 2, col: 1 },
+  { id: 'chest', slot: 'chest', ru: 'Нагрудник', en: 'Chest', row: 2, col: 2 },
+  { id: 'hand2', slot: 'offhand', ru: 'Вторая рука', en: 'Off Hand', row: 2, col: 3 },
+  { id: 'ring1', slot: 'ring', ru: 'Кольцо 1', en: 'Ring 1', row: 3, col: 1 },
+  { id: 'belt', slot: 'belt', ru: 'Пояс', en: 'Belt', row: 3, col: 2 },
+  { id: 'ring2', slot: 'ring', ru: 'Кольцо 2', en: 'Ring 2', row: 3, col: 3 },
+  { id: 'talisman1', slot: 'talisman', ru: 'Талисман 1', en: 'Talisman 1', row: 4, col: 1 },
+  { id: 'hands', slot: 'hands', ru: 'Перчатки', en: 'Hands', row: 4, col: 2 },
+  { id: 'feet', slot: 'feet', ru: 'Обувь', en: 'Feet', row: 4, col: 3 },
+  { id: 'talisman2', slot: 'talisman', ru: 'Талисман 2', en: 'Talisman 2', row: 4, col: 4 },
 ];
 
 export const gearCellById = (id) => GEAR_CELLS.find((c) => c.id === id);
 
+/** Ячейки, которые показываются в последней строке (4 в строке, как в игре). */
+export const GEAR_LAST_ROW = GEAR_CELLS.filter((c) => c.row === 4).map((c) => c.id);
+
 /** Сколько камней-сокетов даёт ячейка (Torch — 4, оружие — 3, броня — 2, украшения — 1, щит — 0). */
 export const SLOT_GEM_COUNT = {
-  mainhand: 3, weapon2: 3, offhand: 0, torch: 4,
+  mainhand: 3, offhand: 0, torch: 4,
   head: 2, chest: 2, hands: 2, feet: 2, belt: 2,
-  ring1: 1, ring2: 1, amulet: 1,
+  ring: 1, amulet: 1, talisman: 0,
 };
 
 /**
- * Какие ячейки носит класс и почему остальные закрыты.
- * (forge.tracks_by_class: воин/лучник/маг — оружие + щит; разбойник — два оружия, без щита;
- *  друид — только посох, он двуручный.)
+ * Что класс может носить в руках и почему часть ячеек закрыта.
+ * «Вторая рука» (hand2) — универсальная ячейка второй руки:
+ *   • воин/лучник/маг — оффхенд (щит, книга, колчан);
+ *   • разбойник — второе оружие (парные кинжалы/когти), щита у него нет;
+ *   • друид — ячейка закрыта: посох двуручный, обе руки заняты.
  */
 export const CLASS_GEAR_RULES = {
-  warrior: { cells: ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
-    locked: { weapon2: 'Второе оружие — только у Разбойника (Rogue).' } },
-  archer: { cells: ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
-    locked: { weapon2: 'Второе оружие — только у Разбойника (Rogue).' } },
-  mage: { cells: ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
-    locked: { weapon2: 'Второе оружие — только у Разбойника (Rogue).' } },
-  rogue: { cells: ['mainhand', 'weapon2', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
-    locked: { offhand: 'У Разбойника вместо щита — второе оружие (Weapon 2).' } },
-  druid: { cells: ['mainhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
-    locked: {
-      offhand: 'Посох друида (Gnarled Stick) двуручный — обе руки заняты.',
-      weapon2: 'У Друида одно оружие — посох, он двуручный.',
-    } },
+  warrior: { hand2: 'offhand', locked: {} },
+  archer: { hand2: 'offhand', locked: {} },
+  mage: { hand2: 'offhand', locked: {} },
+  rogue: { hand2: 'weapon2', locked: {} },
+  druid: {
+    hand2: 'twohanded',
+    locked: { hand2: 'У Друида посох (Gnarled Stick) двуручный — обе руки заняты, отдельной второй руки нет.' },
+  },
 };
+
+/** Подписи универсальной ячейки второй руки по классам. */
+export const HAND2_LABELS = {
+  offhand: { ru: 'Вторая рука', en: 'Off Hand' },
+  weapon2: { ru: 'Оружие 2', en: 'Weapon 2' },
+  twohanded: { ru: 'Двуручное', en: 'Two-handed' },
+};
+
+/** Талисманы — два слота из того же игрового окна (Gear tab → Talismans). */
+export const TALISMAN_CELL_IDS = ['talisman1', 'talisman2'];
 
 /** Имя предмета после Awaken (ранг 1), если название опубликовано в Item Codex. */
 export const FAMILY_AWAKEN = {

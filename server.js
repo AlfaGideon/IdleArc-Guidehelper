@@ -73,6 +73,98 @@ function htmlWithVersionedEntry(html) {
     .replace('href="styles/app.css"', `href="v/${b}/styles/app.css"`);
 }
 
+const ART_DIR = path.join(ROOT, 'assets', 'items');
+const json = (res, code, data) => {
+  res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', ...NO_STORE });
+  res.end(JSON.stringify(data));
+};
+
+/** Сколько игровых иконок уже скачано (0 — приложение рисует предметы само). */
+async function artStatus() {
+  try {
+    const core = await import('./scripts/art-core.mjs');
+    return core.artStatus(ART_DIR);
+  } catch (e) {
+    return { available: false, files: 0, total: 0, error: e.message };
+  }
+}
+
+/** Скачивание игровых иконок по кнопке в интерфейсе (нужен интернет у этой машины). */
+async function artFetch(res) {
+  try {
+    const core = await import('./scripts/art-core.mjs');
+    const { url, data } = await core.fetchCodex();
+    console.log(`[art] данные Item Codex: ${url}`);
+    const result = await core.downloadArt(data, ART_DIR, { concurrency: 8 });
+    console.log(`[art] скачано иконок: ${result.files} из ${result.total}, ошибок: ${result.failed}`);
+    json(res, 200, { ok: result.files > 0, ...result, failedNames: result.failedNames.slice(0, 20) });
+  } catch (e) {
+    console.log(`[art] ошибка загрузки: ${e.message}`);
+    json(res, 502, { ok: false, error: e.message, hint: 'Похоже, у этой машины нет доступа в интернет. Запустите приложение у себя локально и нажмите кнопку ещё раз.' });
+  }
+}
+
+/**
+ * Приём игровых иконок из браузера пользователя: у его машины интернет есть, у сервера может
+ * не быть. Браузер скачивает картинки с CDN игры и отправляет их сюда, а сервер кладёт их
+ * в assets/items — после этого приложение показывает настоящие игровые иконки офлайн.
+ * Тело: { files: { 'torch.webp': '<base64>', … }, meta?: {...} }
+ */
+function readBody(req, limitBytes = 24 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > limitBytes) { reject(new Error('слишком большой запрос')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+async function artUpload(req, res, urlPath) {
+  const dryRun = urlPath.includes('dry=1');
+  try {
+    const body = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+    const files = body.files || {};
+    const names = Object.keys(files);
+    if (!names.length) return json(res, 400, { ok: false, error: 'в запросе нет файлов' });
+
+    const saved = [];
+    const skipped = [];
+    for (const name of names) {
+      // Защита от подмены пути: принимаем только простые имена .webp из Item Codex.
+      if (!/^[a-z0-9][a-z0-9._-]*\.webp$/i.test(name)) { skipped.push(name); continue; }
+      const buf = Buffer.from(String(files[name]), 'base64');
+      if (buf.length < 200 || buf.length > 400 * 1024) { skipped.push(name); continue; }
+      saved.push({ name, bytes: buf.length, buf });
+    }
+    if (!dryRun) {
+      fs.mkdirSync(ART_DIR, { recursive: true });
+      for (const f of saved) fs.writeFileSync(path.join(ART_DIR, f.name), f.buf);
+      if (body.meta && body.meta.index) {
+        const indexFile = path.join(ART_DIR, 'index.json');
+        let prev = { meta: {}, index: {} };
+        try { prev = JSON.parse(fs.readFileSync(indexFile, 'utf8')); } catch { /* первый раз */ }
+        const meta = {
+          source: 'idlearc.com (Item Codex → Appearance)',
+          fetchedAt: new Date().toISOString(),
+          files: Object.keys({ ...prev.index, ...body.meta.index }).length,
+          total: body.meta.total || Object.keys(body.meta.index).length,
+          via: 'браузер пользователя',
+        };
+        fs.writeFileSync(indexFile, JSON.stringify({ meta, index: body.meta.index }, null, 1), 'utf8');
+      }
+    }
+    console.log(`[art] принято из браузера: ${saved.length}${dryRun ? ' (проверка)' : ''}, пропущено: ${skipped.length}`);
+    json(res, 200, { ok: saved.length > 0, saved: saved.map((f) => f.name), skipped, dryRun });
+  } catch (e) {
+    json(res, 400, { ok: false, error: e.message });
+  }
+}
+
 const server = http.createServer((req, res) => {
   const urlPath = req.url.split('?')[0].split('#')[0];
 
@@ -80,6 +172,21 @@ const server = http.createServer((req, res) => {
   if (urlPath === '/api/build') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...NO_STORE });
     return res.end(JSON.stringify({ build: buildId() }));
+  }
+
+  // Игровые иконки предметов: статус и загрузка в проект (assets/items).
+  if (urlPath === '/api/art/status' && req.method === 'GET') {
+    artStatus().then((st) => json(res, 200, st)).catch((e) => json(res, 500, { error: e.message }));
+    return;
+  }
+  if (urlPath === '/api/art/fetch' && req.method === 'POST') {
+    artFetch(res);
+    return;
+  }
+  // Иконки, скачанные браузером пользователя (когда у сервера нет интернета).
+  if (urlPath === '/api/art/upload' && req.method === 'POST') {
+    artUpload(req, res, req.url);
+    return;
   }
 
   let filePath = safePath(stripVersion(urlPath === '/' ? '/index.html' : urlPath));

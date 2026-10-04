@@ -240,3 +240,57 @@ export function lockArt(tier = 1) {
 
 export const knownShape = (familyId) => SHAPE_BY_FAMILY[familyId] || null;
 export const SHAPES = SHAPE_BY_FAMILY;
+
+/* ---------------------------------- талисманы ---------------------------------- */
+
+const TALISMAN_COLORS = {
+  fury: ['#ff8a5c', '#b8451f'],
+  spirit: ['#7fd6a5', '#2f8a5c'],
+  iron: ['#9fb3d1', '#4a5f82'],
+  recovery: ['#e78ad2', '#8b3d7a'],
+};
+
+const talismanShapes = {
+  // Ярость: клинок в пламени
+  fury: (a, b) => `<path d="M32 6 C26 14 24 20 27 25 C29 28 30 30 32 30 C34 30 35 28 37 25 C40 20 38 14 32 6 Z" fill="${b}"/>`
+    + `<path d="M32 12 C28 18 27 22 29 26 C30 28 31 29 32 29 C33 29 34 28 35 26 C37 22 36 18 32 12 Z" fill="${a}"/>`
+    + `<rect x="29.6" y="30" width="4.8" height="22" rx="2.4" fill="${STEEL_D}"/>`
+    + `<rect x="22" y="52" width="20" height="4" rx="2" fill="${GOLD_D}"/>`,
+
+  // Дух: след пета
+  spirit: (a, b) => `<ellipse cx="32" cy="30" rx="12" ry="11" fill="${b}"/>`
+    + `<ellipse cx="32" cy="30" rx="9" ry="8" fill="${a}"/>`
+    + [[20, 14], [32, 9], [44, 14]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="5.4" ry="6" fill="${b}"/>`).join('')
+    + `<circle cx="28.6" cy="27" r="1.9" fill="#1b1a1f"/><circle cx="35.4" cy="27" r="1.9" fill="#1b1a1f"/>`,
+  // Железо: нагрудная пластина
+  iron: (a, b) => `<path d="M32 6 L52 14 V32 C52 44 43 53 32 58 C21 53 12 44 12 32 V14 Z" fill="${b}"/>`
+    + `<path d="M32 11 L47 17 V32 C47 41 40 48 32 52 C24 48 17 41 17 32 V17 Z" fill="${a}"/>`
+    + `<rect x="22" y="26" width="20" height="4" rx="2" fill="${b}" opacity=".8"/>`
+    + `<rect x="28" y="34" width="8" height="10" rx="2" fill="${b}" opacity=".8"/>`,
+  // Восстановление: чаша с каплей
+  recovery: (a, b) => `<path d="M14 22 H50 C50 38 42 48 32 48 C22 48 14 38 14 22 Z" fill="${b}"/>`
+    + `<path d="M18 25 H46 C46 37 40 45 32 45 C24 45 18 37 18 25 Z" fill="${a}"/>`
+    + `<rect x="29" y="47" width="6" height="8" rx="2" fill="${STEEL_D}"/>`
+    + `<rect x="22" y="54" width="20" height="5" rx="2.5" fill="${GOLD_D}"/>`
+    + `<path d="M32 8 C29 13 28 16 30 18 C31 19.5 33 19.5 34 18 C36 16 35 13 32 8 Z" fill="${a}"/>`,
+};
+
+/** Иконка талисмана (4 вида из игры: Fury, Spirit, Iron, Recovery). */
+export function talismanArt(id = 'fury') {
+  const [a, b] = TALISMAN_COLORS[id] || TALISMAN_COLORS.fury;
+  const fn = talismanShapes[id] || talismanShapes.fury;
+  return wrap(fn(a, b));
+}
+
+/** Силуэт человека под сеткой снаряжения: подсказывает, что это «тело» персонажа. */
+export function bodySilhouette() {
+  const line = 'rgba(255,255,255,.30)';
+  const fill = 'rgba(255,255,255,.05)';
+  const inner = `<g fill="${fill}" stroke="${line}" stroke-width="2" stroke-linejoin="round">`
+    + '<circle cx="50" cy="14" r="11"/>'
+    + '<path d="M50 26 C64 26 72 34 74 46 L78 78 L66 78 L62 56 L62 96 L74 132 L80 176 H60 L50 138 L40 176 H20 L26 132 L38 96 L38 56 L34 78 L22 78 L26 46 C28 34 36 26 50 26 Z"/>'
+    + '<path d="M26 46 L6 78 L2 108 L12 110 L22 84" />'
+    + '<path d="M74 46 L94 78 L98 108 L88 110 L78 84" />'
+    + '</g>';
+  return `<svg viewBox="0 0 100 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${inner}</svg>`;
+}

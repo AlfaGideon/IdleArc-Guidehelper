@@ -30,6 +30,27 @@ function get(path, { redirect = true } = {}) {
   });
 }
 
+
+/** POST с JSON-телом (для маршрутов приёма игровых иконок). */
+function post(path, bodyObj) {
+  const target = BASE + path;
+  const payload = JSON.stringify(bodyObj);
+  return new Promise((resolve, reject) => {
+    const req = http.request(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+    }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(8000, () => req.destroy(new Error('timeout')));
+    req.end(payload);
+  });
+}
+
 const SPECIFIER = /(?:^|\n)\s*(?:import|export)[^'"]*?from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g;
 const resolveUrl = (from, spec) => new URL(spec, new URL(from, BASE)).pathname;
 
@@ -90,6 +111,22 @@ try {
   if (app.status !== 200 || !/javascript/.test(app.type)) throw new Error(`/src/app.js → ${app.status} ${app.type}`);
   ok('прямой путь /src/app.js тоже работает');
 } catch (e) { fail('прямой путь', e.message); }
+
+/* 4. Игровые иконки: приём картинок из браузера (dry-run — файлы не пишутся) */
+try {
+  const fake = Buffer.from('RIFF0000WEBPVP8 ' + 'x'.repeat(380)).toString('base64');
+  const res = await post('/api/art/upload?dry=1', {
+    files: { 'torch.webp': fake, '../evil.webp': fake, 'notimage.txt': fake },
+    meta: { index: { Torch: { tiers: { 1: 'torch.webp' } } }, total: 1 },
+  });
+  const data = JSON.parse(res.body);
+  if (!data.ok || !data.dryRun) throw new Error('ответ: ' + res.body);
+  if (data.saved.join(',') !== 'torch.webp') throw new Error('принимать нужно только torch.webp: ' + JSON.stringify(data.saved));
+  if (!data.skipped.includes('../evil.webp') || !data.skipped.includes('notimage.txt')) throw new Error('подозрительные имена должны отклоняться');
+  const st = JSON.parse((await get('/api/art/status')).body);
+  if (typeof st.available !== 'boolean' || typeof st.files !== 'number') throw new Error('статус: ' + JSON.stringify(st));
+  ok('игровые иконки: приём из браузера защищён (dry-run), статус отвечает');
+} catch (e) { fail('игровые иконки', e.message); }
 
 console.log(failures ? `\n${failures} проверок провалено` : '\nHTTP-проверки пройдены ✓');
 process.exit(failures ? 1 : 0);
