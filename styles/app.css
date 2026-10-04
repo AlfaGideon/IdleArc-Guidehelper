@@ -154,3 +154,9 @@ details summary { cursor: pointer; padding: 6px 0; color: var(--accent); }
 .grid.cols-1 { grid-template-columns: 1fr; }
 .muted.small { font-size: 12px; opacity: .8; }
 b.want, td .want { color: var(--good); }
+
+/* кнопка «Обновить» и баннер устаревшей сборки */
+.tabs .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.tabs .btn.ghost:hover { color: var(--text); border-color: var(--accent); }
+.warnbox.stale { background: rgba(255,200,87,.12); border-color: var(--accent); }
+.tag.est { background: rgba(255,200,87,.16); color: var(--accent); border-color: var(--accent); }

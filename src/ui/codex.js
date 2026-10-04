@@ -156,18 +156,22 @@ function classSkillsCard() {
     const rows = c.skills.filter((s) => match(s.name, s.ru, s.text, c.name))
       .map((s) => [
         `${s.branch || '—'} · T${s.tier ?? '?'}`,
-        el('div', {}, [el('b', { text: s.name }), s.unverified ? el('span', { class: 'tag', text: 'не подтверждено' }) : null]),
+        el('div', {}, [el('b', { text: s.name }), s.estimated ? el('span', { class: 'tag est', title: s.estimateNote || '', text: 'оценка' }) : null]),
         `до ${s.max}`,
-        s.text,
+        el('div', {}, [
+          el('div', { text: s.text }),
+          s.estimateNote ? el('div', { class: 'muted small', text: 'Как считали: ' + s.estimateNote }) : null,
+        ]),
+        s.estimated ? 'оценка по аналогу' : 'официальные данные',
       ]);
     if (!rows.length) return null;
     return el('details', {}, [
       el('summary', { text: `${c.ru} (${c.name}) — ${c.role}` }),
-      table(['Ветка/тир', 'Навык', 'Макс', 'Эффект (за очко)'], rows),
+      table(['Ветка/тир', 'Навык', 'Макс', 'Эффект (за очко)', 'Точность'], rows),
     ]);
   }).filter(Boolean);
   return card('Классовые навыки (5 классов)', [
-    el('p', { class: 'muted', text: `${CLASS_SKILL_RULES.note} Tier 2 — после 5 очков в ветке, Tier 3 — после 10.` }),
+    el('p', { class: 'muted', text: `${CLASS_SKILL_RULES.note} Tier 2 — после 5 очков в ветке, Tier 3 — после 10. Значок «оценка» — формула в игре не опубликована, процент рассчитан по механике игры (см. пояснение в карточке навыка).` }),
     el('div', { class: 'scroll' }, blocks.length ? blocks : [el('p', { text: 'Ничего не найдено.' })]),
   ]);
 }

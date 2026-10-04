@@ -27,6 +27,23 @@ const MIME = {
   '.md': 'text/markdown; charset=utf-8',
 };
 
+/** Метка сборки: берётся из src/data/systems.js, чтобы сервер и клиент сверяли одно и то же. */
+function buildId() {
+  try {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'data', 'systems.js'), 'utf8');
+    const m = src.match(/build:\s*'([^']+)'/);
+    return m ? m[1] : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+const NO_STORE = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 function safePath(urlPath) {
   const decoded = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
   const target = path.normalize(path.join(ROOT, decoded));
@@ -35,9 +52,15 @@ function safePath(urlPath) {
 }
 
 const server = http.createServer((req, res) => {
+  // Метка сборки для клиента: если она не совпадает с DATA_META.build, интерфейс покажет кнопку обновления.
+  if (req.url.split('?')[0] === '/api/build') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...NO_STORE });
+    return res.end(JSON.stringify({ build: buildId() }));
+  }
+
   let filePath = safePath(req.url === '/' ? '/index.html' : req.url);
   if (!filePath) {
-    res.writeHead(403);
+    res.writeHead(403, NO_STORE);
     return res.end('Forbidden');
   }
   fs.stat(filePath, (err, stat) => {
@@ -47,10 +70,10 @@ const server = http.createServer((req, res) => {
         // SPA-фолбэк
         fs.readFile(path.join(ROOT, 'index.html'), (e2, html) => {
           if (e2) {
-            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', ...NO_STORE });
             return res.end('404 Not Found');
           }
-          res.writeHead(200, { 'Content-Type': MIME['.html'] });
+          res.writeHead(200, { 'Content-Type': MIME['.html'], ...NO_STORE });
           res.end(html);
         });
         return;
@@ -58,7 +81,8 @@ const server = http.createServer((req, res) => {
       const ext = path.extname(filePath).toLowerCase();
       res.writeHead(200, {
         'Content-Type': MIME[ext] || 'application/octet-stream',
-        'Cache-Control': 'no-cache',
+        'X-Build': buildId(),
+        ...NO_STORE,
       });
       res.end(data);
     });
@@ -66,5 +90,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`IdleArc Guide Helper запущен: http://${HOST}:${PORT}`);
+  console.log(`IdleArc Guide Helper запущен: http://${HOST}:${PORT} · сборка ${buildId()}`);
 });

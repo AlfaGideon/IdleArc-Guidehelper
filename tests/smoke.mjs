@@ -7,6 +7,7 @@
  * Запуск: node tests/smoke.mjs
  */
 import path from 'node:path';
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,6 +40,7 @@ globalThis.window = { addEventListener() {}, location: { hash: '' } };
 globalThis.location = { hash: '' };
 Object.defineProperty(globalThis, 'navigator', { value: { clipboard: { writeText: async () => {} } }, configurable: true });
 globalThis.prompt = () => null;
+globalThis.fetch = globalThis.fetch || (async () => { throw new Error('offline'); });
 globalThis.alert = () => {};
 if (!globalThis.btoa) globalThis.btoa = (s) => Buffer.from(s, 'binary').toString('base64');
 if (!globalThis.atob) globalThis.atob = (s) => Buffer.from(s, 'base64').toString('binary');
@@ -68,6 +70,15 @@ for (const [name, view] of Object.entries(views)) {
     view.render(root);
     if (!root.children.length) throw new Error('пустой рендер');
   });
+}
+
+// Реальная точка входа: ловит ошибки импортов/роутинга, которые не видны при рендере вкладок по отдельности.
+try {
+  await import(src('app.js') + '?smoke=1');
+  console.log('  ok  app.js: точка входа загружается и активирует вкладки');
+} catch (e) {
+  failures++;
+  console.error(` FAIL app.js: ${e.message}`);
 }
 
 /* ---------- Планировщик ---------- */
@@ -176,6 +187,34 @@ check('каталог предметов: 40 семейств, у каждого
   }
   const perSlot = items.SLOT_ORDER.map((s) => items.familiesForSlot(s).length);
   if (perSlot.some((n) => n === 0)) throw new Error('есть пустые слоты: ' + items.SLOT_ORDER.filter((s, i) => perSlot[i] === 0).join(', '));
+});
+
+check('все навыки с пометкой «оценка» объясняют, откуда взято значение', () => {
+  const estimated = classes.CLASSES.flatMap((c) => c.skills.map((s) => ({ ...s, cls: c.id }))).filter((s) => s.estimated);
+  if (estimated.length !== 19) throw new Error(`оценок ${estimated.length}, ожидалось 19 (18 Druid + Counterstrike)`);
+  for (const s of estimated) {
+    if (!s.estimateNote || s.estimateNote.length < 40) throw new Error(`${s.cls}/${s.name}: нет пояснения к оценке`);
+    if (!Object.keys(s.perPoint || {}).length) throw new Error(`${s.cls}/${s.name}: оценка без значений (perPoint пуст)`);
+    if (typeof s.text !== 'string' || !s.text.includes('{')) throw new Error(`${s.cls}/${s.name}: текст без подстановок`);
+  }
+});
+
+check('данные и интерфейс не ссылаются на «внешние источники» как на способ получить цифры', () => {
+  const bad = ['внешними источниками', 'не подтверждён внешними', 'unverified'];
+  const files = ['src/data/classes.js', 'src/data/builds.js', 'src/ui/planner.js', 'src/ui/codex.js', 'src/ui/nuances.js', 'src/core/planner.js'];
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    for (const phrase of bad) if (text.includes(phrase)) throw new Error(`${f}: найдено «${phrase}»`);
+  }
+});
+
+check('метка сборки: DATA_META.build совпадает с ?v= в index.html', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const systems = fs.readFileSync(path.join(ROOT, 'src/data/systems.js'), 'utf8');
+  const build = systems.match(/build:\s*'([^']+)'/)?.[1];
+  if (!build) throw new Error('DATA_META.build не найден');
+  if (!html.includes(`src/app.js?v=${build}`)) throw new Error(`index.html ссылается не на сборку ${build}`);
+  if (!html.includes('id="reload-btn"')) throw new Error('в index.html нет кнопки «Обновить»');
 });
 
 /* ---------- Код сборки ---------- */

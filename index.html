@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>IdleArc Guide Helper — планировщик сборок</title>
 <meta name="description" content="Помощник по сборке персонажа в IdleArc (Season 2, патч 1.3.1): классовые навыки, статы, аффиксы, гемы, петы, талисманы." />
 <link rel="stylesheet" href="styles/app.css" />
@@ -13,7 +16,7 @@
     <div class="logo">IA</div>
     <div>
       <h1>IdleArc Guide Helper</h1>
-      <p class="sub">Планировщик сборок под класс, цель и уровень · <span id="meta-version">Season 2</span></p>
+      <p class="sub">Планировщик сборок под класс, цель и уровень · <span id="meta-version">Season 2</span> · сборка <b id="meta-build">…</b></p>
     </div>
   </div>
   <nav class="tabs" id="tabs">
@@ -21,6 +24,7 @@
     <button data-tab="calc">Калькуляторы</button>
     <button data-tab="codex">Кодекс</button>
     <button data-tab="nuances">Нюансы и источники</button>
+    <button id="reload-btn" class="btn ghost" title="Загрузить файлы приложения заново (обход кэша браузера)">Обновить</button>
   </nav>
 </header>
 
@@ -30,9 +34,9 @@
   <p>Неофициальный фанатский инструмент. Данные: <a href="https://idlearc.com/patch-notes/1-3-1" target="_blank" rel="noopener">официальные патч-ноты 1.3.1</a>,
   <a href="https://idlearc.com/classes" target="_blank" rel="noopener">официальные классы</a> и
   <a href="https://idlearc.fandom.com/wiki/IdleArc_Wiki" target="_blank" rel="noopener">IdleArc Wiki</a>.
-  Снапшот: <span id="foot-date"></span>.</p>
+  Снапшот: <span id="foot-date"></span>. Сборка приложения: <span id="foot-build"></span>.</p>
 </footer>
 
-<script type="module" src="src/app.js"></script>
+<script type="module" src="src/app.js?v=2026-10-04.3"></script>
 </body>
 </html>

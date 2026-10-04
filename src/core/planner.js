@@ -435,7 +435,10 @@ export function planBuild({
   if (validation.left > 0) warnings.push(`Нераспределённых очков: ${validation.left}.`);
   for (const p of validation.problems) warnings.push(`${p.skill}: ${p.reason}.`);
   if (!usingManual && auto.leftover > 0) warnings.push(`Осталось ${auto.leftover} очков, которые некуда вложить в рамках весов цели.`);
-  if (cls.skills.some((s) => s.unverified)) warnings.push('Для Druid официальные описания навыков не опубликованы — распределение и проценты ориентировочные.');
+  const estimatedUsed = details.filter((d) => d.estimated && d.points > 0);
+  if (estimatedUsed.length) {
+    tips.push(`В плане ${estimatedUsed.length} навык(ов) с пометкой «оценка» (${estimatedUsed.slice(0, 4).map((d) => d.name).join(', ')}${estimatedUsed.length > 4 ? '…' : ''}): точных формул в игре нет, проценты посчитаны по механике — по аналогии с известными навыками и Drop Bonus-ами. Наведите мышь на значок «оценка», чтобы увидеть аналог.`);
+  }
   if (goal === 'retaliation' && classId !== 'warrior') warnings.push('Retaliation вне Warrior слабее: нет щита (Block) и защитных классовых навыков.');
   if (level < 25) tips.push('С ML 25 в пул дропа добавляются двуручное оружие, Claws (Rogue) и сайдгрейды брони.');
   if (level < 50) tips.push('Torch (отдельный слот, +All Class Skills) начинает падать с ML 50 — это главный источник бонуса.');

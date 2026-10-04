@@ -68,7 +68,7 @@ function skillsSection(root, plan) {
         el('span', { class: `tag T${s.tier || 1}`, text: s.tier ? `T${s.tier}` : 'T?' }),
         el('div', {}, [
           el('b', { text: s.name }),
-          s.unverified ? el('span', { class: 'tag', text: 'не подтверждено' }) : null,
+          s.estimated ? el('span', { class: 'tag est', title: s.estimateNote || '', text: 'оценка' }) : null,
           el('div', { class: 'muted', text: s.text ? s.text.replace(/\{(\w+)\}/g, (_, k) => {
             const per = s.perPoint?.[k];
             if (per == null) return '?';
@@ -76,6 +76,7 @@ function skillsSection(root, plan) {
             const v = cap != null ? Math.min(per * (eff || 1), cap) : per * (eff || 1);
             return Number(v.toFixed(2)).toString();
           }) : '' }),
+          s.estimated && s.estimateNote ? el('div', { class: 'muted small', text: 'Как считали: ' + s.estimateNote }) : null,
         ]),
         // интерактивное распределение
         el('div', { class: 'stepper' }, [
@@ -133,6 +134,7 @@ function skillsSection(root, plan) {
     ...(plan.points.over ? [el('div', { class: 'warnbox', text: `Вложено больше доступного на ${plan.points.spent - plan.points.available} — уберите очки.` })] : []),
     ...validationBoxes(plan),
     why,
+    el('p', { class: 'muted', text: 'Значок «оценка» = точной формулы в игре не опубликовано, поэтому процент посчитан по механике (аналог известного навыка или Drop Bonus-а) — наведите мышь на значок, чтобы увидеть, по какому именно аналогу.' }),
     el('p', { class: 'muted', text: 'Правила игры: очки — 1 на 1 уровне и +1 каждые 3 уровня; Tier 2 открывается после 5 очков в этой ветке, Tier 3 — после 10; некоторые навыки требуют другой навык. «Эффективный ранг» = вложенные очки + бонус +All Class Skills — именно он считается в игре; гейты ветвей при этом считаются только по вложенным очкам. Кнопки «+»/«−» переключают план в ручной режим, в игре ничего не меняется.' }),
     ...blocks,
   ]);
