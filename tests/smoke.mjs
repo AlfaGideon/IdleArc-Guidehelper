@@ -9,6 +9,8 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
+import { execFileSync } from 'node:child_process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (p) => path.join(ROOT, 'src', p);
@@ -674,7 +676,7 @@ check('метка сборки и точка входа: index.html без query
   if (!build) throw new Error('DATA_META.build не найден');
   if (!html.includes('<meta name="build" content="' + build + '"')) throw new Error('meta build в index.html не совпадает с DATA_META.build');
   if (html.includes('?v=')) throw new Error('в index.html остались query-строки (?v=) — за прокси они ненадёжны');
-  if (!html.includes('<script type="module" src="src/app.js"></script>')) throw new Error('нет статического подключения src/app.js');
+  if (!/<script type="module"[^>]*src="src\/app\.js"/.test(html)) throw new Error('нет статического подключения src/app.js');
   if (!html.includes('id="boot-error"') || !html.includes('__boot')) throw new Error('нет страховочного блока на случай, если модули не загрузились');
   if (!html.includes('id="reload-btn"')) throw new Error('в index.html нет кнопки «Обновить»');
 
@@ -1174,6 +1176,47 @@ check('сохранение: плашка «сохранено» видна на
     if (!text.includes('в браузере') && !text.includes('до перезагрузки')) throw new Error('плашка без канала: ' + text);
   }
   st.page = 'class';
+});
+
+check('запуск: приложение стартует, даже если доступ к хранилищу браузера запрещён', () => {
+  // Реальная среда пользователя: обращение к window.localStorage бросает SecurityError
+  // (приватный режим или страница внутри iframe без доступа к хранилищу). Приложение
+  // обязано запуститься и продолжать сохранять состояние через резервный канал.
+  const child = `
+Object.defineProperty(globalThis, 'localStorage', { get() { throw new Error('SecurityError: storage disabled'); }, configurable: true });
+Object.defineProperty(globalThis, 'sessionStorage', { get() { throw new Error('SecurityError: storage disabled'); }, configurable: true });
+class El { constructor(t){this.nodeType=1;this.tagName=String(t).toUpperCase();this.children=[];this.attrs={};this.style={};this._text='';this._html='';this.classList={_s:new Set(),add(){},remove(){},toggle(){},contains(){return false}};}
+  appendChild(c){c.parentNode=this;this.children.push(c);return c;} prepend(c){c.parentNode=this;this.children.unshift(c);return c;} insertBefore(c){return this.appendChild(c)}
+  setAttribute(k,v){this.attrs[k]=String(v)} getAttribute(k){return this.attrs[k]??null}
+  addEventListener(t,f){(this._listeners=this._listeners||{})[t]=(this._listeners[t]||[]).concat(f)} dispatch(t){for(const f of (this._listeners||{})[t]||[])f({target:this})}
+  querySelectorAll(){return []} querySelector(){return null} closest(){return null}
+  set className(v){this.classList._s=new Set(String(v).split(/\\s+/).filter(Boolean))} get className(){return [...this.classList._s].join(' ')}
+  set textContent(v){this._text=String(v);this.children=[]} get textContent(){return this._text}
+  set innerHTML(v){this._html=String(v);this.children=[]} get innerHTML(){return this._html} }
+globalThis.document={createElement:(t)=>new El(t),createTextNode:(t)=>({nodeType:3,textContent:String(t)}),getElementById:()=>null,visibilityState:'visible',addEventListener(){},removeEventListener(){}};
+globalThis.window={name:'',location:{hash:''},addEventListener(){},removeEventListener(){}};
+const planner = await import(${JSON.stringify(src('ui/planner.js'))});
+const store = await import(${JSON.stringify(src('ui/store.js'))});
+planner.render(new El('main'));
+store.markTouched();
+store.saveState({ classId: 'rogue', ml: 5 }, { allowOverwrite: true });
+const back = store.loadState();
+if (!back || back.classId !== 'rogue') { console.log('НЕТ ВОССТАНОВЛЕНИЯ'); process.exit(2); }
+console.log('OK ' + store.saveInfo.note);
+process.exit(0);
+`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iac-boot-'));
+  const file = path.join(dir, 'boot.mjs');
+  fs.writeFileSync(file, child, 'utf8');
+  try {
+    const out = execFileSync(process.execPath, [file], { encoding: 'utf8', timeout: 30000 });
+    if (!out.includes('OK')) throw new Error('неожиданный вывод: ' + out.trim());
+    if (!out.includes('резервный канал') && !out.includes('окне браузера')) throw new Error('сохранение ушло не в резервный канал: ' + out.trim());
+  } catch (e) {
+    throw new Error('приложение упало при запрете хранилища: ' + (e.stdout || e.message));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 await Promise.all(pending);

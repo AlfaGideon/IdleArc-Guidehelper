@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>IdleArc Guide Helper — планировщик сборок</title>
-<meta name="build" content="2026-10-04.11" />
+<meta name="build" content="2026-10-04.12" />
 <meta name="description" content="Помощник по сборке персонажа в IdleArc (Season 2, патч 1.3.1): классовые навыки, статы, аффиксы, гемы, петы, талисманы." />
 <link rel="stylesheet" href="styles/app.css" />
 </head>
@@ -53,7 +53,7 @@
     box.hidden = false;
     box.innerHTML = '<b>Приложение не загрузилось</b><div>' + html + '</div>'
       + '<div class="boot-actions">HTML-сборка страницы: <code>' + build() + '</code> · ожидается сборка приложения '
-      + '<code>2026-10-04.11</code>'
+      + '<code>2026-10-04.12</code>'
       + ' <button class="btn primary" onclick="location.reload(true)">Перезагрузить</button></div>'
       + '<div class="muted small">Если кнопка не помогает — нажмите Ctrl+Shift+R (жёсткая перезагрузка): браузер мог сохранить старые файлы.</div>';
   }
@@ -71,10 +71,33 @@
     show('Ошибка JS: <code>' + r + '</code>');
   });
 
+  /* Перезагрузка в обход кэша: добавляем к адресу метку времени. */
+  function hardReload() {
+    var url = location.pathname + '?b=' + Date.now() + (location.hash || '');
+    location.replace(url);
+  }
+  window.__boot.hardReload = hardReload;
+
   setTimeout(function () {
     if (window.__boot.ready) return;
-    show('Модуль приложения не запустился за 5 секунд. Скорее всего, браузер или прокси отдал старую копию файлов из кэша.');
-  }, 5000);
+    var entry = (document.querySelector('script[type="module"]') || {}).src || 'src/app.js';
+    var graph = window.__boot.graph ? '<br>Файлы модулей загрузились, но приложение не отрисовалось — значит ошибка при выполнении.' : '';
+    var head = 'Модуль приложения не запустился за 8 секунд.' + graph
+      + '<br>Файл точки входа: <code>' + entry + '</code>';
+    var tail = '<div class="boot-actions"><button class="btn primary" onclick="window.__boot.hardReload()">Перезагрузить без кэша</button></div>';
+    if (!window.fetch) { show(head + tail); return; }
+    /* Проверяем, отдаётся ли файл модуля вообще: это отличает проблему сервера от ошибки в коде. */
+    fetch(entry, { cache: 'reload' }).then(function (r) { return r.status; })
+      .then(function (code) {
+        var verdict = code === 200
+          ? '<br>Файл модуля сервер отдаёт (200) — значит дело в выполнении кода или в загрузке зависимостей.'
+          : '<br>Сервер отдал файл модуля с кодом <code>' + code + '</code> — страница открыта по старому адресу.';
+        show(head + verdict + tail);
+      })
+      .catch(function () {
+        show(head + '<br>Файл модуля не удалось даже скачать — похоже, пропала связь с сервером.' + tail);
+      });
+  }, 8000);
 
   try {
     fetch('api/build', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
@@ -86,6 +109,6 @@
   } catch (err) { /* fetch недоступен — не критично */ }
 })();
 </script>
-<script type="module" src="src/app.js"></script>
+<script type="module" src="src/app.js" onerror="window.__boot && window.__boot.show('Файл точки входа <code>src/app.js</code> не загрузился: сервер не отдал модуль. Проверьте, что приложение запущено, и нажмите «Перезагрузить без кэша».')"></script>
 </body>
 </html>

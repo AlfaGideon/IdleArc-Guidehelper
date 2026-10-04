@@ -59,7 +59,7 @@ let entry = null;
 try {
   const page = await get('/');
   if (page.status !== 200) throw new Error(`статус ${page.status}`);
-  const m = page.body.match(/<script type="module" src="([^"]+)"><\/script>/);
+  const m = page.body.match(/<script type="module"[^>]*src="([^"]+)"/);
   if (!m) throw new Error('не найден module-скрипт точки входа');
   entry = m[1];
   if (!/^v\/[^/]+\/src\/app\.js$/.test(entry)) throw new Error(`точка входа не версионирована: ${entry}`);

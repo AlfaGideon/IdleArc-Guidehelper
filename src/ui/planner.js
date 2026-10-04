@@ -85,14 +85,16 @@ function applySnapshot(snap) {
 // Если снимок есть, но прочитать его не удалось — ничего не перезаписываем,
 // пользователь сможет вернуть предыдущую версию кнопкой на странице «Сборка».
 let protectStored = false;
-const bootRecord = loadStateRecord();
-if (bootRecord && applySnapshot(bootRecord.state)) {
-  state.restored = true;
-  state.restoredAt = bootRecord.savedAt;
-  state.restoredFrom = bootRecord.channel;
-} else if (!bootRecord && hasStoredState()) {
-  protectStored = true;
-}
+try {
+  const bootRecord = loadStateRecord();
+  if (bootRecord && applySnapshot(bootRecord.state)) {
+    state.restored = true;
+    state.restoredAt = bootRecord.savedAt;
+    state.restoredFrom = bootRecord.channel;
+  } else if (!bootRecord && hasStoredState()) {
+    protectStored = true;
+  }
+} catch { /* хранилище недоступно — работаем как в первый раз, приложение не падает */ }
 
 // Карта игровых иконок: ищем локальные (assets/items) или тянем Item Codex.
 // Когда карта придёт, один раз перерисовываем экран — карточки подменятся на игровые картинки.
@@ -142,10 +144,12 @@ function refreshSaveChip() {
 }
 
 // Любое действие (клик, ввод, переключение) сохраняется немедленно — ещё до отрисовки.
-bindAutosave(() => snapshot(), {
-  onSave: () => refreshSaveChip(),
-  allowOverwrite: () => !protectStored,
-});
+try {
+  bindAutosave(() => snapshot(), {
+    onSave: () => refreshSaveChip(),
+    allowOverwrite: () => !protectStored,
+  });
+} catch { /* автосохранение не должно мешать работе приложения */ }
 
 const TALISMAN_TYPES = TALISMANS.types;
 const talismanById = (id) => TALISMAN_TYPES.find((t) => t.id === id) || TALISMAN_TYPES[0];

@@ -29,8 +29,14 @@ const memory = new Map();
 
 /* ------------------------------- каналы записи ------------------------------- */
 
-function probe(store) {
+/**
+ * Достать хранилище безопасно. ВАЖНО: само обращение к window.localStorage может бросать
+ * SecurityError (приватный режим, страница внутри iframe без доступа к хранилищу), поэтому
+ * и чтение свойства, и пробная запись — внутри try. Иначе приложение падает на старте.
+ */
+function safeStorage(kind) {
   try {
+    const store = globalThis[kind];
     if (!store) return null;
     const key = '__iac_probe__';
     store.setItem(key, '1');
@@ -41,13 +47,22 @@ function probe(store) {
   }
 }
 
-const lsStore = () => probe(globalThis.localStorage);
-const ssStore = () => probe(globalThis.sessionStorage);
+const lsStore = () => safeStorage('localStorage');
+const ssStore = () => safeStorage('sessionStorage');
 
 /** Наше значение в window.name (или пустой объект, если там что-то чужое). */
+/** Безопасно прочитать/записать window.name (в некоторых окружениях и это под запретом). */
+function windowName() {
+  try {
+    return globalThis.window ? String(globalThis.window.name || '') : '';
+  } catch {
+    return '';
+  }
+}
+
 function nameBag() {
   try {
-    const raw = globalThis.window && typeof globalThis.window.name === 'string' ? globalThis.window.name : '';
+    const raw = windowName();
     if (!raw.startsWith(NAME_PREFIX)) return {};
     const data = JSON.parse(raw.slice(NAME_PREFIX.length));
     return data && typeof data === 'object' ? data : {};
@@ -59,7 +74,7 @@ function nameBag() {
 function nameWrite(key, raw) {
   try {
     if (!globalThis.window) return false;
-    const current = globalThis.window.name || '';
+    const current = windowName();
     // Если в window.name лежит чужая строка — не затираем её, этот канал просто пропускаем.
     if (current && !current.startsWith(NAME_PREFIX)) return false;
     const bag = nameBag();
@@ -130,7 +145,7 @@ function removeRaw(key) {
   const ss = ssStore();
   if (ss) { try { ss.removeItem(key); } catch { /* ignore */ } }
   try {
-    if (globalThis.window && String(globalThis.window.name || '').startsWith(NAME_PREFIX)) {
+    if (windowName().startsWith(NAME_PREFIX)) {
       const bag = nameBag();
       delete bag[key];
       globalThis.window.name = NAME_PREFIX + JSON.stringify(bag);
@@ -264,7 +279,8 @@ export function bindAutosave(getSnapshot, opts = {}) {
   const flush = (why) => {
     markTouched();
     try {
-      const at = saveState(getSnapshot(), { allowOverwrite: true });
+      const allow = typeof opts.allowOverwrite === 'function' ? opts.allowOverwrite() : opts.allowOverwrite !== false;
+      const at = saveState(getSnapshot(), { allowOverwrite: allow });
       if (opts.onSave) opts.onSave(at, why);
     } catch { /* сохранение не должно ломать интерфейс */ }
   };

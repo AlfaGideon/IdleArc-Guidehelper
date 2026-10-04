@@ -1,3 +1,6 @@
+// Отметка для страховочного экрана в index.html: модули скачались и начали выполняться.
+if (typeof window !== 'undefined' && window.__boot) window.__boot.graph = true;
+
 import { DATA_META } from './data/systems.js';
 import * as planner from './ui/planner.js';
 import * as calculators from './ui/calculators.js';
