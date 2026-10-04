@@ -2,46 +2,12 @@
  * Математика IdleArc по официально подтверждённым правилам.
  * Везде, где порядок слоёв в игре официально не раскрыт, расчёт помечается как «оценка».
  */
-import { CLASSES } from '../data/classes.js';
+
+export { skillBonuses } from './planner.js';
 
 export const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
 /** Собрать суммарные бонусы от распределения классовых навыков. */
-export function skillBonuses(classId, allocations = {}, plusAllClassSkills = 0) {
-  const cls = CLASSES.find((c) => c.id === classId);
-  const totals = {
-    ad: 0, crit: 0, critDmg: 0, dh: 0, dd: 0, boss: 0, petDmg: 0, petMastery: 0,
-    maxHp: 0, loh: 0, lok: 0, block: 0, dodge: 0, dr: 0, gold: 0, mat: 0, itemDrop: 0,
-    eggDrop: 0, exp: 0, matDupe: 0, luckyTier: 0, ruby: 0, rune: 0, extraKill: 0,
-    cull: 0, trap: 0, vsHigh: 0, vsLow: 0, ddTriple: 0, critDouble: 0, echoTrigger: 0,
-    echoDamage: 0, echoTwice: 0, dhBonusDmg: 0, petDoubleStrike: 0, magicBlastChance: 0,
-    magicBlastDmg: 0, critExplode: 0, instakillNonBoss: 0,
-  };
-  const caps = {};
-  const details = [];
-  if (!cls) return { totals, caps, details };
-  for (const skill of cls.skills) {
-    const spent = allocations[skill.id] || 0;
-    if (!spent) continue;
-    const rank = spent + (plusAllClassSkills || 0); // +All Class Skills поднимает эффективный ранг
-    if (skill.base) {
-      for (const [k, v] of Object.entries(skill.base)) totals[k] = (totals[k] || 0) + v;
-    }
-    for (const [k, per] of Object.entries(skill.perPoint || {})) {
-      let value = per * rank;
-      const cap = skill.cap?.[k];
-      if (cap != null) {
-        caps[k] = cap;
-        value = Math.min(value, cap);
-      }
-      totals[k] = (totals[k] || 0) + value;
-    }
-    details.push({ skill: skill.name, spent, rank, effect: skill.text });
-  }
-  // Общий кап Extra Kill из Bloodthirst — 10%
-  if (totals.extraKill > 10) totals.extraKill = 10;
-  return { totals, caps, details };
-}
 
 /** Крит-модель: >100% крит-шанса конвертируется в +1% Crit Damage за 1%. */
 export function critModel(critChancePct, critDamagePct) {

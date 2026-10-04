@@ -1,21 +1,25 @@
 /**
- * Предметы: аффиксы, Drop Bonuses, тиры/редкости, гнёзда и гемы, семейства снаряжения.
- * Источники: idlearc.fandom.com/wiki/Item_Codex/Affixes, /Item_Codex/Drop_Bonuses,
- *            wiki/Gems, wiki/Items, wiki/Forge, idlearc.com/patch-notes/1-3-1
+ * Предметы IdleArc: полный каталог 40 семейств экипировки, аффиксы, Drop Bonuses,
+ * гемы, сокеты и таблица дропа по Monster Level.
+ *
+ * Источники:
+ *  - idlearc.fandom.com/wiki/Item_Codex (карточки всех семейств: имена по тирам, имплиситы, совместимые аффиксы)
+ *  - idlearc.fandom.com/wiki/Item_Codex/Affixes, /Item_Codex/Drop_Bonuses
+ *  - idlearc.fandom.com/wiki/Gems
+ *  - idlearc.com/patch-notes/1-3-1 (официальные патч-ноты Season 2)
  */
 
 export const RARITY = [
-  { tier: 'T1', ru: 'Normal', color: '#b7b7b7', affixes: 0, mult: 1.0 },
-  { tier: 'T2', ru: 'Uncommon', color: '#69d17d', affixes: 1, mult: 1.2 },
-  { tier: 'T3', ru: 'Rare', color: '#5ba7ff', affixes: 2, mult: 1.4 },
-  { tier: 'T4', ru: 'Epic', color: '#bd76ff', affixes: 3, mult: 1.7 },
-  { tier: 'T5', ru: 'Legendary', color: '#ffc857', affixes: 4, mult: 2.0 },
-  { tier: 'T6', ru: 'Infernal', color: '#ff6b5f', affixes: 5, mult: 2.5 },
+  { tier: 'T1', ru: 'Normal', color: '#b7b7b7', affixes: 0, mult: 1.0, maxPlus: 4 },
+  { tier: 'T2', ru: 'Uncommon', color: '#69d17d', affixes: 1, mult: 1.2, maxPlus: 9 },
+  { tier: 'T3', ru: 'Rare', color: '#5ba7ff', affixes: 2, mult: 1.4, maxPlus: 14 },
+  { tier: 'T4', ru: 'Epic', color: '#bd76ff', affixes: 3, mult: 1.7, maxPlus: 19 },
+  { tier: 'T5', ru: 'Legendary', color: '#ffc857', affixes: 4, mult: 2.0, maxPlus: 24 },
+  { tier: 'T6', ru: 'Infernal', color: '#ff6b5f', affixes: 5, mult: 2.5, maxPlus: 30 },
 ];
 
 /** Аффиксы: базовый ролл × множитель редкости; +3% к значению за каждый +уровень предмета. */
 export const AFFIXES = [
-  // Префиксы
   { id: 'blazing', name: 'Blazing', type: 'prefix', stat: 'Fire Conversion', ru: 'Конверсия в огонь', base: '3–5', slots: ['Weapon'] },
   { id: 'earthen', name: 'Earthen', type: 'prefix', stat: 'Earth Conversion', ru: 'Конверсия в землю', base: '3–5', slots: ['Weapon'] },
   { id: 'tidal', name: 'Tidal', type: 'prefix', stat: 'Water Conversion', ru: 'Конверсия в воду', base: '3–5', slots: ['Weapon'] },
@@ -28,9 +32,7 @@ export const AFFIXES = [
   { id: 'petdmg', name: 'of Pet Damage', type: 'prefix', stat: 'Pet Damage', ru: 'Урон пета', base: '2–8', slots: ['All'] },
   { id: 'bulwark', name: 'of the Bulwark', type: 'prefix', stat: 'Local Defense', ru: 'Локальная защита (% от Defense предмета)', base: '10–30', slots: ['Chest', 'Helmet', 'Boots', 'Gloves'] },
   { id: 'warding', name: 'of Warding', type: 'prefix', stat: 'Damage Reduction', ru: 'Снижение урона', base: '1–3', slots: ['Chest', 'Helmet', 'Shield', 'Torch'] },
-
-  // Суффиксы
-  { id: 'bloodthirst', name: 'of Bloodthirst', type: 'suffix', stat: 'Bloodthirst', ru: 'Bloodthirst (+% к лечению LoH/LoK)', base: '1–2', slots: ['Torch'] },
+  { id: 'bloodthirst', name: 'of Bloodthirst', type: 'suffix', stat: 'Bloodthirst (+% к LoH/LoK)', ru: 'Bloodthirst', base: '1–2', slots: ['Torch'] },
   { id: 'critchance', name: 'of Crit Chance', type: 'suffix', stat: 'Critical Strike Chance', ru: 'Шанс крита', base: '1–2', slots: ['All'] },
   { id: 'critdamage', name: 'of Crit Damage', type: 'suffix', stat: 'Critical Damage', ru: 'Урон крита', base: '1–3', slots: ['All'] },
   { id: 'devastation', name: 'of Devastation', type: 'suffix', stat: 'Double Damage Chance', ru: 'Шанс Double Damage', base: '1–2', slots: ['All'] },
@@ -46,7 +48,6 @@ export const AFFIXES = [
   { id: 'wealth', name: 'of Wealth', type: 'suffix', stat: 'Gold Gain', ru: 'Золото', base: '2–5', slots: ['All'] },
 ];
 
-/** Drop Bonuses: отдельная строка на предмете, свои минимальные тиры и роллы T2..T9. */
 export const DROP_BONUSES = [
   { id: 'fierce', name: 'Fierce', stat: 'Attack Damage', ru: 'Атака', cat: 'Offensive', min: 'T2',
     values: ['2–4', '4–7', '7–12', '12–18', '18–26', '26–34', '34–42', '42–50'],
@@ -59,7 +60,7 @@ export const DROP_BONUSES = [
     note: 'Игнорирует обычный кап аффикса Crit Damage.' },
   { id: 'relentless', name: 'Relentless', stat: 'Double Hit Chance', ru: 'Double Hit', cat: 'Offensive', min: 'T3',
     values: ['—', '2–4', '4–7', '7–11', '11–17', '17–28', '28–46', '46–75'],
-    note: 'Каждые 100% — гарантированный доп. удар, остаток — шанс ещё одного. Доп. удары не «добивают» уже мёртвого монстра.' },
+    note: 'Каждые 100% — гарантированный доп. удар, остаток — шанс ещё одного.' },
   { id: 'devastating', name: 'Devastating', stat: 'Double Damage Chance', ru: 'Double Damage', cat: 'Offensive', min: 'T3',
     values: ['—', '2–4', '4–7', '7–11', '11–17', '17–28', '28–46', '46–75'],
     note: 'Работает и на персонажа, и на пета, и на элементальный урон.' },
@@ -68,14 +69,14 @@ export const DROP_BONUSES = [
     note: 'Умножает урон активного пета, не влияет на атаку персонажа.' },
   { id: 'slayers', name: "Slayer's", stat: 'Boss Damage', ru: 'Урон по боссам', cat: 'Offensive', min: 'T4',
     values: ['—', '—', '5–10', '10–18', '18–28', '28–36', '36–43', '43–50'],
-    note: 'Daily Boss, Guild Boss, Tower. По обычным монстрам не работает; в Elemental Conflux — 50% эффективности.' },
+    note: 'Daily Boss, Guild Boss, Tower. По монстрам не работает; в Conflux — 50%.' },
   { id: 'fortified', name: 'Fortified', stat: 'Max Health', ru: 'Макс. HP', cat: 'Defensive', min: 'T2',
     values: ['2–4', '4–7', '7–12', '12–18', '18–26', '26–35', '35–45', '45–60'] },
   { id: 'armored', name: 'Armored', stat: 'Defense', ru: 'Защита', cat: 'Defensive', min: 'T2',
     values: ['2–4', '4–7', '7–12', '12–18', '18–26', '26–35', '35–45', '45–60'] },
   { id: 'resilient', name: 'Resilient', stat: 'Damage Reduction', ru: 'Снижение урона', cat: 'Defensive', min: 'T3',
     values: ['—', '0.5–1', '1–2', '2–4', '4–6', '6–8', '8–11', '11–15'],
-    note: 'Софт-кап 95%, хард-кап 99%; выше 95% работает на 10% эффективности.' },
+    note: 'Софт-кап 95%, хард-кап 99%; выше 95% работает на 10%.' },
   { id: 'evasive', name: 'Evasive', stat: 'Dodge Chance', ru: 'Уклонение', cat: 'Defensive', min: 'T4',
     values: ['—', '—', '1–2', '2–4', '4–6', '6–8', '8–11', '11–15'] },
   { id: 'vampiric', name: 'Vampiric', stat: 'Life on Hit', ru: 'HP за удар', cat: 'Sustain', min: 'T2',
@@ -84,32 +85,45 @@ export const DROP_BONUSES = [
     values: ['3–6', '7–14', '15–25', '26–40', '40–60', '60–90', '90–134', '134–200'] },
   { id: 'bloodthirsty', name: 'Bloodthirsty', stat: 'Bloodthirst', ru: 'Bloodthirst', cat: 'Sustain', min: 'T5',
     values: ['—', '—', '—', '5–10', '11–15', '16–18', '19–21', '22–25'],
-    note: 'Новый в S2 % множитель всего лечения LoH/LoK. Также есть Torch-only аффикс того же стата.' },
+    note: 'Новый в S2 множитель лечения LoH/LoK.' },
   { id: 'prosperous', name: 'Prosperous', stat: 'Gold Gain', ru: 'Золото', cat: 'Farming', min: 'T2',
     values: ['2–5', '5–10', '10–16', '16–25', '25–38', '38–53', '53–73', '73–100'] },
   { id: 'scholarly', name: 'Scholarly', stat: 'EXP Gain', ru: 'Опыт', cat: 'Farming', min: 'T2',
     values: ['2–4', '4–7', '7–12', '12–18', '18–26', '26–37', '37–53', '53–75'] },
   { id: 'scavengers', name: "Scavenger's", stat: 'Item Drop Chance', ru: 'Дроп предметов', cat: 'Farming', min: 'T3',
     values: ['—', '1–3', '3–5', '5–8', '8–12', '12–17', '17–23', '23–32'],
-    note: 'У Mage нет классового Item Drop — компенсируйте бонусами на предметах.' },
+    note: 'У Mage нет классового Item Drop — компенсируйте этим бонусом.' },
   { id: 'reflecting', name: 'Reflecting', stat: 'Retaliation Damage', ru: 'Урон возмездия', cat: 'New Mechanic', min: 'T2',
     values: ['2–4', '4–7', '7–12', '12–18', '18–26', '26–34', '34–42', '42–50'],
-    note: 'Retaliation = Reflecting% × Defense. Блокированный удар даёт +50% к возмездию.' },
-  { id: 'lucky', name: 'Lucky', stat: 'Lucky Chance', ru: 'Удача (шанс высшего тира)', cat: 'New Mechanic', min: 'T4',
+    note: 'Retaliation = Reflecting% × Defense. Блокированный удар даёт +50%.' },
+  { id: 'lucky', name: 'Lucky', stat: 'Lucky Chance', ru: 'Удача (высший тир)', cat: 'New Mechanic', min: 'T4',
     values: ['—', '—', '1–3', '3–6', '6–9', '9–12', '12–15', '15–20'],
-    note: 'В S2 Lucky и Black Market складываются в один пул с убывающей отдачей. С ML 260 влияет и на Gilded-дроп.' },
+    note: 'Lucky + Black Market — один пул с убывающей отдачей. С ML 260 влияет на Gilded-дроп.' },
   { id: 'elementalsurge', name: 'Elemental Surge', stat: 'Elemental Amplification', ru: 'Усиление элемента', cat: 'New Mechanic', min: 'T4',
-    values: ['—', '—', '3–6', '6–10', '10–15', '15–21', '21–29', '29–40'],
-    note: 'Увеличивает бонус элемента при совпадении со слабостью монстра.' },
+    values: ['—', '—', '3–6', '6–10', '10–15', '15–21', '21–29', '29–40'] },
   { id: 'frenzy', name: 'Frenzy', stat: 'Extra Kill Chance', ru: 'Extra Kill', cat: 'New Mechanic', min: 'T5',
     values: ['—', '—', '—', '2–4', '4–6', '6–8', '8–11', '11–15'] },
 ];
 
 export const DROP_BONUS_TIER_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7 Gilded', 'T8 Radiant', 'T9 Mythic'];
+export const DROP_BONUS_CATEGORIES = ['Offensive', 'Defensive', 'Sustain', 'Farming', 'New Mechanic'];
 
-export const DROP_BONUS_RETYPE_GOLD = { T2: 1000, T3: 5000, T4: 25000, T5: 120000, T6: 500000, T7: 1000000, T8: 2000000, T9: 4000000 };
+/** Каталожные категории: какие бонусы уместны в каких слотах. */
+export const DROP_BONUS_SLOT_CATEGORIES = {
+  mainhand: ['Offensive'],
+  offhand: ['Offensive', 'Defensive'],
+  torch: ['Offensive', 'Sustain', 'Farming'],
+  chest: ['Defensive', 'Sustain'],
+  head: ['Defensive', 'Offensive'],
+  hands: ['Offensive', 'Defensive'],
+  feet: ['Defensive', 'Farming'],
+  amulet: ['Offensive', 'Farming'],
+  ring: ['Offensive', 'Farming'],
+  belt: ['Sustain', 'Offensive', 'Farming'],
+};
 
-/** Гемы: базовое значение (Rough, quality 100, socket 0) по семейству и слоту. */
+/* ---------------------------------- Гемы ---------------------------------- */
+
 export const GEM_FAMILIES = [
   { id: 'garnet', name: 'Garnet', ru: 'Гранат', slots: { weapon: '+0.5% Attack Damage', torch: '+0.6% Max Health', armor: '+0.6% Defense', jewelry: '+5 Strength' } },
   { id: 'jade', name: 'Jade', ru: 'Жад', slots: { weapon: '+0.5% Pet Damage', torch: '+0.3% Attack Damage', armor: '+0.6% Max Health', jewelry: '+5 Dexterity' } },
@@ -127,16 +141,16 @@ export const GEM_RARITY = [
 ];
 
 export const GEM_SECONDARY = [
-  { stat: 'Critical Chance', cut: 0.5, polished: 1, brilliant: 1.5, flawless: 2.5 },
-  { stat: 'Critical Damage', cut: 2, polished: 4, brilliant: 6, flawless: 10 },
-  { stat: 'Double Hit Chance', cut: 0.5, polished: 1, brilliant: 1.5, flawless: 2.5 },
-  { stat: 'Double Damage Chance', cut: 0.5, polished: 1, brilliant: 1.5, flawless: 2.5 },
-  { stat: 'Life on Hit', cut: 1, polished: 2, brilliant: 4, flawless: 8 },
-  { stat: 'Life on Kill', cut: 2, polished: 4, brilliant: 8, flawless: 16 },
-  { stat: 'Dodge Chance', cut: 0.3, polished: 0.6, brilliant: 0.9, flawless: 1.5 },
-  { stat: 'Max Health', cut: 10, polished: 25, brilliant: 60, flawless: 150 },
-  { stat: 'Gold Gain', cut: 1, polished: 2, brilliant: 3, flawless: 5 },
-  { stat: 'EXP Gain', cut: 1, polished: 2, brilliant: 3, flawless: 5 },
+  { stat: 'Critical Chance', ru: 'Шанс крита', cut: 0.5, polished: 1, brilliant: 1.5, flawless: 2.5 },
+  { stat: 'Critical Damage', ru: 'Урон крита', cut: 2, polished: 4, brilliant: 6, flawless: 10 },
+  { stat: 'Double Hit Chance', ru: 'Double Hit', cut: 0.5, polished: 1, brilliant: 1.5, flawless: 2.5 },
+  { stat: 'Double Damage Chance', ru: 'Double Damage', cut: 0.5, polished: 1, brilliant: 1.5, flawless: 2.5 },
+  { stat: 'Life on Hit', ru: 'HP за удар', cut: 1, polished: 2, brilliant: 4, flawless: 8 },
+  { stat: 'Life on Kill', ru: 'HP за убийство', cut: 2, polished: 4, brilliant: 8, flawless: 16 },
+  { stat: 'Dodge Chance', ru: 'Уклонение', cut: 0.3, polished: 0.6, brilliant: 0.9, flawless: 1.5 },
+  { stat: 'Max Health', ru: 'Макс. HP', cut: 10, polished: 25, brilliant: 60, flawless: 150 },
+  { stat: 'Gold Gain', ru: 'Золото', cut: 1, polished: 2, brilliant: 3, flawless: 5 },
+  { stat: 'EXP Gain', ru: 'Опыт', cut: 1, polished: 2, brilliant: 3, flawless: 5 },
 ];
 
 export const GEM_SOCKET_UNLOCKS = [
@@ -166,62 +180,240 @@ export const GEM_DROP_TABLE = [
   { ml: '300+', rough: 0, cut: 0, polished: 40, brilliant: 60 },
 ];
 
-/** Слоты персонажа и типовые имплиситы (T1 → T6). */
-export const GEAR_SLOTS = [
-  { id: 'mainhand', ru: 'Основная рука', implicitFamily: 'Оружие класса (см. семейства)' },
-  { id: 'offhand', ru: 'Вторая рука / оффхенд', implicitFamily: 'Shield / Book / Quiver / второе оружие (Rogue)' },
-  { id: 'torch', ru: 'Факел (отдельный слот, все классы)', implicitFamily: '+All Class Skills (1 → 3)' },
-  { id: 'chest', ru: 'Нагрудник', implicitFamily: 'Defense + Flat Damage Reduction' },
-  { id: 'helmet', ru: 'Шлем', implicitFamily: 'Defense (+ сайдгрейды: Sage Diadem = +All Class Skills)' },
-  { id: 'gloves', ru: 'Перчатки', implicitFamily: 'Defense' },
-  { id: 'boots', ru: 'Сапоги', implicitFamily: 'Defense' },
-  { id: 'amulet', ru: 'Амулет', implicitFamily: 'Атрибуты (Str / Dex / Int / Str&Dex)' },
-  { id: 'ring', ru: 'Кольцо', implicitFamily: 'Атрибуты (Str / Dex / Int / Str&Dex)' },
-  { id: 'belt', ru: 'Пояс', implicitFamily: 'Атрибуты / Life on Hit / Life on Kill' },
+/* ------------------------- Каталог семейств экипировки ------------------------- */
+
+const WEAPON_PREFIXES = ['Blazing', 'Earthen', 'of Pet Damage', 'Tidal', 'Venomous', 'Verdant', 'Voltaic'];
+const WEAPON_SUFFIXES = ['of Crit Chance', 'of Crit Damage', 'of Devastation', 'of Dexterity', 'of Double Hit', 'of Experience', 'of Intelligence', 'of Regeneration', 'of Strength', 'of Vampirism', 'of Wealth'];
+const ARMOR_AFFIXES = {
+  prefixes: ['Evasive', 'of Ambulance', 'of Fortification', 'of Pet Damage', 'of the Bulwark', 'of Warding'],
+  suffixes: ['of Crit Chance', 'of Crit Damage', 'of Devastation', 'of Experience', 'of Wealth'],
+};
+const ARMOR_AFFIXES_NO_WARDING = {
+  prefixes: ['Evasive', 'of Ambulance', 'of Fortification', 'of Pet Damage', 'of the Bulwark'],
+  suffixes: ARMOR_AFFIXES.suffixes,
+};
+const JEWELRY_AFFIXES = {
+  prefixes: ['of Ambulance', 'of Pet Damage'],
+  suffixes: ['of Crit Chance', 'of Crit Damage', 'of Devastation', 'of Dexterity', 'of Double Hit', 'of Experience', 'of Intelligence', 'of Regeneration', 'of Strength', 'of Striking', 'of the Fortress', 'of Vampirism', 'of Wealth'],
+};
+
+/**
+ * 40 семейств экипировки. implicitTiers — значения T1…T6 в порядке тиров,
+ * tierNames — отображаемые имена T1…T6 + A1 (пробуждённый), как в Item Codex.
+ */
+export const GEAR_FAMILIES = [
+  // ---------- Оружие ----------
+  { id: 'broken_sword', name: 'Broken Sword', ru: 'Воинский меч', slot: 'mainhand', cls: 'warrior', hand: '1H', unlock: 'Standard',
+    tierNames: ['Broken Sword', 'Iron Sword', 'Steel Broadsword', 'Silver Saber', 'Runed Warblade', 'Frostfang Blade', 'Royal Dragonblade'],
+    implicit: 'Melee Physical Damage', implicitTiers: ['15–55', '61–148', '164–379', '423–811', '834–1,362', '1,430–2,555'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES },
+  { id: 'greatsword', name: 'Greatsword', ru: 'Двуручный меч', slot: 'mainhand', cls: 'warrior', hand: '2H', unlock: 'ML 25',
+    tierNames: ['Broken Iron Greatsword', 'Steel Greatsword', 'Emerald Greatsword', 'Crescent Greatsword', 'Golden Greatsword', 'Arcane Steel Greatsword', 'Crimson Greatsword'],
+    implicit: 'Greatsword Physical Damage', implicitTiers: ['22–80', '89–214', '238–550', '614–1,176', '1,209–1,975', '2,074–3,705'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES,
+    note: 'Двуручное: слот оффхенда остаётся пустым (в Gear Score не считается). Больше урона в одном слоте, но теряете щит и его Block.' },
+  { id: 'wooden_rod', name: 'Wooden Rod', ru: 'Жезл мага', slot: 'mainhand', cls: 'mage', hand: '1H', unlock: 'Standard',
+    tierNames: ['Broken Wooden Wand', 'Wooden Wand', 'Apprentice Orb Wand', 'Bronze Focus Wand', 'Amethyst Crystal Wand', 'Royal Sun Wand', 'Archmage Crown Wand'],
+    implicit: 'Magic Damage', implicitTiers: ['11–51', '55–142', '147–343', '377–733', '740–1,220', '1,265–2,240'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES },
+  { id: 'grand_staff', name: 'Grand Staff', ru: 'Большой посох', slot: 'mainhand', cls: 'mage', hand: '2H', unlock: 'ML 25',
+    tierNames: ['Broken Grand Staff', 'Greenwood Grand Staff', 'Amber Grand Staff', 'Shadow Grand Staff', 'Frost Grand Staff', 'Ember Grand Staff', 'Archmage Grand Staff'],
+    implicit: 'Grand Staff Magic Damage + Intelligence', implicitTiers: ['15–71 / Int 2–6', '77–198 / 6–14', '206–480 / 14–25', '528–1,026 / 25–36', '1,036–1,708 / 36–48', '1,771–3,136 / 48–60'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES, note: 'Двуручное: бесплатная Intelligence в имплисите, но без книжки (Crit Damage оффхенда).' },
+  { id: 'wooden_bow', name: 'Wooden Bow', ru: 'Лук лучника', slot: 'mainhand', cls: 'archer', hand: '1H', unlock: 'Standard',
+    tierNames: ['Wooden Short Bow', 'Wooden Bow', 'Reinforced Hunting Bow', 'Bonewood Recurve Bow', 'Shadowsteel Bow', 'Silver War Bow', 'Dragonbone Bow'],
+    implicit: 'Physical Damage', implicitTiers: ['6–28', '32–79', '91–220', '252–501', '576–1,052', '1,210–2,118'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES },
+  { id: 'crossbow', name: 'Crossbow', ru: 'Арбалет', slot: 'mainhand', cls: 'archer', hand: '2H', unlock: 'ML 25',
+    tierNames: ['Worn Crossbow', 'Oak Crossbow', 'Reinforced Crossbow', 'Bonewood Crossbow', 'Shadowsteel Crossbow', 'Silver War Crossbow', 'Dragonbone Crossbow'],
+    implicit: 'Crossbow Damage + Critical Strike Chance', implicitTiers: ['8–39 / Crit 25', '44–111 / 30', '127–308 / 35', '353–702 / 40', '807–1,472 / 45', '1,694–2,965 / 50'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES, note: 'Двуручное: до +50% крит-шанса встроенно, но без Pet Mastery квивера.' },
+  { id: 'rusty_dagger', name: 'Rusty Dagger', ru: 'Кинжал разбоя', slot: 'mainhand', cls: 'rogue', hand: '1H', unlock: 'Standard',
+    tierNames: ['Broken Dagger', 'Iron Dagger', 'Shadowfang Dagger', 'Verdant Dagger', 'Sapphire Dagger', 'Amethyst Dagger', 'Royal Dagger'],
+    implicit: 'Dagger Physical Damage', implicitTiers: ['2–9', '11–26', '33–80', '94–186', '225–415', '452–807'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES, note: 'Каждый кинжал даёт +50% Double Hit — два кинжала = 100% до прочих источников.' },
+  { id: 'claws', name: 'Claws', ru: 'Когти', slot: 'mainhand', cls: 'rogue', hand: '1H', unlock: 'ML 25',
+    tierNames: ['Broken Claws', 'Steel Claws', 'Venomfang Claws', 'Duskrazor Claws', 'Frostbite Claws', 'Bloodshard Claws', 'Nightcrown Claws'],
+    implicit: 'Claw Damage + Critical Strike Chance', implicitTiers: ['3–13 / Crit 50', '15–36 / 60', '44–108 / 70', '123–243 / 80', '288–531 / 90', '565–1,009 / 100'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES, note: 'Когти меняют крит-билд: до +200% крит-шанса на паре, но нет бонуса Double Hit кинжалов.' },
+  { id: 'gnarled_stick', name: 'Gnarled Stick', ru: 'Посох друида', slot: 'mainhand', cls: 'druid', hand: '2H', unlock: 'Standard',
+    tierNames: ['Gnarled Stick', 'Ironbark Stick', 'Mosswood Stick', 'Silverbark Stick', 'Runed Stick', 'Wildheart Stick', 'Ancient Grove Stick'],
+    implicit: 'Physical Damage + Pet Damage', implicitTiers: ['6–22 / Pet 1', '28–50 / 10', '55–160 / 20', '175–420 / 30', '450–900 / 40', '950–1,500 / 50'],
+    prefixes: WEAPON_PREFIXES, suffixes: WEAPON_SUFFIXES, note: 'Единственное оружие друида: двуручное, с пет-уроном в имплисите.' },
+
+  // ---------- Оффхенды ----------
+  { id: 'wooden_shield', name: 'Wooden Shield', ru: 'Щит', slot: 'offhand', cls: 'warrior', hand: 'Off', unlock: 'Standard',
+    tierNames: ['Broken Shield', 'Wooden Buckler', 'Iron Banded Shield', 'Studded Guard Shield', 'Steel Crest Shield', 'Gilded Shield', 'Grand Crest Shield'],
+    implicit: 'Block Chance', implicitTiers: ['5–7', '8–10', '11–14', '15–19', '20–22', '23–26'],
+    prefixes: ['Evasive', 'of Pet Damage', 'of Warding'], suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Block снижает входящий урон на 50% и усиливает Retaliation на 50%.' },
+  { id: 'old_book', name: 'Old Book', ru: 'Книга заклинаний', slot: 'offhand', cls: 'mage', hand: 'Off', unlock: 'Standard',
+    tierNames: ['Ragged Spellbook', 'Leather Spellbook', 'Reinforced Spellbook', 'Studded Spellbook', 'Gilded Spellbook', 'Noble Spellbook', 'Grand Crest Spellbook'],
+    implicit: 'Critical Damage', implicitTiers: ['25–29', '31–36', '38–45', '47–57', '59–71', '73–88'],
+    prefixes: ['Evasive', 'of Pet Damage', 'of Warding'], suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'База крит-урона для мага: заменять только на двуручку осознанно.' },
+  { id: 'quiver', name: 'Quiver', ru: 'Колчан', slot: 'offhand', cls: 'archer', hand: 'Off', unlock: 'Standard',
+    tierNames: ['Old Quiver', 'Leather Quiver', 'Hardened Quiver', 'Ironclad Quiver', 'Darksteel Quiver', 'Gilded Quiver', 'Grand Crest Quiver'],
+    implicit: 'Pet Mastery Level + Strength & Dexterity', implicitTiers: ['1 / Str&Dex 1–3', '2 / 3–7', '3 / 7–13', '4 / 13–19', '5 / 19–25', '6 / 25–31'],
+    prefixes: ['Evasive', 'of Pet Damage', 'of Warding'], suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Главный источник Pet Mastery для пет-билда лучника.' },
+
+  // ---------- Броня: база ----------
+  { id: 'rags', name: 'Rags', ru: 'Нагрудник (база)', slot: 'chest', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Rags', 'Leather Armor', 'Dark Leather Armor', 'Wildhide Armor', 'Chainmail Armor', 'Steel Plate Armor', 'Gilded Plate Armor'],
+    implicit: 'Defense', implicitTiers: ['22–58', '67–144', '166–378', '434–842', '968–1,746', '2,012–3,497'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'leather_cap', name: 'Leather Cap', ru: 'Шлем (база)', slot: 'head', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Ragged Leather Cap', 'Leather Cap', 'Dark Leather Hood', 'Wildhide Hood', 'Chainmail Helm', 'Steel Plate Helm', 'Gilded Plate Helm'],
+    implicit: 'Defense', implicitTiers: ['10–34', '38–91', '104–245', '282–553', '636–1,154', '1,330–2,320'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'worn_gloves', name: 'Worn Gloves', ru: 'Перчатки (база)', slot: 'hands', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Worn Ragged Gloves', 'Leather Gloves', 'Dark Leather Gloves', 'Wildhide Gloves', 'Chainmail Gloves', 'Steel Plate Gauntlets', 'Gilded Plate Gauntlets'],
+    implicit: 'Defense', implicitTiers: ['6–26', '30–73', '84–202', '231–457', '526–958', '1,103–1,928'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'sandals_of_starszy', name: 'Sandals of Starszy', ru: 'Обувь (база)', slot: 'feet', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Sandals of Starszy', 'Leather Boots', 'Dark Leather Boots', 'Wildhide Boots', 'Chainmail Boots', 'Steel Plate Boots', 'Gilded Plate Boots'],
+    implicit: 'Defense', implicitTiers: ['6–26', '30–73', '84–202', '231–457', '526–958', '1,103–1,928'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+
+  // ---------- Броня: сайдгрейды ----------
+  { id: 'wardplate', name: 'Wardplate', ru: 'Вардплейт (Defense + Flat DR)', slot: 'chest', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Wardplate', 'Wardplate', 'Wardplate', 'Wardplate', 'Wardplate', 'Wardplate', 'Wardplate'],
+    implicit: 'Defense + Flat Damage Reduction', implicitTiers: ['11–29 / DR 1', '33–72 / 1–2', '83–189 / 2', '217–421 / 2–3', '484–873 / 3–4', '1,006–1,749 / 4–5'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Flat DR не слабеет с ростом Monster Level — лучший выбор для танка/Retaliation.' },
+  { id: 'bloodweave_vest', name: 'Bloodweave Vest', ru: 'Кровавый жилет (Defense + LoH)', slot: 'chest', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Bloodweave Vest', 'Bloodweave Vest', 'Bloodweave Vest', 'Bloodweave Vest', 'Bloodweave Vest', 'Bloodweave Vest', 'Bloodweave Vest'],
+    implicit: 'Defense + Life on Hit', implicitTiers: ['13–35 / LoH 1–2', '40–86 / 2–4', '99–227 / 4–6', '260–505 / 6–8', '581–1,048 / 8–10', '1,207–2,098 / 10–13'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Постоянный отхил на любом билде — сильный выбор для долгих фарм-сессий.' },
+  { id: 'harmonic_cuirass', name: 'Harmonic Cuirass', ru: 'Гармоничная кираса (AD+Pet)', slot: 'chest', cls: 'all', hand: '—', unlock: 'ML 50, 3% редкий ролл',
+    tierNames: ['Harmonic Cuirass', 'Harmonic Cuirass', 'Harmonic Cuirass', 'Harmonic Cuirass', 'Harmonic Cuirass', 'Harmonic Cuirass', 'Harmonic Cuirass'],
+    implicit: 'Defense + Attack & Pet Damage', implicitTiers: ['13–35 / 1–2', '40–86 / 2–4', '99–227 / 4–8', '260–505 / 8–13', '581–1,048 / 13–19', '1,207–2,098 / 19–22'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Один бонус усиливает и атаку, и пета — идеальна для Harmony-билдов.' },
+  { id: 'visionary_hood', name: 'Visionary Hood', ru: 'Капюшон провидца (Crit)', slot: 'head', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Visionary Hood', 'Visionary Hood', 'Visionary Hood', 'Visionary Hood', 'Visionary Hood', 'Visionary Hood', 'Visionary Hood'],
+    implicit: 'Defense + Critical Strike Chance', implicitTiers: ['6–20 / Crit 1–2', '23–55 / 2–3', '63–147 / 3–4', '169–332 / 4–5', '382–693 / 5–6', '798–1,392 / 6–7'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'beast_crown', name: 'Beast Crown', ru: 'Венец зверя (Pet Damage)', slot: 'head', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Beast Crown', 'Beast Crown', 'Beast Crown', 'Beast Crown', 'Beast Crown', 'Beast Crown', 'Beast Crown'],
+    implicit: 'Defense + Pet Damage', implicitTiers: ['6–20 / 2–4', '23–55 / 4–7', '63–147 / 7–14', '169–332 / 14–22', '382–693 / 22–32', '798–1,392 / 32–40'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'sage_diadem', name: 'Sage Diadem', ru: 'Диадема мудреца (+All Class Skills)', slot: 'head', cls: 'all', hand: '—', unlock: 'ML 50, 3% редкий ролл',
+    tierNames: ['Sage Diadem', 'Sage Diadem', 'Sage Diadem', 'Sage Diadem', 'Sage Diadem', 'Sage Diadem', 'Sage Diadem'],
+    implicit: 'Defense + All Class Skills', implicitTiers: ['6–20 / +1', '23–55 / +1', '63–147 / +1', '169–332 / +1', '382–693 / +1', '798–1,392 / +1'],
+    prefixes: ARMOR_AFFIXES.prefixes, suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Один из трёх источников +All Class Skills (вместе с Torch и легендарными петами).' },
+  { id: 'slayer_gauntlets', name: 'Slayer Gauntlets', ru: 'Перчатки убийцы (Crit)', slot: 'hands', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Slayer Gauntlets', 'Slayer Gauntlets', 'Slayer Gauntlets', 'Slayer Gauntlets', 'Slayer Gauntlets', 'Slayer Gauntlets', 'Slayer Gauntlets'],
+    implicit: 'Defense + Critical Strike Chance', implicitTiers: ['3–13 / 1–2', '15–37 / 2–3', '42–101 / 3–5', '116–229 / 5–7', '263–479 / 7–9', '552–964 / 9–10'],
+    prefixes: ARMOR_AFFIXES_NO_WARDING.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'berserker_grips', name: 'Berserker Grips', ru: 'Хватка берсерка (AD)', slot: 'hands', cls: 'all', hand: '—', unlock: 'ML 50, 3% редкий ролл',
+    tierNames: ['Berserker Grips', 'Berserker Grips', 'Berserker Grips', 'Berserker Grips', 'Berserker Grips', 'Berserker Grips', 'Berserker Grips'],
+    implicit: 'Defense + Attack Damage', implicitTiers: ['3–13 / 2–4', '15–37 / 4–7', '42–101 / 7–14', '116–229 / 14–22', '263–479 / 22–32', '552–964 / 32–40'],
+    prefixes: ARMOR_AFFIXES_NO_WARDING.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'symbiotic_handwraps', name: 'Symbiotic Handwraps', ru: 'Симбиотические обмотки (AD+Pet)', slot: 'hands', cls: 'all', hand: '—', unlock: 'ML 25, 15% редкий ролл',
+    tierNames: ['Symbiotic Handwraps', 'Symbiotic Handwraps', 'Symbiotic Handwraps', 'Symbiotic Handwraps', 'Symbiotic Handwraps', 'Symbiotic Handwraps', 'Symbiotic Handwraps'],
+    implicit: 'Defense + Attack & Pet Damage', implicitTiers: ['3–14 / 1–2', '17–40 / 2–4', '46–111 / 4–8', '127–251 / 8–13', '289–527 / 13–19', '607–1,060 / 19–22'],
+    prefixes: ARMOR_AFFIXES_NO_WARDING.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'swiftstride_boots', name: 'Swiftstride Boots', ru: 'Быстроходы (Double Hit)', slot: 'feet', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Swiftstride Boots', 'Swiftstride Boots', 'Swiftstride Boots', 'Swiftstride Boots', 'Swiftstride Boots', 'Swiftstride Boots', 'Swiftstride Boots'],
+    implicit: 'Defense + Double Hit Chance', implicitTiers: ['4–16 / 1–2', '18–44 / 2–3', '50–121 / 3–4', '139–274 / 4–5', '316–575 / 5–7', '662–1,157 / 7–8'],
+    prefixes: ARMOR_AFFIXES_NO_WARDING.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+  { id: 'grounded_treads', name: 'Grounded Treads', ru: 'Устойчивые сапоги (Block)', slot: 'feet', cls: 'all', hand: '—', unlock: 'ML 25',
+    tierNames: ['Grounded Treads', 'Grounded Treads', 'Grounded Treads', 'Grounded Treads', 'Grounded Treads', 'Grounded Treads', 'Grounded Treads'],
+    implicit: 'Defense + Block Chance', implicitTiers: ['4–18 / 1–2', '21–51 / 2–3', '59–141 / 3–5', '162–320 / 5–7', '368–671 / 7–9', '772–1,350 / 9–10'],
+    prefixes: ARMOR_AFFIXES_NO_WARDING.prefixes, suffixes: ARMOR_AFFIXES.suffixes,
+    note: 'Block с сапог работает и на Warrior с щитом, и на Retaliation-билды других классов.' },
+  { id: 'pathfinder_treads', name: 'Pathfinder Treads', ru: 'Сапоги следопыта (Gold+EXP)', slot: 'feet', cls: 'all', hand: '—', unlock: 'ML 50, 3% редкий ролл',
+    tierNames: ['Pathfinder Treads', 'Pathfinder Treads', 'Pathfinder Treads', 'Pathfinder Treads', 'Pathfinder Treads', 'Pathfinder Treads', 'Pathfinder Treads'],
+    implicit: 'Defense + Gold & EXP Gain', implicitTiers: ['4–16 / 1–2', '18–44 / 2–3', '50–121 / 3–5', '139–274 / 5–8', '316–575 / 8–10', '662–1,157 / 10–12'],
+    prefixes: ARMOR_AFFIXES_NO_WARDING.prefixes, suffixes: ARMOR_AFFIXES.suffixes },
+
+  // ---------- Украшения ----------
+  { id: 'warriors_belt', name: "Warrior's Belt", ru: 'Пояс воина (LoH)', slot: 'belt', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Warrior\'s Belt'], implicit: 'Life on Hit', implicitTiers: ['1–3', '4–7', '8–11', '12–15', '16–18', '19–22'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'rangers_belt', name: "Ranger's Belt", ru: 'Пояс охотника (LoK)', slot: 'belt', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Ranger\'s Belt'], implicit: 'Life on Kill', implicitTiers: ['3–9', '10–17', '18–26', '27–37', '38–45', '46–55'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'scholars_belt', name: "Scholar's Belt", ru: 'Пояс учёного (все атрибуты)', slot: 'belt', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Scholar\'s Belt'], implicit: 'All Attributes', implicitTiers: ['5–13', '14–30', '31–52', '53–76', '77–101', '102–126'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'warriors_ring', name: "Warrior's Ring", ru: 'Кольцо воина (Strength)', slot: 'ring', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Warrior\'s Ring'], implicit: 'Strength', implicitTiers: ['3–11', '12–28', '29–50', '51–74', '75–99', '100–124'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'rangers_ring', name: "Ranger's Ring", ru: 'Кольцо охотника (Dexterity)', slot: 'ring', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Ranger\'s Ring'], implicit: 'Dexterity', implicitTiers: ['3–11', '12–28', '29–50', '51–74', '75–99', '100–124'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'scholars_ring', name: "Scholar's Ring", ru: 'Кольцо учёного (Intelligence)', slot: 'ring', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Scholar\'s Ring'], implicit: 'Intelligence', implicitTiers: ['3–11', '12–28', '29–50', '51–74', '75–99', '100–124'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'adventurers_ring', name: "Adventurer's Ring", ru: 'Кольцо авантюриста (Str&Dex)', slot: 'ring', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Adventurer\'s Ring'], implicit: 'Strength & Dexterity', implicitTiers: ['3–11', '12–28', '29–50', '51–74', '75–99', '100–124'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'warriors_amulet', name: "Warrior's Amulet", ru: 'Амулет воина (Strength)', slot: 'amulet', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Warrior\'s Amulet'], implicit: 'Strength', implicitTiers: ['4–12', '13–29', '30–51', '52–75', '76–100', '101–125'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'rangers_amulet', name: "Ranger's Amulet", ru: 'Амулет охотника (Dexterity)', slot: 'amulet', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Ranger\'s Amulet'], implicit: 'Dexterity', implicitTiers: ['4–12', '13–29', '30–51', '52–75', '76–100', '101–125'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'scholars_amulet', name: "Scholar's Amulet", ru: 'Амулет учёного (Intelligence)', slot: 'amulet', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Scholar\'s Amulet'], implicit: 'Intelligence', implicitTiers: ['4–12', '13–29', '30–51', '52–75', '76–100', '101–125'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+  { id: 'adventurers_amulet', name: "Adventurer's Amulet", ru: 'Амулет авантюриста (Str&Dex)', slot: 'amulet', cls: 'all', hand: '—', unlock: 'Standard',
+    tierNames: ['Adventurer\'s Amulet'], implicit: 'Strength & Dexterity', implicitTiers: ['4–12', '13–29', '30–51', '52–75', '76–100', '101–125'],
+    prefixes: JEWELRY_AFFIXES.prefixes, suffixes: JEWELRY_AFFIXES.suffixes },
+
+  // ---------- Факел ----------
+  { id: 'torch', name: 'Torch', ru: 'Факел', slot: 'torch', cls: 'all', hand: '—', unlock: 'ML 50 (вес 24/9000)',
+    tierNames: ['Torch'], implicit: 'All Class Skills', implicitTiers: ['+1', '+1', '+1', '+2', '+2', '+3'],
+    prefixes: ['Evasive', 'of Pet Damage', 'of Warding'], suffixes: ['of Bloodthirst', 'of Crit Chance', 'of Crit Damage', 'of Devastation', 'of Experience', 'of Wealth'],
+    note: 'Отдельный слот у всех классов: поднимает эффективный ранг всех изученных классовых навыков.' },
 ];
 
-/** Имплиситы ключевых семейств: T1 … T6. */
-export const WEAPON_IMPLICITS = [
-  { family: 'Dagger', cls: 'Rogue', hand: '1H', note: 'Каждый даггер даёт +50% Double Hit Chance (два = 100% до других источников).',
-    tiers: ['Dagger Physical Damage: 2–9', '11–26', '33–80', '94–186', '225–415', '452–807'] },
-  { family: 'Claws', cls: 'Rogue', hand: '1H', ml: 25, note: 'ML 25+. Встроенный крит-шанс 50 → 100% с каждой клешнёй.',
-    tiers: ['Claw Damage: 3–13 / Crit 50', '15–36 / Crit 60', '44–108 / Crit 70', '123–243 / Crit 80', '288–531 / Crit 90', '565–1009 / Crit 100'] },
-  { family: 'Greatsword', cls: 'Warrior', hand: '2H', ml: 25, note: 'ML 25+. Двуручное: оффхенд-слот пустой (в Gear Score не считается).',
-    tiers: ['Greatsword Damage: 22–80', '89–214', '238–550', '614–1176', '1209–1975', '2074–3705'] },
-  { family: 'Crossbow', cls: 'Archer', hand: '2H', ml: 25, note: 'ML 25+. Встроенный Critical Strike Chance 25 → 50%.',
-    tiers: ['Crossbow Damage: 8–39 / Crit 25', '44–111 / Crit 30', '127–308 / Crit 35', '353–702 / Crit 40', '807–1472 / Crit 45', '1694–2965 / Crit 50'] },
-  { family: 'Grand Staff', cls: 'Mage', hand: '2H', ml: 25, note: 'ML 25+. Встроенный Intelligence 2–6 → 48–60.',
-    tiers: ['Staff Damage: 15–71 / Int 2–6', '77–198 / Int 6–14', '206–480 / Int 14–25', '528–1026 / Int 25–36', '1036–1708 / Int 36–48', '1771–3136 / Int 48–60'] },
-  { family: 'Gnarled Stick', cls: 'Druid', hand: '2H', note: 'Двуручное оружие друида: урон + Pet Damage 1 → 50.',
-    tiers: ['Damage: 6–22 / Pet 1', '28–50 / Pet 10', '55–160 / Pet 20', '175–420 / Pet 30', '450–900 / Pet 40', '950–1500 / Pet 50'] },
-  { family: 'Wooden Rod (Wand)', cls: 'Mage', hand: '1H', note: 'Стартовое и базовое одноручное мага.',
-    tiers: ['Magic Damage: 11–51', '55–142', '147–343', '377–733', '740–1220', '1265–2240'] },
-  { family: 'Wooden Bow', cls: 'Archer', hand: '1H', note: 'Стартовое и базовое одноручное лучника.',
-    tiers: ['Physical Damage: 6–28', '32–79', '91–220', '252–501', '576–1052', '1210–2118'] },
-  { family: 'Shield', cls: 'Warrior', hand: 'Off', note: 'Имплисит — Block Chance (блок = −50% входящего урона).',
-    tiers: ['Block 5–7', '8–10', '11–14', '15–19', '20–22', '23–26'] },
-  { family: 'Spellbook', cls: 'Mage', hand: 'Off', note: 'Имплисит — Critical Damage.',
-    tiers: ['Crit Dmg 25–29', '31–36', '38–45', '47–57', '59–71', '73–88'] },
-  { family: 'Quiver', cls: 'Archer', hand: 'Off', note: 'Имплисит — Pet Mastery Level + Strength & Dexterity.',
-    tiers: ['Mastery 1 / Str&Dex 1–3', '2 / 3–7', '3 / 7–13', '4 / 13–19', '5 / 19–25', '6 / 25–31'] },
-  { family: 'Torch', cls: 'All', hand: 'Torch', ml: 50, note: 'ML 50+. Даёт +All Class Skills: T4–T5 = 2, T6 = 3.',
-    tiers: ['+All Class Skills 1', '1', '1', '2', '2', '3'] },
-  { family: 'Wardplate (Chest)', cls: 'All', hand: '—', note: 'Defense + Flat Damage Reduction (не слабеет с ростом ML).',
-    tiers: ['Def 11–29 / DR 1', '33–72 / 1–2', '83–189 / 2', '217–421 / 2–3', '484–873 / 3–4', '1006–1749 / 4–5'] },
-  { family: 'Gloves / Boots', cls: 'All', hand: '—', note: 'Чистый Defense; на сайдгрейдах может быть второй бонус.',
-    tiers: ['Def 6–26', '30–73', '84–202', '231–457', '526–958', '1103–1928'] },
-  { family: 'Ring: Warrior\'s / Ranger\'s / Scholar\'s / Adventurer\'s', cls: 'All', hand: '—', note: 'Str / Dex / Int / Str&Dex соответственно; амулеты — те же, но с +1 к роллу.',
-    tiers: ['3–11', '12–28', '29–50', '51–74', '75–99', '100–124'] },
-  { family: 'Belt: Warrior\'s / Ranger\'s / Scholar\'s', cls: 'All', hand: '—', note: 'Warrior = Life on Hit, Ranger = Life on Kill, Scholar = все атрибуты.',
-    tiers: ['LoH 1–3 / LoK 3–9 / все атрибуты 5–13', '4–7 / 10–17 / 14–30', '8–11 / 18–26 / 31–52', '12–15 / 27–37 / 53–76', '16–18 / 38–45 / 77–101', '19–22 / 46–55 / 102–126'] },
+export const SLOT_ORDER = ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'amulet', 'ring', 'belt'];
+export const SLOT_RU = {
+  mainhand: 'Основная рука', offhand: 'Вторая рука', torch: 'Факел', chest: 'Нагрудник', head: 'Шлем',
+  hands: 'Перчатки', feet: 'Обувь', amulet: 'Амулет', ring: 'Кольцо', belt: 'Пояс',
+};
+/** К какому гем-«региону» относится слот (эффект гема зависит от региона). */
+export const SLOT_GEM_REGION = {
+  mainhand: 'weapon', offhand: 'weapon', torch: 'torch',
+  chest: 'armor', head: 'armor', hands: 'armor', feet: 'armor',
+  amulet: 'jewelry', ring: 'jewelry', belt: 'jewelry',
+};
+
+/** Таблица дропа редкостей по Monster Level (Item Codex → Drop tiers). */
+export const DROP_TIER_TABLE = [
+  { upTo: 9, normal: 100, uncommon: 0, rare: 0, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 14, normal: 60, uncommon: 40, rare: 0, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 24, normal: 50, uncommon: 50, rare: 0, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 44, normal: 35, uncommon: 65, rare: 0, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 49, normal: 35, uncommon: 35, rare: 30, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 64, normal: 20, uncommon: 50, rare: 30, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 89, normal: 15, uncommon: 25, rare: 60, epic: 0, legendary: 0, infernal: 0 },
+  { upTo: 99, normal: 15, uncommon: 25, rare: 40, epic: 20, legendary: 0, infernal: 0 },
+  { upTo: 114, normal: 10, uncommon: 15, rare: 55, epic: 20, legendary: 0, infernal: 0 },
+  { upTo: 149, normal: 5, uncommon: 10, rare: 25, epic: 60, legendary: 0, infernal: 0 },
+  { upTo: 184, normal: 4, uncommon: 8, rare: 16, epic: 62, legendary: 10, infernal: 0 },
+  { upTo: 219, normal: 5, uncommon: 5, rare: 15, epic: 25, legendary: 50, infernal: 0 },
+  { upTo: 259, normal: 4, uncommon: 4, rare: 9, epic: 18, legendary: 65, infernal: 0 },
+  { upTo: 299, normal: 3, uncommon: 3, rare: 7, epic: 12, legendary: 35, infernal: 40 },
+  { upTo: 9999, normal: 2, uncommon: 2, rare: 4, epic: 10, legendary: 22, infernal: 60 },
 ];
 
-/** Тир-таблица предметов: макс. +уровень, кол-во аффиксов, дроп-прогресс. */
+/** Тир-таблица предметов (апгрейд/аффиксы/фрагменты). */
 export const ITEM_TIERS = [
-  { tier: 'T1', ru: 'Normal', color: '#b7b7b7', maxPlus: 4, affixes: 0, drop: 'ML 1+', fragment: 'Iron Fragment' },
-  { tier: 'T2', ru: 'Uncommon', color: '#69d17d', maxPlus: 9, affixes: 1, drop: 'шанс с ML 10+, основной дроп ML 25+', fragment: 'Steel Fragment' },
-  { tier: 'T3', ru: 'Rare', color: '#5ba7ff', maxPlus: 14, affixes: 2, drop: 'шанс с ML 45+, основной дроп ML 65+', fragment: 'Mithril Fragment' },
-  { tier: 'T4', ru: 'Epic', color: '#bd76ff', maxPlus: 19, affixes: 3, drop: 'шанс с ML 90+, основной дроп ML 115+', fragment: 'Adamantine Fragment' },
-  { tier: 'T5', ru: 'Legendary', color: '#ffc857', maxPlus: 24, affixes: 4, drop: 'шанс с ML 150+, основной дроп ML 185+', fragment: 'Celestial Fragment' },
-  { tier: 'T6', ru: 'Infernal', color: '#ff6b5f', maxPlus: null, affixes: 5, drop: 'ML 260+', fragment: '—' },
+  { tier: 'T1', ru: 'Normal', color: '#b7b7b7', maxPlus: 4, affixes: 0, drop: 'ML 1+', fragment: 'Iron Fragment', fullGold: '1,700', fullFragments: 10 },
+  { tier: 'T2', ru: 'Uncommon', color: '#69d17d', maxPlus: 9, affixes: 1, drop: 'шанс с ML 10+, основной дроп ML 25+', fragment: 'Steel Fragment', fullGold: '35,100', fullFragments: 45 },
+  { tier: 'T3', ru: 'Rare', color: '#5ba7ff', maxPlus: 14, affixes: 2, drop: 'шанс с ML 45+, основной дроп ML 65+', fragment: 'Mithril Fragment', fullGold: '428,750', fullFragments: 84 },
+  { tier: 'T4', ru: 'Epic', color: '#bd76ff', maxPlus: 19, affixes: 3, drop: 'шанс с ML 90+, основной дроп ML 115+', fragment: 'Adamantine Fragment', fullGold: '4,180,000', fullFragments: 190 },
+  { tier: 'T5', ru: 'Legendary', color: '#ffc857', maxPlus: 24, affixes: 4, drop: 'шанс с ML 150+, основной дроп ML 185+', fragment: 'Celestial Fragment', fullGold: '31,800,000', fullFragments: 456 },
+  { tier: 'T6', ru: 'Infernal', color: '#ff6b5f', maxPlus: 30, affixes: 5, drop: 'ML 260+', fragment: 'Infernal Fragment', fullGold: '287,100,000', fullFragments: 1170 },
 ];
+
+export const familyById = (id) => GEAR_FAMILIES.find((f) => f.id === id);
+export const familiesForSlot = (slot) => GEAR_FAMILIES.filter((f) => f.slot === slot);
+export const familiesForClass = (cls) => GEAR_FAMILIES.filter((f) => f.cls === 'all' || f.cls === cls);

@@ -140,3 +140,17 @@ pre.code {
   main { padding: 14px 10px 50px; }
   h1 { font-size: 16px; }
 }
+
+/* --- шаговые контролы навыков --- */
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper .pts { min-width: 22px; text-align: center; font-size: 15px; color: var(--accent); }
+button.btn.tiny { padding: 2px 9px; font-size: 14px; line-height: 1.2; border-radius: 6px; }
+button.btn:disabled { opacity: .35; cursor: not-allowed; }
+.plusline { color: var(--good); font-size: 12px; }
+.neg { color: var(--bad); }
+.slider input[type="range"] { width: 100%; }
+table td .chips { gap: 4px; }
+details summary { cursor: pointer; padding: 6px 0; color: var(--accent); }
+.grid.cols-1 { grid-template-columns: 1fr; }
+.muted.small { font-size: 12px; opacity: .8; }
+b.want, td .want { color: var(--good); }

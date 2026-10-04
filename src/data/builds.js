@@ -18,7 +18,7 @@ const W = {
     progress: { w_relentless: 5, w_mighty: 5, w_titans: 4, w_crushing: 4, w_focus: 4, w_iron: 3, w_berserk: 3, w_deflection: 3, w_overwhelm: 3, w_keen: 3, w_titanic: 3, w_spoils: 2, w_recovery: 2, w_bloodthirst: 2, w_culling: 2, w_lethal: 2, w_counterstrike: 1, w_executioner: 2 },
     farm: { w_spoils: 5, w_mighty: 4, w_berserk: 4, w_iron: 3, w_relentless: 3, w_titans: 3, w_focus: 3, w_crushing: 3, w_deflection: 2, w_recovery: 2, w_bloodthirst: 3, w_culling: 2, w_titanic: 2, w_overwhelm: 2, w_keen: 2, w_lethal: 2, w_executioner: 1, w_counterstrike: 1 },
     boss: { w_mighty: 5, w_focus: 5, w_crushing: 5, w_keen: 5, w_overwhelm: 5, w_titanic: 4, w_titans: 4, w_relentless: 3, w_lethal: 3, w_berserk: 3, w_iron: 2, w_culling: 2, w_deflection: 2, w_recovery: 1, w_bloodthirst: 1, w_spoils: 1, w_executioner: 1, w_counterstrike: 1 },
-    pets: { w_mighty: 4, w_titans: 3, w_relentless: 3, w_berserk: 4, w_spoils: 3, w_mighty_pet: 0, w_iron: 4, w_deflection: 3, w_crushing: 3, w_focus: 3, w_keen: 2, w_overwhelm: 2, w_lethal: 2, w_titanic: 2, w_recovery: 2, w_bloodthirst: 2, w_culling: 2, w_executioner: 1, w_counterstrike: 1 },
+    pets: { w_mighty: 4, w_titans: 3, w_relentless: 3, w_berserk: 4, w_spoils: 3, w_iron: 4, w_deflection: 3, w_crushing: 3, w_focus: 3, w_keen: 2, w_overwhelm: 2, w_lethal: 2, w_titanic: 2, w_recovery: 2, w_bloodthirst: 2, w_culling: 2, w_executioner: 1, w_counterstrike: 1 },
     retaliation: { w_deflection: 5, w_iron: 5, w_counterstrike: 4, w_recovery: 4, w_crushing: 4, w_mighty: 3, w_titans: 2, w_focus: 2, w_spoils: 3, w_berserk: 2, w_relentless: 2, w_overwhelm: 2, w_bloodthirst: 2, w_keen: 2, w_titanic: 1, w_lethal: 1, w_culling: 1, w_executioner: 1 },
   },
   archer: {
@@ -147,6 +147,97 @@ export function weightsFor(classId, goalId) {
 export function statPriorityFor(classId, goalId) {
   return P[classId]?.[goalId] || P.warrior.progress;
 }
+
+/* ------------------------------------------------------------------ *
+ *  Правила экипировки: какой предмет надевать в каждый слот и почему. *
+ *  id семейств — из src/data/items.js (GEAR_FAMILIES, полный Item Codex).
+ * ------------------------------------------------------------------ */
+
+const ARMOR_GOAL = {
+  progress: { chest: 'wardplate', head: 'visionary_hood', hands: 'slayer_gauntlets', feet: 'grounded_treads' },
+  boss: { chest: 'wardplate', head: 'visionary_hood', hands: 'slayer_gauntlets', feet: 'swiftstride_boots' },
+  farm: { chest: 'bloodweave_vest', head: 'sage_diadem', hands: 'berserker_grips', feet: 'pathfinder_treads' },
+  pets: { chest: 'harmonic_cuirass', head: 'beast_crown', hands: 'symbiotic_handwraps', feet: 'bloodweave_vest' },
+  retaliation: { chest: 'wardplate', head: 'sage_diadem', hands: 'slayer_gauntlets', feet: 'grounded_treads' },
+};
+// Слоты ног: boots-семейства (base уже идёт как «подставка»)
+const BOOTS_GOAL = {
+  progress: 'grounded_treads',
+  boss: 'swiftstride_boots',
+  farm: 'pathfinder_treads',
+  pets: 'pathfinder_treads',
+  retaliation: 'grounded_treads',
+};
+const JEWELRY = { strength: 'warriors', dexterity: 'rangers', intelligence: 'scholars' };
+
+export function goalGearRules(classId, goal) {
+  const main = CLASSES_MAIN_STAT[classId] || 'strength';
+  const jw = JEWELRY[main] || 'warriors';
+  const rules = {};
+  const twoHand = goal === 'boss'; // для «боссового» урона двуручка выгоднее, для остального — оффхенд
+
+  if (classId === 'warrior') {
+    rules.mainhand = twoHand ? ['greatsword', 'broken_sword'] : ['broken_sword', 'greatsword'];
+    rules.offhand = ['wooden_shield'];
+  }
+  if (classId === 'archer') {
+    rules.mainhand = twoHand ? ['crossbow', 'wooden_bow'] : ['wooden_bow', 'crossbow'];
+    rules.offhand = ['quiver'];
+  }
+  if (classId === 'mage') {
+    // Книжка (Crit Damage) обычно сильнее посоха: двуручку оставляем как альтернативу.
+    rules.mainhand = ['wooden_rod', 'grand_staff'];
+    rules.offhand = ['old_book'];
+  }
+  if (classId === 'rogue') {
+    // Два оружия: для крит-билда клешни, для фарма/прогресса кинжалы (Double Hit).
+    const crit = goal === 'boss' || goal === 'pets';
+    rules.mainhand = crit ? ['claws', 'rusty_dagger'] : ['rusty_dagger', 'claws'];
+    rules.offhand = crit ? ['claws', 'rusty_dagger'] : ['rusty_dagger', 'claws'];
+  }
+  if (classId === 'druid') {
+    rules.mainhand = ['gnarled_stick'];
+    rules.offhand = []; // двуручный посох — оффхенд пуст
+  }
+
+  rules.torch = ['torch'];
+  const armor = ARMOR_GOAL[goal] || ARMOR_GOAL.progress;
+  rules.chest = [armor.chest, 'rags'];
+  rules.head = [armor.head, 'leather_cap'];
+  rules.hands = [armor.hands, 'worn_gloves'];
+  rules.feet = [BOOTS_GOAL[goal] || 'grounded_treads', 'sandals_of_starszy'];
+  rules.amulet = [`${jw}_amulet`];
+  rules.ring = [`${jw}_ring`, jw === 'warriors' ? 'adventurers_ring' : jw === 'rangers' ? 'adventurers_ring' : 'adventurers_ring'];
+  rules.belt = [`${jw}_belt`];
+  return rules;
+}
+
+const CLASSES_MAIN_STAT = { warrior: 'strength', archer: 'dexterity', mage: 'intelligence', rogue: 'dexterity', druid: 'strength' };
+
+/** Стат приоритета → id аффиксов, которые его дают. */
+export const STAT_TO_AFFIX = {
+  ad: ['striking'],
+  crit: ['critchance'],
+  critDmg: ['critdamage'],
+  dd: ['devastation'],
+  dh: ['doublehit'],
+  maxHp: ['ambulance'],
+  defense: ['fortification', 'fortress', 'bulwark'],
+  dr: ['warding'],
+  dodge: ['evasive'],
+  petDamage: ['petdmg'],
+  loh: ['regeneration'],
+  lok: ['vampirism'],
+  gold: ['wealth'],
+  exp: ['experience'],
+  itemDrop: [],
+  mat: [],
+  eggDrop: [],
+  block: [],
+  retal: [],
+  lucky: [],
+  boss: [],
+};
 
 /** Общий чек-лист нюансов, которые чаще всего ломают билд. */
 export const CHECKLIST = [
