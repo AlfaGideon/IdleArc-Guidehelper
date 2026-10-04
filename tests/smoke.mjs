@@ -158,6 +158,7 @@ const core = await import(src('core/planner.js'));
 const calc = await import(src('core/calc.js'));
 const items = await import(src('data/items.js'));
 const forge = await import(src('data/forge.js'));
+const recmod = await import(src('core/recommend.js'));
 const art = await import(src('ui/itemArt.js'));
 const store = await import(src('ui/store.js'));
 const artUi = await import(src('ui/art.js'));
@@ -325,7 +326,7 @@ check('каждая страница на своём месте: навыки, �
   need('skills', '+All Class Skills');
   need('skills', 'Итоговые бонусы от навыков');
   need('gear', 'Экран снаряжения');
-  need('gear', 'Что искать в каждом слоте');
+  need('gear', 'Что надеть: рекомендация системы по каждому слоту');
   need('gear', 'Картинки предметов');
   need('gear', 'Имплисит');
   need('forge', 'Кузница: прогресс по слотам');
@@ -335,7 +336,7 @@ check('каждая страница на своём месте: навыки, �
   need('forge', 'Сколько стоит прокачать тир целиком');
   need('gems', 'Гемы: какой камень куда ставить');
   need('gems', 'Когда менять основной камень');
-  need('gems', 'Другие камни в этом слоте');
+  need('gems', 'Другие камни сюда');
   need('gems', 'Вторичные статы камней');
   need('next', 'План действий прямо сейчас');
   need('build', 'Обмен сборкой');
@@ -360,7 +361,7 @@ check('планировщик: рендерится для всех 5 класс
           const by = Object.fromEntries(pages.map((p) => [p.id, p.text]));
           if (!by.gear.includes('Экран снаряжения')) problems.push(`${cls.id}/${goal}/${lvl}: нет экрана снаряжения`);
           if (!by.forge.includes('Кузница: прогресс по слотам')) problems.push(`${cls.id}/${goal}/${lvl}: нет страницы Кузницы`);
-          if (!by.gems.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
+          if (!by.gems.includes('система советует')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
           if (!by.skills.includes('Классовые навыки')) problems.push(`${cls.id}/${goal}/${lvl}: нет распределения навыков`);
         } catch (e) {
           problems.push(`${cls.id}/${goal}/${lvl}: ${e.message}`);
@@ -848,7 +849,7 @@ check('карточки предметов: картинка + переворо�
   cards[0].dispatch('click');
   if (cards[0].classList.contains('flipped')) throw new Error('карточка не возвращается обратно');
   const text = textOf(root);
-  for (const needle of ['Шаг Кузницы:', 'камней:', 'Картинки предметов', 'Что искать в каждом слоте']) {
+  for (const needle of ['Шаг Кузницы:', 'камней:', 'Картинки предметов', 'Что надеть: рекомендация системы по каждому слоту']) {
     if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
   }
   // выборы тира, «+N», Awaken и цены шагов живут на странице Кузницы
@@ -1052,6 +1053,174 @@ check('страницы: на экране одна страница, а не в
   st.page = 'class';
 });
 
+check('сохранение: плашка «сохранено» видна на каждой странице и показывает канал', () => {
+  const st = views.planner.plannerState;
+  for (const id of PAGE_IDS) {
+    st.page = id;
+    const root = new El('main');
+    views.planner.render(root);
+    const chip = findAll(root, (n) => n.attrs && n.attrs.id === 'save-chip')[0];
+    if (!chip) throw new Error(`нет плашки сохранения на странице «${id}»`);
+    const text = String(chip.textContent);
+    if (!text.includes('сохранено') && !text.includes('ещё не сохранялось')) throw new Error('плашка без времени: ' + text);
+    if (!text.includes('в браузере') && !text.includes('до перезагрузки')) throw new Error('плашка без канала: ' + text);
+  }
+  st.page = 'class';
+});
+
+check('запуск: приложение стартует, даже если доступ к хранилищу браузера запрещён', () => {
+  // Реальная среда пользователя: обращение к window.localStorage бросает SecurityError
+  // (приватный режим или страница внутри iframe без доступа к хранилищу). Приложение
+  // обязано запуститься и продолжать сохранять состояние через резервный канал.
+  const child = `
+Object.defineProperty(globalThis, 'localStorage', { get() { throw new Error('SecurityError: storage disabled'); }, configurable: true });
+Object.defineProperty(globalThis, 'sessionStorage', { get() { throw new Error('SecurityError: storage disabled'); }, configurable: true });
+class El { constructor(t){this.nodeType=1;this.tagName=String(t).toUpperCase();this.children=[];this.attrs={};this.style={};this._text='';this._html='';this.classList={_s:new Set(),add(){},remove(){},toggle(){},contains(){return false}};}
+  appendChild(c){c.parentNode=this;this.children.push(c);return c;} prepend(c){c.parentNode=this;this.children.unshift(c);return c;} insertBefore(c){return this.appendChild(c)}
+  setAttribute(k,v){this.attrs[k]=String(v)} getAttribute(k){return this.attrs[k]??null}
+  addEventListener(t,f){(this._listeners=this._listeners||{})[t]=(this._listeners[t]||[]).concat(f)} dispatch(t){for(const f of (this._listeners||{})[t]||[])f({target:this})}
+  querySelectorAll(){return []} querySelector(){return null} closest(){return null}
+  set className(v){this.classList._s=new Set(String(v).split(/\\s+/).filter(Boolean))} get className(){return [...this.classList._s].join(' ')}
+  set textContent(v){this._text=String(v);this.children=[]} get textContent(){return this._text}
+  set innerHTML(v){this._html=String(v);this.children=[]} get innerHTML(){return this._html} }
+globalThis.document={createElement:(t)=>new El(t),createTextNode:(t)=>({nodeType:3,textContent:String(t)}),getElementById:()=>null,visibilityState:'visible',addEventListener(){},removeEventListener(){}};
+globalThis.window={name:'',location:{hash:''},addEventListener(){},removeEventListener(){}};
+const planner = await import(${JSON.stringify(src('ui/planner.js'))});
+const store = await import(${JSON.stringify(src('ui/store.js'))});
+planner.render(new El('main'));
+store.markTouched();
+store.saveState({ classId: 'rogue', ml: 5 }, { allowOverwrite: true });
+const back = store.loadState();
+if (!back || back.classId !== 'rogue') { console.log('НЕТ ВОССТАНОВЛЕНИЯ'); process.exit(2); }
+console.log('OK ' + store.saveInfo.note);
+process.exit(0);
+`;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iac-boot-'));
+  const file = path.join(dir, 'boot.mjs');
+  fs.writeFileSync(file, child, 'utf8');
+  try {
+    const out = execFileSync(process.execPath, [file], { encoding: 'utf8', timeout: 30000 });
+    if (!out.includes('OK')) throw new Error('неожиданный вывод: ' + out.trim());
+    if (!out.includes('резервный канал') && !out.includes('окне браузера')) throw new Error('сохранение ушло не в резервный канал: ' + out.trim());
+  } catch (e) {
+    throw new Error('приложение упало при запрете хранилища: ' + (e.stdout || e.message));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('рекомендация: система сама выбирает предмет в каждый слот (без ручного выбора)', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 60; st.ml = 120; st.gear = {}; st.page = 'gear';
+  const root = new El('main');
+  views.planner.render(root);
+  const cls = st.gear.warrior;
+  for (const cell of items.GEAR_CELLS) {
+    const entry = cls[cell.id];
+    if (!entry) throw new Error(`нет слота «${cell.id}»`);
+    if (cell.slot === 'talisman') {
+      if (!entry.talisman) throw new Error('талисман не выбран системой');
+      continue;
+    }
+    if (!entry.family) throw new Error(`в слоту «${cell.id}» система не выбрала предмет`);
+    if (entry.manual) throw new Error('слот помечен ручным, хотя система должна предложить свой вариант');
+  }
+  // на карточках есть пометка «рекомендовано» и таблица «что надеть» на 13 строк
+  const text = textOf(root);
+  if (!text.includes('Готовая сборка под цель')) throw new Error('нет сводки сборки');
+  if (!text.includes('рекомендовано')) throw new Error('нет пометок «рекомендовано»');
+  const tables = findByClass(root, 'scroll');
+  const bigTable = tables.map((t) => t.children[0]).find((t) => t && t.tagName === 'TABLE');
+  if (!bigTable) throw new Error('нет таблицы рекомендаций');
+  const rows = (bigTable.children[1] || { children: [] }).children || [];
+  if (rows.length !== 13) throw new Error('в таблице рекомендаций строк: ' + rows.length);
+  // в каждой строке есть «Почему именно он» с объяснением
+  for (const row of rows) {
+    const cells = row.children || [];
+    const why = cells[3] ? textOf(cells[3]) : '';
+    if (why.trim().length < 20) throw new Error('нет объяснения в строке слота: ' + why);
+  }
+});
+
+check('рекомендация: сборка честно отличается по цели (предметы и камни)', () => {
+  const rec = recmod.recommendBuild;
+  const pick = (goal) => {
+    const r = rec('warrior', goal, { level: 60, ml: 120 });
+    return {
+      chest: r.cells.chest.family.name,
+      head: r.cells.head.family.name,
+      feet: r.cells.feet.family.name,
+      gem: r.gemPlan.weapon.family.name,
+      order: r.forgeOrder.map((x) => x.slotRu).join('>'),
+    };
+  };
+  const p = pick('progress'); const f = pick('farm'); const b = pick('boss'); const pets = pick('pets');
+  if (f.chest === p.chest && f.head === p.head) throw new Error('фарм-сборка не отличается от прогресса по броне');
+  if (b.feet === p.feet) throw new Error('босс-сборка не отличается по обуви');
+  if (f.gem === p.gem) throw new Error('фарм должен брать Amber, а прогресс — Garnet');
+  if (pets.gem !== 'Jade') throw new Error('пет-билд должен брать Jade (урон пета), а не ' + pets.gem);
+  if (p.order === f.order) throw new Error('порядок Кузницы должен отличаться по целям');
+
+  // друид: посох с пет-уроном и отдельное объяснение
+  const d = rec('druid', 'pets', { level: 60, ml: 120 });
+  if (d.cells.mainhand.family.name !== 'Gnarled Stick') throw new Error('друиду нужен Gnarled Stick');
+  if (!d.cells.mainhand.why.join(' ').includes('Pet Damage')) throw new Error('нет объяснения про пет-урон у посоха');
+  // у разбоя во второй руке — второе оружие, у друида её нет
+  const rogue = rec('rogue', 'progress', { level: 60, ml: 120 });
+  if (!rogue.cells.hand2.family || rogue.cells.hand2.slot !== 'offhand') throw new Error('разбойнику нужна вторая рука с оружием');
+  if (d.cells.hand2.family) throw new Error('у друида вторая рука должна быть пустой');
+});
+
+check('рекомендация: любую правку можно вернуть к варианту системы', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 60; st.ml = 120; st.gear = {}; st.page = 'forge';
+  const root = new El('main');
+  views.planner.render(root);
+  const torch = st.gear.warrior.torch;
+  const systemFamily = torch.family;
+  if (!systemFamily) throw new Error('система не подставила факел');
+  // выбираем другой предмет руками
+  const card = findByClass(root, 'forgecard')[0];
+  const select = findAll(card, (n) => n.tagName === 'SELECT')[0];
+  select.value = 'sage_diadem';
+  select.dispatch('change');
+  if (!torch.manual) throw new Error('ручная правка не помечена');
+  if (torch.family !== 'sage_diadem') throw new Error('правка не применилась');
+  // меняем цель: ручной слот остаётся, остальные пересобираются системой
+  st.goal = 'farm';
+  views.planner.render(root);
+  if (torch.family !== 'sage_diadem') throw new Error('ручной выбор потерялся при смене цели');
+  // кнопка «↺ как рекомендовано» возвращает вариант системы
+  const card2 = findByClass(root, 'forgecard')[0];
+  const back = findButton(card2, '↺ как рекомендовано');
+  if (!back) throw new Error('нет кнопки возврата к рекомендации');
+  back.dispatch('click');
+  if (torch.manual) throw new Error('кнопка не сняла ручной режим');
+  if (torch.family === 'sage_diadem' && systemFamily === 'sage_diadem') throw new Error('нечего было возвращать');
+  if (torch.family !== systemFamily) throw new Error('не вернулся системный предмет: ' + torch.family);
+  st.goal = 'progress'; st.gear = {}; st.page = 'class';
+});
+
+check('готовая сборка: список из 13 строк и текст для копирования', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'druid'; st.goal = 'pets'; st.level = 60; st.ml = 120; st.gear = {}; st.page = 'build';
+  const root = new El('main');
+  views.planner.render(root);
+  const text = textOf(root);
+  if (!text.includes('Готовая сборка: что надеть и какие камни')) throw new Error('нет блока готовой сборки');
+  const list = findByClass(root, 'buylist')[0];
+  if (!list) throw new Error('нет списка сборки');
+  const rows = (list.children || []).filter((c) => c.tagName === 'DIV');
+  if (rows.length !== 13) throw new Error('строк в готовой сборке: ' + rows.length);
+  for (const cell of items.GEAR_CELLS) {
+    if (!text.includes(`${cell.ru} (${cell.en})`)) throw new Error(`в готовой сборке нет слота «${cell.ru}»`);
+  }
+  if (!text.includes('Gnarled Stick')) throw new Error('в сборке друида нет посоха');
+  if (!text.includes('Ярость') && !text.includes('Дух')) throw new Error('в сборке нет талисманов');
+  if (!findButton(root, 'Скопировать сборку целиком')) throw new Error('нет кнопки копирования сборки');
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.gear = {}; st.page = 'class';
+});
+
 check('сохранение: мгновенная запись, восстановление, резервные каналы и копия', async () => {
   const st = views.planner.plannerState;
   const pause = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
@@ -1161,62 +1330,6 @@ check('сохранение: мгновенная запись, восстано
   st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0;
   st.manual = null; st.mode = 'auto'; st.page = 'class'; st.gear = {};
   views.planner.render(new El('main'));
-});
-
-check('сохранение: плашка «сохранено» видна на каждой странице и показывает канал', () => {
-  const st = views.planner.plannerState;
-  for (const id of PAGE_IDS) {
-    st.page = id;
-    const root = new El('main');
-    views.planner.render(root);
-    const chip = findAll(root, (n) => n.attrs && n.attrs.id === 'save-chip')[0];
-    if (!chip) throw new Error(`нет плашки сохранения на странице «${id}»`);
-    const text = String(chip.textContent);
-    if (!text.includes('сохранено') && !text.includes('ещё не сохранялось')) throw new Error('плашка без времени: ' + text);
-    if (!text.includes('в браузере') && !text.includes('до перезагрузки')) throw new Error('плашка без канала: ' + text);
-  }
-  st.page = 'class';
-});
-
-check('запуск: приложение стартует, даже если доступ к хранилищу браузера запрещён', () => {
-  // Реальная среда пользователя: обращение к window.localStorage бросает SecurityError
-  // (приватный режим или страница внутри iframe без доступа к хранилищу). Приложение
-  // обязано запуститься и продолжать сохранять состояние через резервный канал.
-  const child = `
-Object.defineProperty(globalThis, 'localStorage', { get() { throw new Error('SecurityError: storage disabled'); }, configurable: true });
-Object.defineProperty(globalThis, 'sessionStorage', { get() { throw new Error('SecurityError: storage disabled'); }, configurable: true });
-class El { constructor(t){this.nodeType=1;this.tagName=String(t).toUpperCase();this.children=[];this.attrs={};this.style={};this._text='';this._html='';this.classList={_s:new Set(),add(){},remove(){},toggle(){},contains(){return false}};}
-  appendChild(c){c.parentNode=this;this.children.push(c);return c;} prepend(c){c.parentNode=this;this.children.unshift(c);return c;} insertBefore(c){return this.appendChild(c)}
-  setAttribute(k,v){this.attrs[k]=String(v)} getAttribute(k){return this.attrs[k]??null}
-  addEventListener(t,f){(this._listeners=this._listeners||{})[t]=(this._listeners[t]||[]).concat(f)} dispatch(t){for(const f of (this._listeners||{})[t]||[])f({target:this})}
-  querySelectorAll(){return []} querySelector(){return null} closest(){return null}
-  set className(v){this.classList._s=new Set(String(v).split(/\\s+/).filter(Boolean))} get className(){return [...this.classList._s].join(' ')}
-  set textContent(v){this._text=String(v);this.children=[]} get textContent(){return this._text}
-  set innerHTML(v){this._html=String(v);this.children=[]} get innerHTML(){return this._html} }
-globalThis.document={createElement:(t)=>new El(t),createTextNode:(t)=>({nodeType:3,textContent:String(t)}),getElementById:()=>null,visibilityState:'visible',addEventListener(){},removeEventListener(){}};
-globalThis.window={name:'',location:{hash:''},addEventListener(){},removeEventListener(){}};
-const planner = await import(${JSON.stringify(src('ui/planner.js'))});
-const store = await import(${JSON.stringify(src('ui/store.js'))});
-planner.render(new El('main'));
-store.markTouched();
-store.saveState({ classId: 'rogue', ml: 5 }, { allowOverwrite: true });
-const back = store.loadState();
-if (!back || back.classId !== 'rogue') { console.log('НЕТ ВОССТАНОВЛЕНИЯ'); process.exit(2); }
-console.log('OK ' + store.saveInfo.note);
-process.exit(0);
-`;
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'iac-boot-'));
-  const file = path.join(dir, 'boot.mjs');
-  fs.writeFileSync(file, child, 'utf8');
-  try {
-    const out = execFileSync(process.execPath, [file], { encoding: 'utf8', timeout: 30000 });
-    if (!out.includes('OK')) throw new Error('неожиданный вывод: ' + out.trim());
-    if (!out.includes('резервный канал') && !out.includes('окне браузера')) throw new Error('сохранение ушло не в резервный канал: ' + out.trim());
-  } catch (e) {
-    throw new Error('приложение упало при запрете хранилища: ' + (e.stdout || e.message));
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
 });
 
 await Promise.all(pending);

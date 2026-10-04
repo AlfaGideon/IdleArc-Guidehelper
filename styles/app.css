@@ -307,3 +307,20 @@ ol.todo b { color: var(--accent); }
   from { box-shadow: 0 0 0 3px rgba(105, 209, 125, .45); }
   to { box-shadow: 0 0 0 0 rgba(105, 209, 125, 0); }
 }
+
+/* --- рекомендации: картинка в таблице, объяснения, порядок прокачки --- */
+.with-art { display: flex; align-items: center; gap: 8px; }
+.art-svg.small svg, .art-svg.small img { width: 30px; height: 30px; display: block; }
+.whycol { display: grid; gap: 2px; max-width: 340px; }
+.whycol .muted { line-height: 1.35; }
+.recnote { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rec-summary .chips { margin: 6px 0; }
+.forgeorder { display: grid; gap: 6px; margin: 8px 0; counter-reset: fo; }
+.forgeorder .row { display: flex; gap: 8px; align-items: baseline; border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; flex-wrap: wrap; }
+.forgeorder .row b { color: var(--accent); white-space: nowrap; }
+.forgeorder .row .num { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,.28); font-size: 11px; color: var(--text); }
+.buylist { display: grid; gap: 4px; margin: 8px 0; }
+.buylist .row { display: flex; gap: 8px; align-items: center; border-bottom: 1px dashed var(--line); padding: 5px 0; flex-wrap: wrap; }
+.buylist .row b { color: var(--text); }

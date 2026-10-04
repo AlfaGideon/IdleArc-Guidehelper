@@ -22,6 +22,7 @@ import {
   FORGE_TIERS, FORGE_MAX_RANK, forgeTierInfo, forgeStep, forgeRank, forgeCumulative, AWAKEN_MAX, AWAKEN_NOTE,
 } from '../data/forge.js';
 import { planBuild, planToText, encodePlan, decodePlan, nextPointLevel } from '../core/planner.js';
+import { recommendBuild } from '../core/recommend.js';
 import { el, card, table, kpi, copyButton } from './dom.js';
 import { itemArt, lockArt, tierColors, talismanArt, bodySilhouette, coinIcon, shardIcon } from './itemArt.js';
 import { artState, loadArt, artNode, lockedArtNode, artDownload, downloadArtViaBrowser } from './art.js';
@@ -154,6 +155,21 @@ try {
 const TALISMAN_TYPES = TALISMANS.types;
 const talismanById = (id) => TALISMAN_TYPES.find((t) => t.id === id) || TALISMAN_TYPES[0];
 
+/* ------------------------------ Рекомендация сборки ------------------------------ */
+
+/**
+ * Готовая сборка под класс и цель — считается один раз на комбинацию
+ * класс + цель + уровень + ML. Приложение показывает ЕЁ, а не просит собирать вручную.
+ */
+let recCache = { key: '', value: null };
+function recommendationFor(plan) {
+  const key = `${plan.classId}|${plan.goal}|${plan.level}|${plan.ml}`;
+  if (recCache.key !== key) {
+    recCache = { key, value: recommendBuild(plan.classId, plan.goal, { level: plan.level, ml: plan.ml }) };
+  }
+  return recCache.value;
+}
+
 /* ------------------------------ Двуязычные подписи ------------------------------ */
 
 /** «Русское (English)» одной строкой — для текстов, ячеек таблиц и подписей. */
@@ -217,11 +233,11 @@ const PAGES = [
   { id: 'class', n: 1, title: 'Класс и цель', short: 'Класс', hint: 'кто играет и под какую задачу' },
   { id: 'levels', n: 2, title: 'Уровни: персонаж и Monster Level', short: 'Уровни', hint: 'уровень даёт очки, Monster Level — дроп' },
   { id: 'skills', n: 3, title: 'Куда вложить очки навыков', short: 'Навыки', hint: 'ветки, тиры, +All Class Skills' },
-  { id: 'gear', n: 4, title: 'Снаряжение', short: 'Снаряжение', hint: 'экран персонажа и что искать в каждом слоте' },
-  { id: 'forge', n: 5, title: 'Кузница: тир, «+N» и цена шагов', short: 'Кузница', hint: 'прогресс по слотам и что качать первым' },
-  { id: 'gems', n: 6, title: 'Какие камни вставить', short: 'Камни', hint: 'камень на каждый слот и редкость по ML' },
+  { id: 'gear', n: 4, title: 'Снаряжение: что надеть', short: 'Снаряжение', hint: 'готовая сборка предметов с картинками и объяснением почему' },
+  { id: 'forge', n: 5, title: 'Кузница: тир, «+N» и цена шагов', short: 'Кузница', hint: 'порядок прокачки под цель и цена шагов' },
+  { id: 'gems', n: 6, title: 'Какие камни вставить', short: 'Камни', hint: 'готовый набор камней на каждый слот с объяснением' },
   { id: 'next', n: 7, title: 'Что делать дальше', short: 'Что дальше', hint: 'чек-лист под ваш уровень и ML' },
-  { id: 'build', n: 8, title: 'Сборка и сохранение', short: 'Сборка', hint: 'код сборки, наборы, автосохранение' },
+  { id: 'build', n: 8, title: 'Сборка и сохранение', short: 'Сборка', hint: 'готовый список сборки, код, наборы, автосохранение' },
 ];
 
 const PAGE_IDS = PAGES.map((p) => p.id);
@@ -242,7 +258,7 @@ function goTo(root, id) {
 function guideHead(plan) {
   return el('section', { class: 'card guide-head' }, [
     el('h2', { text: 'Гайд: как собрать персонажа в IdleArc' }),
-    el('p', { class: 'muted', text: 'План разбит на страницы — идите по номерам слева направо: класс и цель → уровни → навыки → снаряжение → Кузница → камни → что делать дальше. Состояние сохраняется в браузере, можно вернуться на любую страницу.' }),
+    el('p', { class: 'muted', text: 'План разбит на страницы — идите по номерам слева направо: класс и цель → уровни → навыки → снаряжение → Кузница → камни → что делать дальше. Предметы, камни и порядок прокачки система подбирает сама под выбранную цель и объясняет почему — вам остаётся искать такой же дроп в игре. Состояние сохраняется в браузере.' }),
     statusLine(plan),
   ]);
 }
@@ -600,31 +616,42 @@ function cellUsable(plan, cell) {
 function gearStateFor(plan) {
   if (!state.gear || typeof state.gear !== 'object') state.gear = {};
   const cls = (state.gear[plan.classId] = state.gear[plan.classId] || {});
+  const rec = recommendationFor(plan);
   for (const cell of GEAR_CELLS) {
     const st = cls[cell.id];
-    if (cell.slot === 'talisman') {
-      if (st && typeof st === 'object') {
+    const recCell = rec.cells[cell.id] || {};
+
+    // Ячейки с ручной правкой не трогаем — но всё остальное система подставляет сама.
+    if (st && typeof st === 'object' && st.manual) {
+      if (cell.slot === 'talisman') {
         st.level = Math.min(9, Math.max(0, Math.round(Number(st.level) || 0)));
         if (!TALISMAN_TYPES.some((t) => t.id === st.talisman)) st.talisman = TALISMAN_TYPES[0].id;
       } else {
-        cls[cell.id] = { talisman: TALISMAN_TYPES[0].id, level: 0 };
+        st.tier = Math.min(6, Math.max(1, Math.round(Number(st.tier) || plan.itemTier.tier)));
+        st.level = Math.min(forgeTierInfo(st.tier).maxLevel, Math.max(0, Math.round(Number(st.level) || 0)));
+        st.awaken = Math.min(AWAKEN_MAX, Math.max(0, Math.round(Number(st.awaken) || 0)));
+        if (st.family && !familyById(st.family)) st.family = null;
       }
       continue;
     }
-    if (st && typeof st === 'object') {
-      st.tier = Math.min(6, Math.max(1, Math.round(Number(st.tier) || plan.itemTier.tier)));
-      st.level = Math.min(forgeTierInfo(st.tier).maxLevel, Math.max(0, Math.round(Number(st.level) || 0)));
-      st.awaken = Math.min(AWAKEN_MAX, Math.max(0, Math.round(Number(st.awaken) || 0)));
-      if (st.family && !familyById(st.family)) st.family = null;
+
+    // Объект слота меняем на месте: ссылки, которые держат обработчики, остаются живыми.
+    const target = (st && typeof st === 'object') ? st : (cls[cell.id] = {});
+
+    if (cell.slot === 'talisman') {
+      target.talisman = recCell.talismanId || TALISMAN_TYPES[0].id;
+      target.level = Math.min(9, Math.max(0, Math.round(Number(target.level) || 0)));
+      target.manual = false;
       continue;
     }
-    const list = cellFamilies(plan, cell);
-    cls[cell.id] = {
-      family: list.length ? list[0].id : null,
-      tier: plan.itemTier.tier,
-      level: 0,
-      awaken: 0,
-    };
+
+    // Тир предмета = тир, который реально падает на этом ML (рекомендация сама догоняет ML).
+    const tier = Math.min(6, Math.max(1, recCell.tier || plan.itemTier.tier));
+    target.family = recCell.familyId != null ? recCell.familyId : ((cellFamilies(plan, cell)[0] || {}).id || null);
+    target.tier = tier;
+    target.level = Math.min(forgeTierInfo(tier).maxLevel, Math.max(0, Math.round(Number(target.level) || 0)));
+    target.awaken = Math.min(AWAKEN_MAX, Math.max(0, Math.round(Number(target.awaken) || 0)));
+    target.manual = false;
   }
   return cls;
 }
@@ -652,6 +679,7 @@ function cellFront(plan, cell, st, usable) {
       ? talismanById(st.talisman).ru + ' (' + talismanById(st.talisman).name + ')'
       : (usable ? (family ? (st.awaken > 0 ? `${family.name} → Awaken` : (family.tierNames[st.tier - 1] || family.name)) : 'предмет не выбран') : 'занято двуручным') }),
     notYet ? el('div', { class: 'chip warn', text: `дроп с ML ${familyUnlockMl(family)}` }) : null,
+    !st.manual && usable ? el('div', { class: 'chip gold', text: 'рекомендовано' }) : null,
   ]);
 }
 
@@ -787,6 +815,102 @@ function artPanel(root) {
 }
 
 /** Шаг 4 целиком: экран снаряжения как в игре (силуэт персонажа) + панель Кузницы. */
+/**
+ * Таблица «что надеть» прямо по рекомендации: система уже выбрала предмет и камень,
+ * здесь видно ЧТО и ПОЧЕМУ — в порядке игрового экрана снаряжения, включая талисманы.
+ */
+function recommendRows(plan, rec) {
+  return GEAR_CELLS.map((cell) => {
+    const r = rec.cells[cell.id];
+    if (!r) return null;
+    const usable = cellUsable(plan, cell);
+
+    // Ячейка: русское имя + игровое английское.
+    const head = el('div', {}, [
+      el('b', { text: `${cell.ru} (${cell.en})` }),
+      SLOT_RU[cell.slot] && SLOT_RU[cell.slot] !== cell.ru
+        ? el('div', { class: 'muted small', text: `в окне персонажа: ${biText(SLOT_RU[cell.slot], SLOT_EN[cell.slot])}` })
+        : null,
+      usable ? null : el('div', { class: 'muted small', text: 'закрыта для этого класса' }),
+    ]);
+
+    if (cell.slot === 'talisman') {
+      const t = talismanById(r.talismanId);
+      return [
+        head,
+        el('div', { class: 'with-art' }, [
+          el('span', { class: 'art-svg small', html: talismanArt(r.talismanId) }),
+          el('span', { text: `${t.ru} (${t.name})` }),
+        ]),
+        el('span', { class: 'muted small', text: '—' }),
+        el('div', { class: 'muted small', text: r.why.join(' ') }),
+        el('span', { class: 'muted small', text: t.stats }),
+        el('span', { class: 'muted small', text: '—' }),
+        el('span', { class: 'muted small', text: '—' }),
+      ];
+    }
+
+    const family = r.family;
+    const gem = r.gem;
+    return [
+      head,
+      family
+        ? el('div', { class: 'with-art' }, [
+          el('span', { class: 'art-svg small' }, [artNode(family, r.tier, 0)]),
+          el('span', {}, [el('b', { text: family.ru }), el('span', { class: 'en', text: ` (${family.name})` })]),
+        ])
+        : el('span', { class: 'muted', text: 'предмет не найден' }),
+      family
+        ? el('div', {}, [
+          el('b', { text: r.tierName || family.name }),
+          el('div', { class: 'muted small', text: `${plan.itemTier.tierLabel} (${plan.itemTier.name}) · имплисит: ${r.implicitNow || family.implicit}` }),
+        ])
+        : el('span', { class: 'muted', text: '—' }),
+      el('div', { class: 'whycol' }, r.why.map((w) => el('div', { class: 'muted small', text: w }))),
+      el('div', { class: 'chips' }, [
+        ...r.affixes.prefixes.map((a) => el('span', { class: 'chip', text: biText(a.ru, a.name) })),
+        ...r.affixes.suffixes.map((a) => el('span', { class: 'chip', text: biText(a.ru, a.name) })),
+      ].length ? [
+        ...r.affixes.prefixes.map((a) => el('span', { class: 'chip', text: biText(a.ru, a.name) })),
+        ...r.affixes.suffixes.map((a) => el('span', { class: 'chip', text: biText(a.ru, a.name) })),
+      ] : [el('span', { class: 'muted', text: '—' })]),
+      el('div', { class: 'chips' }, r.dropBonuses.length
+        ? r.dropBonuses.map((d) => el('span', { class: 'chip gold', text: biText(d.ru, d.name) }))
+        : [el('span', { class: 'muted', text: '—' })]),
+      gem
+        ? el('div', {}, [
+          el('b', { class: 'want', text: `${gem.family.ru} (${gem.family.name})` }),
+          el('div', { class: 'muted small', text: gem.value }),
+        ])
+        : el('span', { class: 'muted', text: '—' }),
+    ];
+  }).filter(Boolean);
+}
+
+/** Сводка готовой сборки: цель, стойка, приоритет статов и главные решения системы. */
+function buildSummary(plan, rec) {
+  const key = rec.forgeOrder.slice(0, 3);
+  return el('div', { class: 'infobox rec-summary' }, [
+    el('b', { text: `Готовая сборка под цель «${rec.goalRu}» — ${biText(plan.classRu, plan.className)}` }),
+    el('p', { text: 'Ниже система уже выбрала предмет в каждый слот, камень и цель по Кузнице. Собирать вручную не нужно: эти же предметы подставлены в карточки наверху — берите их и ищите такой же дроп в игре.' }),
+    el('div', { class: 'chips' }, [
+      el('span', { class: 'chip', text: `стойка: ${plan.profile.stance}` }),
+      el('span', { class: 'chip', text: `ML ${rec.ml} → дроп ${rec.tierInfo.tierLabel} ${rec.tierInfo.ru} (${rec.tierInfo.chance}%)` }),
+      el('span', { class: 'chip', text: `гемы до ${rec.gemRarity.ru} (${rec.gemRarity.name})` }),
+      el('span', { class: 'chip', text: `сокетов доступно: ${rec.sockets.count}` }),
+    ]),
+    el('div', { class: 'muted small', text: `Приоритет статов: ${rec.priority.join(' → ')}.` }),
+    el('div', { class: 'actions' }, [
+      el('button', {
+        class: 'btn tiny',
+        text: 'Показать страницу Кузницы: куда качать в первую очередь →',
+        onclick: () => goTo(document.getElementById('view') ? document.getElementById('view') : null, 'forge'),
+      }),
+    ]),
+    el('p', { class: 'muted small', text: `Сначала качаем: ${key.map((x) => `${x.place}) ${x.slotRu}`).join(' · ')}. Подробный порядок с причинами — на странице Кузницы.` }),
+  ]);
+}
+
 /** Шаг 4: экран снаряжения как в игре (без Кузницы — она на своей странице). */
 function gearStep(plan, root) {
   const gear = gearStateFor(plan);
@@ -804,26 +928,10 @@ function gearStep(plan, root) {
   const rankTotal = usableCells.reduce((a, c) => a + forgeRank(gear[c.id].tier, gear[c.id].level).rank, 0);
   const awakenCount = usableCells.filter((c) => gear[c.id].awaken > 0).length;
 
-  const slotRows = plan.gear.slots.map((s) => {
-    const p = s.primary;
-    const affixList = [...s.affixes.prefixes, ...s.affixes.suffixes].map((a) => el('span', { class: 'chip', text: biText(a.ru, a.name) }));
-    const db = s.dropBonuses.length ? s.dropBonuses.map((d) => el('span', { class: 'chip gold', text: biText(d.ru, d.name) })) : [el('span', { class: 'muted', text: '—' })];
-    return [
-      el('div', {}, [el('b', { text: s.slotRu }), el('div', { class: 'muted small', text: SLOT_EN[s.slot] || s.slot })]),
-      p ? el('div', {}, [
-        el('b', { text: p.ru }), el('span', { class: 'en', text: ` (${p.name})` }),
-        el('div', { class: 'muted small', text: `${p.hand === '2H' ? 'двуручное' : p.hand === '1H' ? 'одноручное' : 'оффхенд'} · ${p.unlock}` }),
-      ]) : el('span', { class: 'muted', text: '—' }),
-      p ? el('div', {}, [
-        el('b', { text: s.tierNameNow }),
-        el('div', { class: 'muted small', text: `имплисит ${plan.itemTier.tierLabel}: ${s.implicitNow}` }),
-      ]) : el('span', { class: 'muted', text: '—' }),
-      el('div', { class: 'chips' }, affixList.length ? affixList : '—'),
-      el('div', { class: 'chips' }, db),
-    ];
-  });
+  const rec = recommendationFor(plan);
 
   return [
+    buildSummary(plan, rec),
     el('h3', { text: `Экран снаряжения — ${biText(plan.classRu, plan.className)}, ML ${plan.ml}` }),
     el('p', { class: 'muted', text: 'Ячейки стоят как в игровом окне снаряжения: сверху факел, шлем и амулет, ниже оружие, нагрудник и вторая рука, затем кольца и пояс, в последней строке — талисманы, перчатки и обувь. На карточке видно то же, что в игре: тир и «+N» Кузницы. Нажмите на карточку — она перевернётся и покажет параметры предмета.' }),
     grid,
@@ -842,12 +950,12 @@ function gearStep(plan, root) {
       el('b', { text: 'Что важно про тир и «+N»' }),
       el('p', { text: `В карточке слота стоит тир Кузницы и шаги «+N» — это прогресс СЛОТА, а не выпавшего предмета. Кузница качает слот отдельно: подробности, цены шагов и что качать первым — на странице «${PAGES[4].n}. ${PAGES[4].short}».` }),
     ]),
-    el('h3', { text: 'Что искать в каждом слоте' }),
+    el('h3', { text: 'Что надеть: рекомендация системы по каждому слоту' }),
     el('div', { class: 'scroll' }, [table(
-      ['Слот', 'Семейство предметов', 'Имя на вашем ML', 'Аффиксы (ищите эти)', 'Drop Bonus'],
-      slotRows,
+      ['Ячейка', 'Предмет (рекомендация)', 'Тир и имя на вашем ML', 'Почему именно он', 'Аффиксы (ищите эти)', 'Drop Bonus', 'Камень'],
+      recommendRows(plan, rec),
     )]),
-    el('p', { class: 'muted', text: `Имплиситы и дроп — для тира, который чаще всего падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru} — ${plan.itemTier.chance}%).` }),
+    el('p', { class: 'muted', text: `Тир и имплиситы — для того, что реально падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru}, ${plan.itemTier.chance}%). Предметы с пометкой «рекомендовано» на карточках подставлены системой: правьте их только если хотите свой вариант.` }),
     ...plan.profile.notes.map((n) => el('div', { class: 'infobox', text: n })),
   ];
 }
@@ -896,11 +1004,16 @@ function forgeCard(plan, root, gear, cell) {
   const color = tierColors(st.tier)[0];
   const promoteStep = maxed && st.tier < 6 ? forgeStep(st.tier + 1, 0) : null;
 
+  // Любая правка руками = «свой вариант слота»: рекомендация больше не перезаписывает его,
+  // но её всегда можно вернуть кнопкой «как рекомендовано».
+  const touch = () => { st.manual = true; };
   const setLevel = (v) => {
+    touch();
     st.level = Math.max(0, Math.min(info.maxLevel, v));
     render(root);
   };
   const setTier = (t) => {
+    touch();
     st.tier = Math.max(1, Math.min(6, t));
     st.level = Math.min(st.level, forgeTierInfo(st.tier).maxLevel);
     render(root);
@@ -920,14 +1033,14 @@ function forgeCard(plan, root, gear, cell) {
       el('span', { class: 'tag plus', text: `+${st.level}` }),
     ]),
     el('div', { class: 'fcontrols' }, [
-      el('select', { onchange: (e) => { st.family = e.target.value || null; render(root); } }, [
+      el('select', { onchange: (e) => { touch(); st.family = e.target.value || null; render(root); } }, [
         el('option', { value: '', selected: st.family ? null : 'selected' }, ['— предмет —']),
         ...families.map((f) => el('option', { value: f.id, selected: f.id === st.family ? 'selected' : null }, [f.name])),
       ]),
       el('select', { onchange: (e) => setTier(Number(e.target.value)) },
         FORGE_TIERS.map((t) => el('option', { value: String(t.tier), selected: t.tier === st.tier ? 'selected' : null }, [`T${t.tier} ${t.ru}`]))),
       el('select', { onchange: (e) => setLevel(Number(e.target.value)) }, levelOptions),
-      el('select', { onchange: (e) => { st.awaken = Number(e.target.value); render(root); } },
+      el('select', { onchange: (e) => { touch(); st.awaken = Number(e.target.value); render(root); } },
         [0, 1, 2, 3, 4, 5].map((r) => el('option', { value: String(r), selected: r === st.awaken ? 'selected' : null }, [r === 0 ? 'Awaken 0' : `Awaken ${r}`]))),
     ]),
     progressBar(st.level, info.maxLevel, `уровень тира: +${st.level} из +${info.maxLevel}`, color),
@@ -945,6 +1058,22 @@ function forgeCard(plan, root, gear, cell) {
     promoteStep
       ? el('div', { class: 'muted small', text: `Промоушен в T${st.tier + 1}: первый шаг — ${fmtNum(promoteStep.gold)} золота и ${promoteStep.fragments} × ${forgeTierInfo(st.tier + 1).fragmentRu}.` })
       : null,
+    (() => {
+      const rec = recommendationFor(plan).cells[cell.id];
+      if (!rec || !rec.family) return null;
+      const sameFamily = st.family === rec.familyId;
+      const isRec = sameFamily && st.tier === rec.tier && st.level >= 0;
+      return el('div', { class: 'recnote' }, [
+        el('span', { class: 'chip gold', text: `рекомендация: ${rec.family.ru} (${rec.family.name}) · ${rec.forge.text}` }),
+        st.manual
+          ? el('button', {
+            class: 'btn tiny',
+            text: '↺ как рекомендовано',
+            onclick: () => { st.manual = false; render(root); },
+          })
+          : el('span', { class: 'muted small', text: isRec ? 'это и есть рекомендованный вариант' : 'подставлено системой' }),
+      ]);
+    })(),
     st.awaken > 0 && family && FAMILY_AWAKEN[family.id]
       ? el('div', { class: 'muted small', text: `Awaken ${st.awaken}/${AWAKEN_MAX}: ${FAMILY_AWAKEN[family.id]}` })
       : null,
@@ -1004,9 +1133,22 @@ function forgeAdvice(plan, gear, cells) {
   return el('div', { class: 'advice' }, items);
 }
 
+/** Порядок прокачки Кузницы под цель: что даёт больше всего и почему. */
+function forgeOrderBlock(plan, rec) {
+  if (!rec.forgeOrder.length) return null;
+  return el('div', { class: 'forgeorder' }, rec.forgeOrder.map((x) => el('div', { class: 'row' }, [
+    el('span', { class: 'num', text: String(x.place) }),
+    el('b', { text: `${x.slotRu} (${x.slotEn})` }),
+    el('span', { text: `${x.family.ru} (${x.family.name}) → ${x.forge.text}` }),
+    el('span', { class: 'muted small', text: x.reasons.join(' ') }),
+    el('span', { class: 'chip', text: `полная прокачка тира: ${fmtNum(x.forge.cost.gold)} золота · ${fmtNum(x.forge.cost.fragments)} фрагм.` }),
+  ])));
+}
+
 /** Страница Кузницы: сводка, советник, карточки слотов и таблица тиров. */
 function forgePage(plan, root) {
   const gear = gearStateFor(plan);
+  const rec = recommendationFor(plan);
   const cells = GEAR_CELLS.filter((c) => cellUsable(plan, c) && c.slot !== 'talisman');
   const rows = cells.map((cell) => {
     const st = gear[cell.id];
@@ -1058,7 +1200,23 @@ function forgePage(plan, root) {
     nextUp
       ? el('p', { class: 'muted', text: `Ближайший выгодный шаг: ${cellLabels(plan, nextUp.cell).ru} — ${nextUp.maxed ? `промоушен в T${nextUp.st.tier + 1}` : `+${nextUp.st.level + 1} к T${nextUp.st.tier}`} за ${fmtNum(nextUp.step.gold)} золота, ${nextUp.step.fragments} × ${forgeTierInfo(nextUp.maxed ? nextUp.st.tier + 1 : nextUp.st.tier).fragmentRu} (успех ${Math.round(nextUp.step.success * 100)}%).` })
       : null,
-    el('h3', { text: 'Что качать первым' }),
+    el('h3', { text: 'Порядок прокачки под цель: что даёт больше всего' }),
+    el('p', { class: 'muted', text: `Порядок считается по приоритету статов цели «${rec.goalRu}»: сначала слоты, чей имплисит усиливает самое важное. Факел всегда вверху урона — его +All Class Skills поднимает все навыки сразу.` }),
+    forgeOrderBlock(plan, rec),
+    el('div', { class: 'actions' }, [
+      el('button', {
+        class: 'btn primary',
+        text: 'Применить рекомендацию ко всем слотам',
+        onclick: () => {
+          // Снимаем ручные правки: система снова подставит рекомендованные предметы и тиры.
+          const cls = state.gear[plan.classId] || {};
+          for (const c of GEAR_CELLS) if (cls[c.id]) cls[c.id].manual = false;
+          render(root);
+        },
+      }),
+      el('span', { class: 'muted small', text: 'сбросит ручные правки во всех ячейках и вернёт вариант системы' }),
+    ]),
+    el('h3', { text: 'Что качать первым по текущему состоянию' }),
     forgeAdvice(plan, gear, cells),
     el('h3', { text: 'Слоты: тир, «+N» и цена следующего шага' }),
     el('div', { class: 'forgegrid' }, cells.map((cell) => forgeCard(plan, root, gear, cell))),
@@ -1073,60 +1231,79 @@ function forgePage(plan, root) {
   ];
 }
 
-/* --------------------------------- Шаг 5: камни --------------------------------- */
+/* ------------------------------- Шаг 6: камни ------------------------------- */
 
+/**
+ * Страница камней — по рекомендации системы: камень на каждый слот, что он даёт
+ * и почему именно он под эту цель.
+ */
 function gemsStep(plan) {
+  const rec = recommendationFor(plan);
   const regionRu = {
     weapon: 'Оружие — основная и вторая рука',
     torch: 'Факел — отдельный слот',
     armor: 'Броня — нагрудник, шлем, перчатки, обувь',
-    jewelry: 'Украшения — амулет, кольцо, пояс',
+    jewelry: 'Украшения — амулет, кольца, пояс',
   };
   const regionEn = { weapon: 'Weapon', torch: 'Torch', armor: 'Armor', jewelry: 'Jewelry' };
   const regions = ['weapon', 'torch', 'armor', 'jewelry'];
 
   const summary = regions.map((r) => {
-    const fam = plan.gear.slots.find((s) => s.gem.region === r)?.gem.family;
-    if (!fam) return null;
+    const g = rec.gemPlan[r];
+    if (!g) return null;
     return el('li', {}, [
       el('b', { text: `${regionRu[r]} (${regionEn[r]})` }),
-      el('span', { text: ` → ${fam.ru} (${fam.name}) — ${fam.slots[r]}` }),
+      el('span', { text: ` → ${g.family.ru} (${g.family.name}) — ${g.value}. ${g.why[1] || ''}` }),
     ]);
   }).filter(Boolean);
 
   const blocks = regions.map((r) => {
-    const slots = plan.gear.slots.filter((s) => s.gem.region === r);
-    if (!slots.length) return null;
-    const fam = slots[0].gem.family;
-    const rows = slots.map((s) => {
-      const alts = GEM_FAMILIES.filter((f) => f.id !== s.gem.family.id)
+    const cells = GEAR_CELLS.filter((c) => rec.cells[c.id] && rec.cells[c.id].gem && rec.cells[c.id].gem.region === r && cellUsable(plan, c));
+    if (!cells.length) return null;
+    const g = rec.gemPlan[r];
+    const rows = cells.map((cell) => {
+      const e = rec.cells[cell.id];
+      const alts = GEM_FAMILIES.filter((f) => f.id !== e.gem.family.id)
         .map((f) => `${f.ru} (${f.name}) — ${f.slots[r]}`)
         .join(' · ');
       return [
-        el('div', {}, [el('b', { text: s.slotRu }), el('div', { class: 'muted small', text: SLOT_EN[s.slot] || s.slot })]),
-        el('div', {}, [el('b', { class: 'want', text: `${s.gem.family.ru} (${s.gem.family.name})` }), el('div', { class: 'muted small', text: 'ставить сюда' })]),
-        el('div', {}, [el('b', { text: s.gem.baseValue }), el('div', { class: 'muted small', text: 'Черновой (Rough), качество 100, сокет 0' })]),
-        el('div', { class: 'muted small', text: `Другие камни в этом слоте: ${alts}` }),
+        el('div', {}, [
+          el('b', { text: `${cell.ru} (${cell.en})` }),
+          SLOT_RU[cell.slot] && SLOT_RU[cell.slot] !== cell.ru
+            ? el('div', { class: 'muted small', text: `в окне персонажа: ${biText(SLOT_RU[cell.slot], SLOT_EN[cell.slot])}` })
+            : null,
+          el('div', { class: 'muted small', text: e.family ? biText(e.family.ru, e.family.name) : 'предмет по цели' }),
+        ]),
+        el('div', {}, [el('b', { class: 'want', text: `${e.gem.family.ru} (${e.gem.family.name})` }), el('div', { class: 'muted small', text: 'ставить сюда' })]),
+        el('div', {}, [el('b', { text: e.gem.value }), el('div', { class: 'muted small', text: `Черновой (Rough), качество 100 · редкость до ${plan.gemRarity.ru} (${plan.gemRarity.name})` })]),
+        el('div', { class: 'whycol' }, e.gem.why.map((w) => el('div', { class: 'muted small', text: w }))),
+        el('div', { class: 'muted small', text: `Другие камни сюда: ${alts}` }),
       ];
     });
     return el('div', { class: 'branch' }, [
       el('header', {}, [
         el('strong', { text: `${regionRu[r]} (${regionEn[r]})` }),
         el('div', { class: 'chips' }, [
-          el('span', { class: 'chip gold', text: `лучший выбор: ${fam.ru} (${fam.name})` }),
-          el('span', { class: 'chip', text: fam.slots[r] }),
+          el('span', { class: 'chip gold', text: `система советует: ${g.family.ru} (${g.family.name})` }),
+          el('span', { class: 'chip', text: g.value }),
+          el('span', { class: 'chip', text: `слотов в блоке: ${cells.length}` }),
         ]),
       ]),
-      el('div', { class: 'scroll' }, [table(['Слот', 'Камень', 'Что даёт в этом слоте', 'Альтернативы'], rows)]),
+      el('div', { class: 'scroll' }, [table(['Ячейка', 'Камень', 'Что даёт в этом слоте', 'Почему именно он', 'Альтернативы'], rows)]),
     ]);
   }).filter(Boolean);
 
+  const secondaries = (rec.gemPlan.weapon || rec.gemPlan.armor || {}).secondary || [];
+
   return [
-    el('h3', { text: 'Гемы: какой камень куда ставить' }),
+    el('h3', { text: 'Гемы: какой камень куда ставить (рекомендация системы)' }),
     el('div', { class: 'infobox' }, [
-      el('b', { text: `Лучшие камни под цель «${plan.goalDef.ru}»` }),
+      el('b', { text: `Камни под цель «${rec.goalRu}»` }),
       el('ul', { class: 'tight' }, summary),
       el('p', { class: 'muted', text: `Один и тот же камень даёт разный эффект в разных слотах: Garnet в оружии — урон, в броне — Defense, в украшениях — основной атрибут. На вашем ML ${plan.ml} падают гемы до ${plan.gemRarity.ru} (${plan.gemRarity.name}) — вторичных статов: ${plan.gemRarity.secondary}.` }),
+      secondaries.length
+        ? el('p', { class: 'muted', text: `Вторичные статы для этой цели: ${secondaries.map((s) => `${s.ru} (${s.stat})`).join(', ')} — рероллить их можно только на Brilliant и Flawless.` })
+        : null,
     ]),
     ...blocks,
     el('h3', { text: 'Когда менять основной камень' }),
@@ -1139,7 +1316,7 @@ function gemsStep(plan) {
     el('h3', { text: 'Вторичные статы камней' }),
     el('div', { class: 'scroll' }, [table(['Вторичный стат', 'Cut (Огранённый)', 'Polished (Полированный)', 'Brilliant (Блестящий)', 'Flawless (Безупречный)', 'Для этой цели'],
       GEM_SECONDARY.map((s) => {
-        const wanted = plan.gear.profile.gems.secondary.includes(s.stat);
+        const wanted = secondaries.includes(s);
         return [biText(s.ru, s.stat), `+${s.cut}`, `+${s.polished}`, `+${s.brilliant}`, `+${s.flawless}`, wanted ? '★ приоритет' : '—'];
       }))]),
     el('h3', { text: 'Редкости камней' }),
@@ -1155,7 +1332,39 @@ function gemsStep(plan) {
   ];
 }
 
-/* ------------------------------ Шаг 6: что дальше ------------------------------ */
+/** Итоговый список «что надеть»: по одной строке на слот, чтобы просто следовать в игре. */
+function readyBuildCard(plan) {
+  const rec = recommendationFor(plan);
+  const lines = GEAR_CELLS.map((cell) => {
+    const e = rec.cells[cell.id];
+    if (!e) return null;
+    if (cell.slot === 'talisman') {
+      const t = talismanById(e.talismanId);
+      return `${cell.ru} (${cell.en}): ${t.ru} (${t.name}) — ${t.stats}`;
+    }
+    if (!e.family) return `${cell.ru} (${cell.en}): пусто (двуручное оружие занимает обе руки)`;
+    const aff = [...e.affixes.prefixes, ...e.affixes.suffixes].map((a) => biText(a.ru, a.name)).join(', ');
+    const db = e.dropBonuses.map((d) => biText(d.ru, d.name)).join(', ');
+    return `${cell.ru} (${cell.en}): ${e.family.ru} (${e.family.name}) — ${e.tierName}, цель Кузницы ${e.forge.text}; камень ${e.gem.family.ru} (${e.gem.family.name}); аффиксы: ${aff || '—'}; Drop Bonus: ${db || '—'}`;
+  }).filter(Boolean);
+
+  const text = [
+    `Готовая сборка IdleArc — ${biText(plan.classRu, plan.className)}, цель «${rec.goalRu}», уровень ${rec.level}, ML ${rec.ml}`,
+    `Стойка: ${rec.stance}. Приоритет статов: ${rec.priority.join(' → ')}.`,
+    ...lines,
+    `Порядок Кузницы: ${rec.forgeOrder.map((x) => `${x.place}) ${x.slotRu} → ${x.forge.text}`).join('; ')}`,
+    `Петы: ${rec.pets}`,
+  ].join('\n');
+
+  return card('Готовая сборка: что надеть и какие камни (можно копировать)', [
+    el('p', { class: 'muted', text: 'Список собран системой под вашу цель — просто повторяйте его в игре. Откройте предметы на странице «Снаряжение», там у каждой карточки есть картинка и объяснение.' }),
+    el('div', { class: 'buylist' }, lines.map((line) => el('div', { class: 'row', text: line }))),
+    el('div', { class: 'actions' }, [
+      copyButton(text, 'Скопировать сборку целиком'),
+      el('button', { class: 'btn', text: 'Показать снаряжение с картинками →', onclick: () => goTo(globalThis.document ? globalThis.document.getElementById('view') : null, 'gear') }),
+    ]),
+  ]);
+}
 
 function nextStep(plan) {
   const statRows = plan.statPriority.map((id, i) => {
@@ -1309,7 +1518,7 @@ export function render(root) {
   else if (page.id === 'forge') root.appendChild(pageCard(page, forgePage(plan, root)));
   else if (page.id === 'gems') root.appendChild(pageCard(page, gemsStep(plan)));
   else if (page.id === 'next') root.appendChild(pageCard(page, nextStep(plan)));
-  else if (page.id === 'build') root.appendChild(pageCard(page, [shareCard(root, plan), saveCard(root, plan)]));
+  else if (page.id === 'build') root.appendChild(pageCard(page, [readyBuildCard(plan), shareCard(root, plan), saveCard(root, plan)]));
   else root.appendChild(pageCard(page, classStep(root, plan)));
 
   root.appendChild(pageFooter(root));
