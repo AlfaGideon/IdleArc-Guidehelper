@@ -1,0 +1,49 @@
+name: Иконки предметов из игры
+
+# Скачивает иконки предметов с CDN игры и коммитит их в репозиторий,
+# чтобы приложение работало офлайн и не зависело от внешних картинок.
+#
+# Запускается автоматически при изменении самого скрипта/воркфлоу,
+# а также вручную (Actions → «Иконки предметов из игры» → Run workflow).
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fetch-item-art.yml'
+      - 'scripts/fetch-art.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Скачать иконки
+        run: node scripts/fetch-art.mjs
+
+      - name: Показать результат
+        run: |
+          echo "Файлов в assets/items: $(ls -1 assets/items | wc -l)"
+          du -sh assets/items || true
+
+      - name: Закоммитить иконки
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A assets src/data/itemImages.js
+          if git diff --cached --quiet; then
+            echo "Нечего коммитить — иконки уже в репозитории."
+            exit 0
+          fi
+          git commit -m "Иконки предметов из игры (Item Codex → Appearance) [skip-art]"
+          git push origin HEAD:${{ github.ref_name }}
