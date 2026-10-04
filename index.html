@@ -7,6 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>IdleArc Guide Helper — планировщик сборок</title>
+<meta name="build" content="2026-10-04.5" />
 <meta name="description" content="Помощник по сборке персонажа в IdleArc (Season 2, патч 1.3.1): классовые навыки, статы, аффиксы, гемы, петы, талисманы." />
 <link rel="stylesheet" href="styles/app.css" />
 </head>
@@ -28,6 +29,8 @@
   </nav>
 </header>
 
+<div id="boot-error" class="boot-error" hidden></div>
+
 <main id="view"></main>
 
 <footer class="foot">
@@ -37,6 +40,52 @@
   Снапшот: <span id="foot-date"></span>. Сборка приложения: <span id="foot-build"></span>.</p>
 </footer>
 
-<script type="module" src="src/app.js?v=2026-10-04.4"></script>
+<script>
+/* Страховка: если модули не загрузились (кэш, прокси, старый браузер), страница не останется пустой. */
+(function () {
+  function build() {
+    var m = document.querySelector('meta[name="build"]');
+    return m ? m.content : 'неизвестно';
+  }
+  function show(html) {
+    var box = document.getElementById('boot-error');
+    if (!box) return;
+    box.hidden = false;
+    box.innerHTML = '<b>Приложение не загрузилось</b><div>' + html + '</div>'
+      + '<div class="boot-actions">HTML-сборка страницы: <code>' + build() + '</code> · ожидается сборка приложения '
+      + '<code>2026-10-04.5</code>'
+      + ' <button class="btn primary" onclick="location.reload(true)">Перезагрузить</button></div>'
+      + '<div class="muted small">Если кнопка не помогает — нажмите Ctrl+Shift+R (жёсткая перезагрузка): браузер мог сохранить старые файлы.</div>';
+  }
+  window.__boot = { ready: false, show: show };
+
+  window.addEventListener('error', function (e) {
+    if (window.__boot.ready) return;
+    var where = e.filename || (e.target && (e.target.src || e.target.href)) || '';
+    show('Ошибка: <code>' + (e.message || 'скрипт не выполнился') + '</code>' + (where ? '<br>Файл: <code>' + where + '</code>' : ''));
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (e) {
+    if (window.__boot.ready) return;
+    var r = e.reason && e.reason.message ? e.reason.message : String(e.reason);
+    show('Ошибка JS: <code>' + r + '</code>');
+  });
+
+  setTimeout(function () {
+    if (window.__boot.ready) return;
+    show('Модуль приложения не запустился за 5 секунд. Скорее всего, браузер или прокси отдал старую копию файлов из кэша.');
+  }, 5000);
+
+  try {
+    fetch('api/build', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
+      if (!info || !info.build || window.__boot.ready) return;
+      if (info.build !== build()) {
+        show('Страница загружена из кэша: HTML-сборка <code>' + build() + '</code>, на сервере <code>' + info.build + '</code>.');
+      }
+    }).catch(function () {});
+  } catch (err) { /* fetch недоступен — не критично */ }
+})();
+</script>
+<script type="module" src="src/app.js"></script>
 </body>
 </html>

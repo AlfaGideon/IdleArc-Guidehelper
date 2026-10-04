@@ -1,14 +1,17 @@
-import { DATA_META as META } from './data/systems.js';
-// ?v= — метка сборки: заставляет браузер и любые промежуточные кэши взять свежие файлы.
-const V = `?v=${META.build}`;
-const planner = await import('./ui/planner.js' + V);
-const calculators = await import('./ui/calculators.js' + V);
-const codex = await import('./ui/codex.js' + V);
-const nuances = await import('./ui/nuances.js' + V);
+import { DATA_META } from './data/systems.js';
+import * as planner from './ui/planner.js';
+import * as calculators from './ui/calculators.js';
+import * as codex from './ui/codex.js';
+import * as nuances from './ui/nuances.js';
 
 const views = { planner, calc: calculators, codex, nuances };
 const root = document.getElementById('view');
 const tabs = document.getElementById('tabs');
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
 
 function activate(tab) {
   const key = views[tab] ? tab : 'planner';
@@ -22,34 +25,32 @@ tabs.addEventListener('click', (e) => {
   if (btn) activate(btn.dataset.tab);
 });
 
-document.getElementById('meta-version').textContent = META.gameVersion;
-document.getElementById('foot-date').textContent = META.verified;
-document.getElementById('meta-build').textContent = META.build;
-document.getElementById('foot-build').textContent = META.build;
+setText('meta-version', DATA_META.gameVersion);
+setText('foot-date', DATA_META.verified);
+setText('meta-build', DATA_META.build);
+setText('foot-build', DATA_META.build);
 
-/** Жёсткое обновление: новый адрес заставляет браузер взять свежие файлы, минуя кэш. */
-function hardReload() {
-  const url = new URL(location.href);
-  url.searchParams.set('b', Date.now().toString(36));
-  location.replace(url.toString());
-}
+const reloadBtn = document.getElementById('reload-btn');
+if (reloadBtn) reloadBtn.addEventListener('click', () => location.reload(true));
 
-document.getElementById('reload-btn').addEventListener('click', hardReload);
-
-// Сверяем метку сборки клиента с сервером: если сервер новее — предлагаем обновиться.
-fetch('api/build?t=' + Date.now(), { cache: 'no-store' })
+// Сверяем метку сборки клиента с сервером: если сервер новее — показываем баннер с кнопкой перезагрузки.
+fetch('api/build', { cache: 'no-store' })
   .then((r) => (r.ok ? r.json() : null))
   .then((info) => {
-    if (!info || !info.build || info.build === META.build) return;
+    if (!info || !info.build || info.build === DATA_META.build) return;
     const banner = document.createElement('div');
     banner.className = 'warnbox stale';
-    banner.innerHTML = `<b>Открыта старая сборка</b> (${META.build}) → на сервере уже <b>${info.build}</b>. `
-      + 'Нажмите «Обновить», чтобы загрузить свежие данные и интерфейс: '
-      + '<button class="btn primary" id="stale-reload">Обновить сейчас</button>';
-    document.getElementById('view').prepend(banner);
-    banner.querySelector('#stale-reload').addEventListener('click', hardReload);
+    banner.innerHTML = '<b>Открыта старая сборка</b> (' + DATA_META.build + ') → на сервере уже <b>' + info.build + '</b>. '
+      + 'Нажмите «Перезагрузить», чтобы загрузить свежие данные: '
+      + '<button class="btn primary" id="stale-reload">Перезагрузить</button>';
+    root.insertBefore(banner, root.firstChild);
+    const btn = banner.querySelector('#stale-reload');
+    if (btn) btn.addEventListener('click', () => location.reload(true));
   })
   .catch(() => {});
 
 activate((location.hash || '#planner').slice(1));
 window.addEventListener('hashchange', () => activate((location.hash || '#planner').slice(1)));
+
+// Сообщаем страховочному скрипту в index.html: модули загрузились и интерфейс отрисован.
+if (window.__boot) window.__boot.ready = true;

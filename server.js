@@ -51,14 +51,38 @@ function safePath(urlPath) {
   return target;
 }
 
+/**
+ * Версионированный путь: /v/<сборка>/src/... отдаётся как /src/...
+ * Благодаря этому каждый релиз получает НОВЫЕ адреса модулей: браузер и любые прокси
+ * не могут отдать смесь старых и новых файлов (это ломало запуск приложения).
+ * Query-строки (?v=) намеренно не используем — они ненадёжны за прокси.
+ */
+const VERSIONED = /^\/v\/[^/]+(\/.*)?$/;
+
+function stripVersion(urlPath) {
+  const m = urlPath.match(VERSIONED);
+  if (!m) return urlPath;
+  return m[1] || '/';
+}
+
+/** index.html отдаётся с подстановкой версионированного пути к точке входа. */
+function htmlWithVersionedEntry(html) {
+  const b = buildId();
+  return html
+    .replace('src="src/app.js"', `src="v/${b}/src/app.js"`)
+    .replace('href="styles/app.css"', `href="v/${b}/styles/app.css"`);
+}
+
 const server = http.createServer((req, res) => {
+  const urlPath = req.url.split('?')[0].split('#')[0];
+
   // Метка сборки для клиента: если она не совпадает с DATA_META.build, интерфейс покажет кнопку обновления.
-  if (req.url.split('?')[0] === '/api/build') {
+  if (urlPath === '/api/build') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...NO_STORE });
     return res.end(JSON.stringify({ build: buildId() }));
   }
 
-  let filePath = safePath(req.url === '/' ? '/index.html' : req.url);
+  let filePath = safePath(stripVersion(urlPath === '/' ? '/index.html' : urlPath));
   if (!filePath) {
     res.writeHead(403, NO_STORE);
     return res.end('Forbidden');
@@ -74,17 +98,18 @@ const server = http.createServer((req, res) => {
             return res.end('404 Not Found');
           }
           res.writeHead(200, { 'Content-Type': MIME['.html'], ...NO_STORE });
-          res.end(html);
+          res.end(htmlWithVersionedEntry(html.toString('utf8')));
         });
         return;
       }
       const ext = path.extname(filePath).toLowerCase();
+      const isHtml = ext === '.html';
       res.writeHead(200, {
         'Content-Type': MIME[ext] || 'application/octet-stream',
         'X-Build': buildId(),
         ...NO_STORE,
       });
-      res.end(data);
+      res.end(isHtml ? htmlWithVersionedEntry(data.toString('utf8')) : data);
     });
   });
 });

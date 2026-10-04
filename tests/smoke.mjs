@@ -326,13 +326,27 @@ check('данные и интерфейс не ссылаются на «вне�
   }
 });
 
-check('метка сборки: DATA_META.build совпадает с ?v= в index.html', () => {
+check('метка сборки и точка входа: index.html без query-строк и со страховкой от пустой страницы', () => {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const systems = fs.readFileSync(path.join(ROOT, 'src/data/systems.js'), 'utf8');
   const build = systems.match(/build:\s*'([^']+)'/)?.[1];
   if (!build) throw new Error('DATA_META.build не найден');
-  if (!html.includes(`src/app.js?v=${build}`)) throw new Error(`index.html ссылается не на сборку ${build}`);
+  if (!html.includes('<meta name="build" content="' + build + '"')) throw new Error('meta build в index.html не совпадает с DATA_META.build');
+  if (html.includes('?v=')) throw new Error('в index.html остались query-строки (?v=) — за прокси они ненадёжны');
+  if (!html.includes('<script type="module" src="src/app.js"></script>')) throw new Error('нет статического подключения src/app.js');
+  if (!html.includes('id="boot-error"') || !html.includes('__boot')) throw new Error('нет страховочного блока на случай, если модули не загрузились');
   if (!html.includes('id="reload-btn"')) throw new Error('в index.html нет кнопки «Обновить»');
+
+  // app.js не должен использовать top-level await и динамические import() с query — именно это ломало запуск
+  const app = fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8');
+  if (/await\s+import\(/.test(app)) throw new Error('в app.js вернулся top-level await import()');
+  if (/import\([^)]*\+/.test(app)) throw new Error('в app.js динамический import со склейкой строк');
+  if (!/window\.__boot\) window\.__boot\.ready = true/.test(app)) throw new Error('app.js не сообщает страховке о готовности');
+
+  // сервер обязан отдавать версионированные пути и подставлять сборку в HTML
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  if (!server.includes('stripVersion')) throw new Error('в server.js нет поддержки версионированных путей /v/<сборка>/');
+  if (!server.includes('htmlWithVersionedEntry')) throw new Error('server.js не подставляет версию в index.html');
 });
 
 /* ---------- Код сборки ---------- */

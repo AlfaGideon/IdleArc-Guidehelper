@@ -168,3 +168,10 @@ b.want, td .want { color: var(--good); }
 .slot-tile b { color: var(--accent); }
 .slot-tile.empty { opacity: .6; border-style: dashed; }
 .slot-tile.empty b { color: var(--muted); }
+
+/* блок диагностики: показывается, если модули приложения не загрузились */
+.boot-error { max-width: 900px; margin: 16px auto; padding: 14px 16px; border: 1px solid var(--bad); border-radius: 10px;
+  background: rgba(255,107,95,.12); color: var(--text); font-size: 14px; line-height: 1.5; }
+.boot-error b { color: var(--bad); }
+.boot-error code { background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px; }
+.boot-actions { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
