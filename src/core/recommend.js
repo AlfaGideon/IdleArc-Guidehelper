@@ -23,6 +23,7 @@ import { profileFor, statPriorityFor, goalGearRules, STAT_TO_AFFIX, GOALS } from
 import { TALISMANS } from '../data/systems.js';
 import { forgeTierInfo, forgeCumulative, forgeStep } from '../data/forge.js';
 import { dropTierAtMl, gemRarityAtMl, socketsAtMl } from './planner.js';
+import { forgeGateAtMl, promotionFromTier } from '../data/biomes.js';
 
 /* ------------------------- словарь статов: что это и зачем ------------------------- */
 
@@ -251,7 +252,8 @@ export function recommendBuild(classId, goal, opts = {}) {
   const profile = profileFor(classId, goal);
   const priority = statPriorityFor(classId, goal);
   const rules = goalGearRules(classId, goal);
-  const dropTier = dropTierAtMl(ml);
+  const dropTier = dropTierAtMl(ml);        // тир ПРЕДМЕТА: что реально падает на вашем ML
+  const forgeGate = forgeGateAtMl(ml);      // тир СЛОТА: до какого тира качается Кузница (гейт — биомы)
   const gemRarity = gemRarityAtMl(ml);
   const sockets = socketsAtMl(ml);
   const mainStat = CLASS_MAIN_STAT[classId] || 'strength';
@@ -292,6 +294,12 @@ export function recommendBuild(classId, goal, opts = {}) {
     // --- украшения: у них нет «класса», только линия атрибутов, поэтому считаем эффект ---
     const isJewelry = ['amulet', 'ring', 'belt'].includes(cell.slot);
     const slotMultPre = SLOT_IMPLICIT_MULT[cell.slot] || 1;
+
+    // Тир слота Кузницы НЕ зависит от предмета: он ограничен вашим биомом (материалы монстров).
+    const forgeTier = forgeGate.tier;
+    const forgeInfo = forgeTierInfo(forgeTier);
+    const targetLevel = forgeInfo.maxLevel;
+    const promotion = promotionFromTier(forgeTier);
 
     /** Оценка украшения: суммарный вклад его атрибутов в приоритеты цели. */
     const jewelryScore = (family) => {
@@ -379,6 +387,15 @@ export function recommendBuild(classId, goal, opts = {}) {
       }));
 
     const why = [];
+    if (chosen) {
+      why.push(`Предмет падает на вашем Monster Level: T${dropTier.tier} ${dropTier.ru} (${dropTier.name}) — около ${dropTier.chance}% дропа. Кузница слота качается до T${forgeTier} и от предмета не зависит: материалы берутся с монстров ${forgeGate.biome ? forgeGate.biome.name : '—'} (ML ${forgeGate.ml}).`);
+      if (forgeGate.next) {
+        why.push(`Следующий тир слота — T${forgeGate.next.tier}: материалы ${forgeGate.next.biome ? forgeGate.next.biome.name : ''} (ML ${forgeGate.next.ml}), осталось ${forgeGate.next.mlLeft} ML.`);
+      }
+      if (promotion) {
+        why.push(`Промоушен слота T${promotion.from} → T${promotion.to}: ${promotion.gold.toLocaleString('ru-RU')} золота, ${promotion.essenceRu} ×1 и материалы: ${promotion.materials.map((m) => `${m[0]} ×${m[1]}`).join(', ')} (успех ${100 - promotion.fail}%).`);
+      }
+    }
     if (chosen && isJewelry) {
       const info = (chosenRecord && chosenRecord.info) || jewelryScore(chosen);
       const attrsText = info.attrs.length === 3
@@ -411,7 +428,6 @@ export function recommendBuild(classId, goal, opts = {}) {
     }
 
     const tierIdx = Math.min(5, Math.max(0, dropTier.tier - 1));
-    const targetLevel = forgeTierInfo(dropTier.tier).maxLevel;
 
     // Аффиксы «искать» — по приоритету цели (то же правило, что в ядре, но с объяснением).
     const wantIds = new Set();
@@ -464,12 +480,21 @@ export function recommendBuild(classId, goal, opts = {}) {
         roll: best.info ? Math.round(best.info.roll) : 0,
       } : null,
       forge: {
-        tier: dropTier.tier,
+        tier: forgeTier,                          // тир СЛОТА по Кузнице (гейт — биомы)
         level: targetLevel,
-        text: `T${dropTier.tier} +${targetLevel}`,
-        cost: forgeCumulative(dropTier.tier, targetLevel),
-        firstStep: forgeStep(dropTier.tier, 0),
+        text: `T${forgeTier} +${targetLevel}`,
+        cost: forgeCumulative(forgeTier, targetLevel),
+        firstStep: forgeStep(forgeTier, 0),
+        affixSlots: forgeInfo.affixSlots,
+        gate: {
+          biome: forgeGate.biome,
+          ml: forgeGate.ml,
+          materials: forgeGate.materials,
+          next: forgeGate.next,
+        },
+        promotion,
       },
+      itemTierInfo: dropTier,                     // тир ПРЕДМЕТА (то, что падает)
       tierInfo: dropTier,
     };
     cells[cell.id] = entry;
@@ -490,6 +515,7 @@ export function recommendBuild(classId, goal, opts = {}) {
       if (e.slot === 'torch' && ml < 50) score = -1; // факела ещё нет в дропе
       const reasons = [];
       if (imp.includes('allSkills')) reasons.push('+All Class Skills поднимает все ваши навыки сразу — самый выгодный слот для вложений.');
+      reasons.push(`Слот качается до T${e.forge.tier} (материалы с монстров ${e.forge.gate.biome ? e.forge.gate.biome.name : '—'}, ML ${e.forge.gate.ml}) — это не зависит от того, какой предмет вам выпал.`);
       if (e.slot === 'mainhand' || e.slot === 'hand2') reasons.push('урон оружия — база, которую множат криты, DD и DH.');
       for (const s of imp.filter((x) => weightOf(x) > 0).sort((a, b) => weightOf(b) - weightOf(a)).slice(0, 2)) {
         const place = priority.indexOf(s);
@@ -518,6 +544,7 @@ export function recommendBuild(classId, goal, opts = {}) {
   return {
     classId, goal, goalRu, ml, level,
     stance: profile.stance,
+    forgeGate,
     priority,
     tierInfo: dropTier,
     gemRarity,

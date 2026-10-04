@@ -21,6 +21,7 @@ import {
 import {
   FORGE_TIERS, FORGE_MAX_RANK, forgeTierInfo, forgeStep, forgeRank, forgeCumulative, AWAKEN_MAX, AWAKEN_NOTE,
 } from '../data/forge.js';
+import { BIOMES, FORGE_GATE, forgeGateAtMl, forgeGateForTier, promotionFromTier, biomeAtMl } from '../data/biomes.js';
 import { planBuild, planToText, encodePlan, decodePlan, nextPointLevel } from '../core/planner.js';
 import { recommendBuild, ATTRIBUTE_EFFECTS, ATTRIBUTE_LABELS, JEWELRY_LINES, statText } from '../core/recommend.js';
 import { el, card, table, kpi, copyButton } from './dom.js';
@@ -648,8 +649,8 @@ function gearStateFor(plan) {
       continue;
     }
 
-    // Тир предмета = тир, который реально падает на этом ML (рекомендация сама догоняет ML).
-    const tier = Math.min(6, Math.max(1, recCell.tier || plan.itemTier.tier));
+    // Тир СЛОТА — по гейту биома (Кузница качает слот и не зависит от выпавшего предмета).
+    const tier = Math.min(6, Math.max(1, (recCell.forge && recCell.forge.tier) || plan.itemTier.tier));
     target.family = recCell.familyId != null ? recCell.familyId : ((cellFamilies(plan, cell)[0] || {}).id || null);
     target.tier = tier;
     target.level = Math.min(forgeTierInfo(tier).maxLevel, Math.max(0, Math.round(Number(target.level) || 0)));
@@ -680,7 +681,10 @@ function cellFront(plan, cell, st, usable) {
     el('div', { class: 'cellname', text: `${label.ru} (${label.en})` }),
     el('div', { class: 'muted small', text: cell.slot === 'talisman'
       ? talismanById(st.talisman).ru + ' (' + talismanById(st.talisman).name + ')'
-      : (usable ? (family ? (st.awaken > 0 ? `${family.name} → Awaken` : (family.tierNames[st.tier - 1] || family.name)) : 'предмет не выбран') : 'занято двуручным') }),
+      : (usable ? (family ? (st.awaken > 0 ? `${family.name} → Awaken` : (family.tierNames[plan.itemTier.tier - 1] || family.name)) : 'предмет не выбран') : 'занято двуручным') }),
+    usable && family
+      ? el('div', { class: 'muted small', text: `предмет падает T${plan.itemTier.tier} · слот качается до T${st.tier}` })
+      : null,
     notYet ? el('div', { class: 'chip warn', text: `дроп с ML ${familyUnlockMl(family)}` }) : null,
     !st.manual && usable ? el('div', { class: 'chip gold', text: 'рекомендовано' }) : null,
   ]);
@@ -711,8 +715,11 @@ function cellBack(plan, cell, st, usable) {
 
   const rank = forgeRank(st.tier, st.level);
   const step = st.level < info.maxLevel ? forgeStep(st.tier, st.level) : null;
-  const tierName = family ? (family.tierNames[st.tier - 1] || family.name) : null;
-  const implicit = family ? (family.implicitTiers[st.tier - 1] || family.implicit) : null;
+  const dropIdx = Math.min(5, Math.max(0, plan.itemTier.tier - 1));
+  const tierName = family ? (family.tierNames[dropIdx] || family.name) : null;
+  const implicit = family ? (family.implicitTiers[dropIdx] || family.implicit) : null;
+  const gate = forgeGateAtMl(plan.ml);
+  const promotion = promotionFromTier(st.tier);
   const awakenName = family && st.awaken > 0 ? FAMILY_AWAKEN[family.id] : null;
   const dropMl = family ? familyUnlockMl(family) : 1;
   const notYet = usable && family && dropMl > plan.ml;
@@ -722,12 +729,14 @@ function cellBack(plan, cell, st, usable) {
     family
       ? el('div', {}, [
         el('b', { text: biText(family.ru, family.name) }),
-        el('div', { class: 'muted small', text: `Тир ${st.tier} ${info.ru} (${info.name}) · ${tierName}` }),
+        el('div', { class: 'muted small', text: `Предмет: T${plan.itemTier.tier} ${plan.itemTier.ru} (${plan.itemTier.name}) · ${tierName}` }),
       ])
       : el('div', { class: 'muted', text: usable ? 'предмет не выбран' : 'занято двуручным оружием' }),
     family ? el('div', { class: 'muted small', text: `Имплисит: ${family.implicit} — ${implicit}` }) : null,
     family ? el('div', { class: 'muted small', text: `Аффиксов от тира: ${info.affixSlots} · камней: ${gems}` }) : null,
-    usable ? el('div', { class: 'muted small', text: `Кузница слота: T${st.tier} +${st.level} из +${info.maxLevel} → ранг ${rank.rank}/100` }) : null,
+    usable ? el('div', { class: 'muted small', text: `Кузница качает СЛОТ: T${st.tier} +${st.level} из +${info.maxLevel} → ранг ${rank.rank}/100 (аффикс-позиций: ${info.affixSlots})` }) : null,
+    usable ? el('div', { class: 'muted small', text: `Тир слота открывается биомами, а не предметом: до T${gate.tier} — материалы с монстров ${gate.biome ? gate.biome.name : '—'} (ML ${gate.ml})${gate.next ? `; следующий T${gate.next.tier} — ${gate.next.biome ? gate.next.biome.name : ''} (ML ${gate.next.ml}, осталось ${gate.next.mlLeft} ML)` : ' — это максимум'}.` }) : null,
+    usable && promotion ? el('div', { class: 'muted small', text: `Промоушен T${promotion.from} → T${promotion.to}: ${fmtNum(promotion.gold)} золота, ${promotion.essenceRu} ×1, материалы: ${promotion.materials.map((m) => `${m[0]} ×${m[1]}`).join(', ')}.` }) : null,
     usable && step ? el('div', { class: 'muted small', text: `Шаг Кузницы: ${fmtNum(step.gold)} золота · ${step.fragments} × ${info.fragmentRu} · успех ${Math.round(step.success * 100)}%` }) : null,
     usable && !step ? el('div', { class: 'muted small', text: 'Тир прокачан полностью — открывается следующий.' }) : null,
     family && st.awaken > 0 && awakenName ? el('div', { class: 'muted small', text: `Awaken ${st.awaken}/${AWAKEN_MAX}: ${awakenName}` }) : null,
@@ -818,6 +827,52 @@ function artPanel(root) {
 }
 
 /** Шаг 4 целиком: экран снаряжения как в игре (силуэт персонажа) + панель Кузницы. */
+/**
+ * Панель биомов: Кузница качает СЛОТ, и потолок прокачки задают биомы (материалы монстров),
+ * а не выпавший предмет. Здесь видно, до какого тира можно качать слот прямо сейчас.
+ */
+function biomePanel(plan, rec) {
+  const gate = rec.forgeGate;
+  const current = forgeGateAtMl(plan.ml);
+  const biome = biomeAtMl(plan.ml);
+
+  const rows = FORGE_GATE.map((g) => {
+    const info = forgeGateForTier(g.tier);
+    const unlocked = g.ml <= plan.ml;
+    return [
+      el('div', {}, [
+        el('b', { text: `T${g.tier} ${forgeTierInfo(g.tier).ru} (${forgeTierInfo(g.tier).name})` }),
+        el('div', { class: 'muted small', text: g.fragmentRu + ' (' + g.fragment + ')' }),
+      ]),
+      el('div', {}, [
+        el('b', { text: info.biome ? biText(info.biome.ru, info.biome.name) : '—' }),
+        el('div', { class: 'muted small', text: `открывается на Monster Level ${g.ml}` }),
+      ]),
+      el('div', { class: 'chips' }, info.materials.map((m) => el('span', { class: 'chip', text: `${m.material} — с ${m.monster}` }))),
+      unlocked
+        ? el('span', { class: 'chip good', text: 'слот можно качать' })
+        : el('span', { class: 'chip warn', text: `ещё ${g.ml - plan.ml} ML` }),
+    ];
+  });
+
+  return el('div', { class: 'branch' }, [
+    el('header', {}, [
+      el('strong', { text: 'Кузница и биомы: до какого тира можно качать слот' }),
+      el('div', { class: 'chips' }, [
+        el('span', { class: 'chip gold', text: `сейчас доступно до T${current.tier}` }),
+        el('span', { class: 'chip', text: `биом: ${biText(biome.ru, biome.name)} (ML ${biome.ml})` }),
+        current.next ? el('span', { class: 'chip warn', text: `T${current.next.tier} откроется на ML ${current.next.ml}` }) : el('span', { class: 'chip good', text: 'все тиры открыты' }),
+      ]),
+    ]),
+    el('p', { class: 'muted small', text: `Главное правило Season 2: Кузница поднимает тир СЛОТА, а не предмета. Тир слота зависит не от того, что вам выпало, а от биомов: чтобы качать слот на тир N, нужны материалы монстров этого биома и золото. Предмет вы носите тот, что падает на вашем ML (сейчас — ${plan.itemTier.tierLabel} ${plan.itemTier.ru}, ${plan.itemTier.chance}%), а слот при этом можно вести до T${current.tier}.` }),
+    el('div', { class: 'scroll' }, [table(
+      ['Тир слота', 'Биом-гейт', 'Материалы монстров этого биома', 'Статус на ML ' + plan.ml],
+      rows,
+    )]),
+    el('p', { class: 'muted small', text: 'Фрагменты (Iron / Steel / Mithril / Adamantine / Celestial / Infernal) и материалы монстров — из официальных таблиц Item Codex → Upgrade Costs; список биомов и монстров — с официальной вики (страницы биомов).' }),
+  ]);
+}
+
 /**
  * Линия украшений: по умолчанию система считает лучший вариант под цель,
  * но игрок может зафиксировать свою линию (Воина / Охотника / Учёного / Авантюриста).
@@ -1010,6 +1065,7 @@ function gearStep(plan, root) {
       el('b', { text: 'Что важно про тир и «+N»' }),
       el('p', { text: `В карточке слота стоит тир Кузницы и шаги «+N» — это прогресс СЛОТА, а не выпавшего предмета. Кузница качает слот отдельно: подробности, цены шагов и что качать первым — на странице «${PAGES[4].n}. ${PAGES[4].short}».` }),
     ]),
+    biomePanel(plan, rec),
     jewelryPanel(plan, root, rec),
     el('h3', { text: 'Что надеть: рекомендация системы по каждому слоту' }),
     el('div', { class: 'scroll' }, [table(
@@ -1099,7 +1155,12 @@ function forgeCard(plan, root, gear, cell) {
         ...families.map((f) => el('option', { value: f.id, selected: f.id === st.family ? 'selected' : null }, [f.name])),
       ]),
       el('select', { onchange: (e) => setTier(Number(e.target.value)) },
-        FORGE_TIERS.map((t) => el('option', { value: String(t.tier), selected: t.tier === st.tier ? 'selected' : null }, [`T${t.tier} ${t.ru}`]))),
+        FORGE_TIERS.map((t) => {
+          const gateInfo = FORGE_GATE.find((g) => g.tier === t.tier);
+          const locked = gateInfo && gateInfo.ml > plan.ml;
+          return el('option', { value: String(t.tier), selected: t.tier === st.tier ? 'selected' : null },
+            [`T${t.tier} ${t.ru}${locked ? ` — материалы с ML ${gateInfo.ml}` : ''}`]);
+        })),
       el('select', { onchange: (e) => setLevel(Number(e.target.value)) }, levelOptions),
       el('select', { onchange: (e) => { touch(); st.awaken = Number(e.target.value); render(root); } },
         [0, 1, 2, 3, 4, 5].map((r) => el('option', { value: String(r), selected: r === st.awaken ? 'selected' : null }, [r === 0 ? 'Awaken 0' : `Awaken ${r}`]))),
@@ -1119,6 +1180,13 @@ function forgeCard(plan, root, gear, cell) {
     promoteStep
       ? el('div', { class: 'muted small', text: `Промоушен в T${st.tier + 1}: первый шаг — ${fmtNum(promoteStep.gold)} золота и ${promoteStep.fragments} × ${forgeTierInfo(st.tier + 1).fragmentRu}.` })
       : null,
+    (() => {
+      const gate = forgeGateAtMl(plan.ml);
+      const tierGate = FORGE_GATE.find((g) => g.tier === st.tier);
+      return el('div', { class: 'muted small', text: tierGate
+        ? `Тир слота открыт биомом ${forgeGateForTier(st.tier).biome ? forgeGateForTier(st.tier).biome.name : '—'} (ML ${tierGate.ml}); сейчас доступно до T${gate.tier}${gate.next ? `, дальше T${gate.next.tier} на ML ${gate.next.ml}` : ''}.`
+        : `Сейчас доступно до T${gate.tier}.` });
+    })(),
     (() => {
       const rec = recommendationFor(plan).cells[cell.id];
       if (!rec || !rec.family) return null;
@@ -1203,6 +1271,9 @@ function forgeOrderBlock(plan, rec) {
     el('span', { text: `${x.family.ru} (${x.family.name}) → ${x.forge.text}` }),
     el('span', { class: 'muted small', text: x.reasons.join(' ') }),
     el('span', { class: 'chip', text: `полная прокачка тира: ${fmtNum(x.forge.cost.gold)} золота · ${fmtNum(x.forge.cost.fragments)} фрагм.` }),
+    x.forge.promotion
+      ? el('span', { class: 'chip warn', text: `промоушен → T${x.forge.promotion.to}: ${fmtNum(x.forge.promotion.gold)} золота, ${x.forge.promotion.essenceRu} ×1, ${x.forge.promotion.materials.map((m) => `${m[0]} ×${m[1]}`).join(', ')}` })
+      : null,
   ])));
 }
 
@@ -1252,6 +1323,11 @@ function forgePage(plan, root) {
 
   return [
     el('h3', { text: 'Кузница: прогресс по слотам' }),
+    el('div', { class: 'infobox' }, [
+      el('b', { text: `Кузница качает слот, и её потолок задают биомы — не предметы` }),
+      el('p', { text: `На ML ${plan.ml} слот можно вести до T${rec.forgeGate.tier}: материалы берутся с монстров ${rec.forgeGate.biome ? biText(rec.forgeGate.biome.ru, rec.forgeGate.biome.name) : '—'} (ML ${rec.forgeGate.ml}). Предмет при этом вы носите тот, который падает на вашем ML (${plan.itemTier.tierLabel} ${plan.itemTier.ru}, ${plan.itemTier.chance}%) — тир слота и тир предмета независимы.${rec.forgeGate.next ? ` Следующий тир слота — T${rec.forgeGate.next.tier}: материалы ${rec.forgeGate.next.biome ? rec.forgeGate.next.biome.name : ''} (ML ${rec.forgeGate.next.ml}, осталось ${rec.forgeGate.next.mlLeft} ML).` : ''}` }),
+      el('div', { class: 'chips' }, rec.forgeGate.materials.map((m) => el('span', { class: 'chip', text: `${m.material} — с ${m.monster}` }))),
+    ]),
     el('div', { class: 'kpi' }, [
       el('div', { class: 'k' }, [el('b', { text: String(cells.length) }), el('span', { text: 'слотов в Кузнице' })]),
       el('div', { class: 'k' }, [el('b', { text: `${rankTotal} / ${rankMax}` }), el('span', { text: 'суммарный ранг' })]),

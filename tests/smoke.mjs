@@ -159,6 +159,7 @@ const calc = await import(src('core/calc.js'));
 const items = await import(src('data/items.js'));
 const forge = await import(src('data/forge.js'));
 const recmod = await import(src('core/recommend.js'));
+const biomes = await import(src('data/biomes.js'));
 const art = await import(src('ui/itemArt.js'));
 const store = await import(src('ui/store.js'));
 const artUi = await import(src('ui/art.js'));
@@ -1043,7 +1044,7 @@ check('страницы: на экране одна страница, а не в
     total += counts[id];
   }
   const biggest = Math.max(...Object.values(counts));
-  if (biggest > 1000) throw new Error('страница слишком тяжёлая: ' + biggest + ' узлов');
+  if (biggest > 1250) throw new Error('страница слишком тяжёлая: ' + biggest + ' узлов');
   if (total < biggest * 2.5) throw new Error('страницы не разделены: всего ' + total + ', максимум ' + biggest);
   // на каждой странице есть своя навигация и переходы
   st.page = 'gems';
@@ -1362,7 +1363,7 @@ check('украшения: система не навязывает «воинс
   // игрок может зафиксировать линию вручную
   const forced = rec('druid', 'pets', { level: 80, ml: 200, jewelryLine: 'warriors' });
   if (forced.cells.ring1.family.id !== 'warriors_ring') throw new Error('ручной выбор линии не применён: ' + forced.cells.ring1.family.id);
-  if (!forced.cells.ring1.why[0].includes('вручную')) throw new Error('нет пометки, что линия выбрана вручную');
+  if (!forced.cells.ring1.why.join(' ').includes('вручную')) throw new Error('нет пометки, что линия выбрана вручную');
 });
 
 check('украшения: на странице снаряжения есть выбор линии и таблица атрибутов', () => {
@@ -1384,6 +1385,80 @@ check('украшения: на странице снаряжения есть �
   const cls = st.gear.druid;
   if (!cls.amulet.family.startsWith('rangers')) throw new Error('амулет не сменился на линию охотника: ' + cls.amulet.family);
   st.jewelryLine = 'auto'; st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.gear = {}; st.page = 'class';
+});
+
+check('биомы: тир слота качается по биомам, а не по выпавшему предмету', () => {
+  const gate = biomes.forgeGateAtMl;
+  // Официальные правила: T5 доступно с ML 65 (Shadow Realm), T6 — с ML 90 (Infernal Pits)
+  if (gate(1).tier !== 1) throw new Error('на старте должен быть доступен только T1, а не T' + gate(1).tier);
+  if (gate(30).tier !== 3) throw new Error('на ML 30 ожидается T3, а не T' + gate(30).tier);
+  if (gate(45).tier !== 4) throw new Error('на ML 45 ожидается T4 (Frozen Peaks), а не T' + gate(45).tier);
+  if (gate(65).tier !== 5) throw new Error('на ML 65 ожидается T5 (Shadow Realm), а не T' + gate(65).tier);
+  if (gate(90).tier !== 6) throw new Error('на ML 90 ожидается T6 (Infernal Pits), а не T' + gate(90).tier);
+  if (gate(65).biome.name !== 'Shadow Realm') throw new Error('биом T5 должен быть Shadow Realm: ' + gate(65).biome.name);
+  if (gate(65).next.tier !== 6 || gate(65).next.ml !== 90) throw new Error('следующий тир на ML 65 — T6 с ML 90');
+  // материалы берутся с монстров биома
+  const mats = gate(65).materials.map((m) => m.material);
+  if (!mats.includes('Void Core') || !mats.includes('Wisp Fragment')) throw new Error('материалы Shadow Realm не подхвачены: ' + mats.join(', '));
+  // промоушен тира — официальная цена
+  const promo = biomes.promotionFromTier(4);
+  if (!promo || promo.gold !== 1125000 || promo.essence !== 'Legendary Essence') throw new Error('промоушен T4→T5 неверный');
+  if (!promo.materials.some((m) => m[0] === 'Dragon Frost' && m[1] === 18)) throw new Error('материалы промоушена T4→T5 неверные');
+});
+
+check('рекомендация: предмет и слот Кузницы считаются раздельно (как в Season 2)', () => {
+  const rec = recmod.recommendBuild;
+  const r = rec('druid', 'pets', { level: 65, ml: 65 });
+  // предмет — то, что падает на ML: T3 Rare; слот — по биомам: T5
+  if (r.tierInfo.tier !== 3) throw new Error('на ML 65 основной дроп — T3, а не T' + r.tierInfo.tier);
+  if (r.forgeGate.tier !== 5) throw new Error('слот на ML 65 качается до T5, а не до T' + r.forgeGate.tier);
+  const e = r.cells.mainhand;
+  if (e.forge.tier !== 5) throw new Error('рекомендация слота оружия не учла гейт биома: T' + e.forge.tier);
+  if (e.itemTierInfo.tier !== 3) throw new Error('тир предмета в рекомендации неверный: T' + e.itemTierInfo.tier);
+  const why = e.why.join(' ');
+  if (!why.includes('от предмета не зависит')) throw new Error('нет объяснения, что слот не зависит от предмета');
+  if (!why.includes('Shadow Realm')) throw new Error('нет упоминания биома-гейта (Shadow Realm)');
+  if (!why.includes('Промоушен')) throw new Error('нет промоушена слота с ценой');
+  // порядок Кузницы тоже про слот, а не про предмет
+  if (!r.forgeOrder[0].reasons.join(' ').includes('не зависит от того, какой предмет')) throw new Error('порядок Кузницы не объясняет гейт биома');
+  // на разных ML потолок слота растёт независимо от дропа
+  const low = rec('druid', 'pets', { level: 30, ml: 30 });
+  if (low.forgeGate.tier !== 3) throw new Error('на ML 30 слот должен качаться до T3');
+  if (low.tierInfo.tier === low.forgeGate.tier) throw new Error('тир предмета и тир слота совпали — проверка потеряла смысл');
+});
+
+check('интерфейс: на снаряжении и в Кузнице видно правило «слот по биомам, предмет по дропу»', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'druid'; st.goal = 'pets'; st.level = 65; st.ml = 65; st.gear = {}; st.jewelryLine = 'auto';
+  st.page = 'gear';
+  const root = new El('main');
+  views.planner.render(root);
+  const gearText = textOf(root);
+  for (const needle of ['Кузница и биомы: до какого тира можно качать слот', 'Shadow Realm', 'слот можно качать', 'предмет падает T3', 'слот качается до T5']) {
+    if (!gearText.includes(needle)) throw new Error(`на странице снаряжения нет «${needle}»`);
+  }
+  // на карточке видно и тир слота, и тир предмета
+  const cards = findByClass(root, 'flipcard');
+  if (!cards.length) throw new Error('нет карточек предметов');
+  const back = cards[0].children[0].children[1];
+  const backText = textOf(back);
+  if (!backText.includes('Кузница качает СЛОТ')) throw new Error('на обороте нет пояснения про слот');
+  if (!backText.includes('открывается биомами')) throw new Error('на обороте нет гейта биомов');
+
+  st.page = 'forge';
+  const forgeRoot = new El('main');
+  views.planner.render(forgeRoot);
+  const forgeText = textOf(forgeRoot);
+  for (const needle of ['Кузница качает слот, и её потолок задают биомы', 'Void Core', 'материалы с ML 90', 'промоушен → T6']) {
+    if (!forgeText.includes(needle)) throw new Error(`на странице Кузницы нет «${needle}»`);
+  }
+  // тир выше гейта помечен как заблокированный по ML
+  const selects = findAll(forgeRoot, (n) => n.tagName === 'SELECT');
+  const tierOptions = (selects[1] || { children: [] }).children || [];
+  const t6 = tierOptions.find((o) => o.attrs && o.attrs.value === '6');
+  if (!t6 || !textOf(t6).includes('ML 90')) throw new Error('вариант T6 не помечен гейтом ML 90');
+
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.gear = {}; st.page = 'class';
 });
 
 await Promise.all(pending);
