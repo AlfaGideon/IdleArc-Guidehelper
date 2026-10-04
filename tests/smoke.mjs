@@ -121,19 +121,80 @@ for (const [name, view] of Object.entries(views)) {
   });
 }
 
-/** Собрать весь текст отрисованного дерева — по нему проверяем, что нужные блоки реально есть. */
+/**
+ * Собрать весь текст отрисованного дерева — как это сделал бы браузер (textContent).
+ * Соседние узлы склеиваются БЕЗ разделителей: подписи вида «Русское (English)» часто
+ * собираются из двух узлов, и именно так они выглядят на экране.
+ */
 function textOf(node, acc = []) {
   if (!node || typeof node !== 'object') return acc;
   if (node.nodeType === 3) { acc.push(String(node.textContent)); return acc; }
   if (node._text) acc.push(String(node._text));
   for (const c of node.children || []) textOf(c, acc);
-  return acc;
+  return acc.join('');
 }
+
+check('гайд: интерфейс собран в 6 шагов и двуязычен (Русское (English))', () => {
+  const root = new El('main');
+  views.planner.render(root);
+  const text = textOf(root);
+  for (let n = 1; n <= 6; n++) if (!text.includes(`Шаг ${n}`)) throw new Error(`нет «Шаг ${n}»`);
+  for (const needle of ['Гайд: как собрать персонажа', 'Уровень персонажа', 'Monster Level (ML)', 'План действий прямо сейчас']) {
+    if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
+  }
+  // двуязычные подписи: русское рядом с игровым английским
+  const pairs = [
+    ['Могучие удары', 'Mighty Strikes'],
+    ['Основная рука', 'Main Hand'],
+    ['Вторая рука', 'Off Hand'],
+    ['Воинский меч', 'Broken Sword'],
+    ['Гранат', 'Garnet'],
+    ['Необычный', 'Uncommon'],
+  ];
+  for (const [ru, en] of pairs) {
+    if (!text.includes(ru)) throw new Error(`нет русской подписи «${ru}»`);
+    if (!text.includes(en)) throw new Error(`нет английской подписи «${en}»`);
+    if (!text.includes(`${ru} (${en}`) && !text.includes(`${ru} (${en})`) && !new RegExp(`${ru}\\s*${en}`).test(text)) {
+      throw new Error(`нет пары «${ru} (${en})»`);
+    }
+  }
+});
+
+check('персонаж и Monster Level независимы', () => {
+  const base = core.planBuild({ classId: 'warrior', level: 60, goal: 'progress', ml: 10 });
+  const highMl = core.planBuild({ classId: 'warrior', level: 60, goal: 'progress', ml: 200 });
+  const highChar = core.planBuild({ classId: 'warrior', level: 120, goal: 'progress', ml: 10 });
+
+  // ML меняет предметы/камни/сокеты, но не очки навыков
+  if (base.points.available !== highMl.points.available) throw new Error('ML не должен влиять на классовые очки');
+  if (highMl.itemTier.tier <= base.itemTier.tier) throw new Error('с ростом ML тир предметов должен расти');
+  if (highMl.sockets.count <= base.sockets.count) throw new Error('с ростом ML должно быть больше сокетов');
+  if (base.gemRarity.id === highMl.gemRarity.id) throw new Error('с ростом ML должна меняться доступная редкость гемов');
+  if (JSON.stringify(base.allocations) !== JSON.stringify(highMl.allocations)) throw new Error('ML не должен менять распределение очков');
+  if (base.gear.slots.find((s) => s.slot === 'torch').primary) throw new Error('Torch не должен появляться раньше ML 50');
+  if (!highMl.gear.slots.find((s) => s.slot === 'torch').primary) throw new Error('после ML 50 Torch должен быть в слоте');
+
+  // Уровень персонажа меняет очки, но не предметы
+  if (highChar.points.available <= base.points.available) throw new Error('уровень персонажа должен давать больше очков');
+  if (highChar.itemTier.tier !== base.itemTier.tier) throw new Error('уровень персонажа не должен менять тир предметов');
+  if (highChar.sockets.count !== base.sockets.count) throw new Error('уровень персонажа не должен менять сокеты');
+  if (highChar.gear.slots.find((s) => s.slot === 'mainhand').primary.name !== base.gear.slots.find((s) => s.slot === 'mainhand').primary.name) {
+    throw new Error('уровень персонажа не должен менять доступное оружие');
+  }
+  if (core.nextPointLevel(30) !== 31 || core.nextPointLevel(31) !== 34) throw new Error('nextPointLevel считает неверно');
+});
+
+check('двуручное оружие и Torch появляются по ML, а не по уровню персонажа', () => {
+  const low = core.planBuild({ classId: 'warrior', level: 900, goal: 'boss', ml: 10 });
+  const enough = core.planBuild({ classId: 'warrior', level: 1, goal: 'boss', ml: 60 });
+  if (low.gear.slots.find((s) => s.slot === 'mainhand').primary.hand === '2H') throw new Error('двуручка не должна предлагаться до ML 25');
+  if (enough.gear.slots.find((s) => s.slot === 'mainhand').primary.hand !== '2H') throw new Error('на ML 60 босс-билд должен советовать двуручку');
+});
 
 check('планировщик: на экране есть блоки распределения, +All, гемов и экипировки', () => {
   const root = new El('main');
   views.planner.render(root);
-  const text = textOf(root).join('\n');
+  const text = textOf(root);
   const must = [
     'Классовые навыки — распределение',
     'Почему очки распределены именно так',
@@ -163,10 +224,10 @@ check('планировщик: рендерится для всех 5 класс
     for (const goal of ['progress', 'farm', 'boss', 'pets', 'retaliation']) {
       for (const lvl of [1, 45, 200]) {
         try {
-          st.classId = cls.id; st.goal = goal; st.level = lvl; st.plusAll = 3; st.manual = null; st.mode = 'auto';
+          st.classId = cls.id; st.goal = goal; st.level = lvl; st.ml = lvl; st.plusAll = 3; st.manual = null; st.mode = 'auto';
           const root = new El('main');
           views.planner.render(root);
-          const text = textOf(root).join('\n');
+          const text = textOf(root);
           if (!text.includes('Скелет персонажа')) problems.push(`${cls.id}/${goal}/${lvl}: нет скелета экипировки`);
           if (!text.includes('лучшие выбор') && !text.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
         } catch (e) {
@@ -175,7 +236,7 @@ check('планировщик: рендерится для всех 5 класс
       }
     }
   }
-  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.plusAll = 0; st.manual = null; st.mode = 'auto';
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.plusAll = 0; st.manual = null; st.mode = 'auto';
   if (problems.length) throw new Error(problems.slice(0, 3).join(' | '));
 });
 
@@ -351,10 +412,15 @@ check('метка сборки и точка входа: index.html без query
 
 /* ---------- Код сборки ---------- */
 check('код сборки кодируется и декодируется вместе с ручным распределением', () => {
-  const plan = core.planBuild({ classId: 'rogue', level: 45, goal: 'farm' });
+  const plan = core.planBuild({ classId: 'rogue', level: 45, goal: 'farm', ml: 90 });
   const code = core.encodePlan(plan, 3);
   const back = core.decodePlan(code);
-  if (back.classId !== 'rogue' || back.level !== 45 || back.goal !== 'farm' || back.plusAll !== 3) throw new Error('round-trip не совпал');
+  if (back.classId !== 'rogue' || back.level !== 45 || back.ml !== 90 || back.goal !== 'farm' || back.plusAll !== 3) throw new Error('round-trip не совпал');
+
+  // старые коды (v2 без ML) должны читаться: ML = уровень персонажа
+  const legacy = Buffer.from(JSON.stringify({ v: 2, c: 'mage', l: 30, g: 'boss', p: 0, a: {} })).toString('base64').replace(/=+$/, '');
+  const old = core.decodePlan(legacy);
+  if (old.ml !== 30) throw new Error('старый код без ML не читается');
   if (JSON.stringify(back.allocations) !== JSON.stringify(plan.allocations)) throw new Error('распределение потерялось');
 });
 

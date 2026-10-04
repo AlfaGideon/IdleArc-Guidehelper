@@ -15,7 +15,8 @@ import {
 import { profileFor, weightsFor, statPriorityFor, GOALS, goalGearRules, STAT_TO_AFFIX } from '../data/builds.js';
 import {
   AFFIXES, DROP_BONUSES, DROP_BONUS_SLOT_CATEGORIES, GEAR_FAMILIES, SLOT_ORDER, SLOT_RU, SLOT_GEM_REGION,
-  GEM_FAMILIES, familyById,
+  GEM_FAMILIES, GEM_RARITY, GEM_DROP_TABLE, GEM_SOCKET_UNLOCKS, DROP_TIER_TABLE, RARITY,
+  familyById, familyUnlockMl,
 } from '../data/items.js';
 
 /* ----------------------------- 1. Распределение очков ----------------------------- */
@@ -276,6 +277,53 @@ export function skillBonuses(classId, allocations = {}, plusAll = 0) {
   return { totals, withoutPlus, plusAll, details, cappedByPlus, gained };
 }
 
+/* -------------------- 0. Monster Level: что падает и что открыто -------------------- */
+
+const RARITY_KEYS = ['normal', 'uncommon', 'rare', 'epic', 'legendary', 'infernal'];
+
+/**
+ * Что реально падает на этом Monster Level: строка таблицы дропа + самый вероятный тир предмета.
+ * ML — отдельная величина: она НЕ влияет на классовые очки (их даёт уровень персонажа).
+ */
+export function dropTierAtMl(ml) {
+  const level = Math.max(1, Math.floor(ml || 1));
+  const row = DROP_TIER_TABLE.find((r) => level <= r.upTo) || DROP_TIER_TABLE[DROP_TIER_TABLE.length - 1];
+  const probs = RARITY_KEYS.map((key, i) => ({ key, tier: i + 1, chance: row[key] || 0 }));
+  const best = probs.reduce((a, b) => (b.chance > a.chance ? b : a));
+  const meta = RARITY[best.tier - 1];
+  return {
+    row, tier: best.tier, key: best.key, chance: best.chance,
+    tierLabel: meta.tier, ru: meta.ru, name: meta.name, color: meta.color,
+    affixes: meta.affixes, mult: meta.mult,
+    probabilities: probs.filter((p) => p.chance > 0),
+  };
+}
+
+/** Лучшая редкость гема, которая реально падает на этом ML. */
+export function gemRarityAtMl(ml) {
+  const level = Math.max(1, Math.floor(ml || 1));
+  const rows = GEM_DROP_TABLE.filter((r) => level >= (parseInt(String(r.ml), 10) || 0));
+  const row = rows[rows.length - 1] || GEM_DROP_TABLE[0];
+  const order = ['brilliant', 'polished', 'cut', 'rough'];
+  const key = order.find((k) => (row[k] || 0) > 0) || 'rough';
+  const meta = GEM_RARITY.find((g) => g.id === key) || GEM_RARITY[0];
+  return { row, id: meta.id, name: meta.name, ru: meta.ru, mult: meta.mult, secondary: meta.secondary, chance: row[key] };
+}
+
+/** Сколько сокетов уже можно открыть на этом ML и когда откроется следующий. */
+export function socketsAtMl(ml) {
+  const level = Math.max(1, Math.floor(ml || 1));
+  const unlocked = GEM_SOCKET_UNLOCKS.filter((s) => level >= s.ml);
+  const next = GEM_SOCKET_UNLOCKS.find((s) => level < s.ml) || null;
+  return { count: unlocked.length, unlocked, next };
+}
+
+/** Уровень персонажа, на котором дадут следующий классовый очок (1 очко за уровень + 1 каждые 3). */
+export function nextPointLevel(level) {
+  const lvl = Math.max(1, Math.floor(level || 1));
+  return lvl + (3 - ((lvl - 1) % 3));
+}
+
 /* --------------------------------- 3. Предметы --------------------------------- */
 
 function gemFamilyFor(region, classId, gemsCfg) {
@@ -330,11 +378,19 @@ function familyReason(family, goal, slot) {
   return '';
 }
 
-export function buildGearPlan(classId, goal, level = 1) {
+export function buildGearPlan(classId, goal, opts = {}) {
   const cls = classById(classId);
   const profile = profileFor(classId, goal);
   const priority = statPriorityFor(classId, goal);
   const rules = goalGearRules(classId, goal);
+
+  // Уровень персонажа и Monster Level — независимые параметры:
+  // персонаж даёт очки навыков, ML определяет, что падает и что вообще доступно.
+  const ml = Math.max(1, Math.floor(opts.ml ?? opts.level ?? 1));
+  const charLevel = Math.max(1, Math.floor(opts.level ?? ml));
+  const tierInfo = dropTierAtMl(ml);
+  const gemInfo = gemRarityAtMl(ml);
+  const sockets = socketsAtMl(ml);
 
   const slots = SLOT_ORDER.map((slot) => {
     const ids = (rules[slot] || []).filter((id) => {
@@ -347,25 +403,48 @@ export function buildGearPlan(classId, goal, level = 1) {
       return f.slot === slot;
     });
     const families = ids.map((id) => familyById(id)).filter(Boolean);
-    const primary = families[0] || null;
-    const alternatives = families.slice(1).filter((f) => !f.unlock || level >= (parseInt(String(f.unlock).replace(/\D+/g, ''), 10) || 0));
+    const available = families.filter((f) => familyUnlockMl(f) <= ml);
+    const primary = available[0] || families[0] || null;
     const region = SLOT_GEM_REGION[slot];
     const gemFamily = gemFamilyFor(region, classId, profile.gems);
+    const tierIdx = Math.min(5, Math.max(0, tierInfo.tier - 1));
+
     return {
-      slot, slotRu: SLOT_RU[slot], primary, alternatives,
-      locked: families.slice(1).filter((f) => f.unlock && level < (parseInt(String(f.unlock).replace(/\D+/g, ''), 10) || 0)),
+      slot, slotRu: SLOT_RU[slot], primary,
+      alternatives: available.slice(1),
+      locked: families.filter((f) => familyUnlockMl(f) > ml),
       reason: primary ? familyReason(primary, goal, slot) : '',
       affixes: recommendAffixes(slot, classId, priority),
       dropBonuses: recommendDropBonuses(slot, profile.dropBonuses),
+      ml, charLevel,
+      tierInfo,
+      implicitNow: primary ? primary.implicitTiers[tierIdx] : null,
+      tierNameNow: primary ? (primary.tierNames[tierIdx] || primary.name) : null,
+      lockedAtMl: primary ? familyUnlockMl(primary) > ml : false,
+      unlockMl: primary ? familyUnlockMl(primary) : 1,
       gem: {
         family: gemFamily,
         region,
         baseValue: gemFamily.slots[region],
         secondary: profile.gems.secondary,
-        rarity: level >= 160 ? 'Flawless' : level >= 115 ? 'Brilliant' : level >= 65 ? 'Polished' : 'Cut',
+        rarity: gemInfo.name,
+        rarityRu: gemInfo.ru,
+        rarityMult: gemInfo.mult,
+        secondaryCount: gemInfo.secondary,
+        sockets,
       },
     };
   });
+
+  // Torch — отдельный слот: падает только с ML 50.
+  const torch = slots.find((s) => s.slot === 'torch');
+  if (torch && ml < 50) {
+    torch.primary = null;
+    torch.alternatives = [];
+    torch.implicitNow = null;
+    torch.tierNameNow = null;
+    torch.note = 'Torch появляется в дропе с ML 50 — до этого слот пустой. Как только выпадет, обязательно ставьте его: это главный источник +All Class Skills.';
+  }
 
   // Двуручное оружие занимает обе руки: слот оффхенда остаётся пустым.
   const main = slots.find((s) => s.slot === 'mainhand');
@@ -373,22 +452,26 @@ export function buildGearPlan(classId, goal, level = 1) {
   if (off) {
     if (classId === 'druid') {
       off.primary = null; off.alternatives = []; off.locked = [];
+      off.implicitNow = null; off.tierNameNow = null;
       off.note = 'Оффхенд пуст: Gnarled Stick — двуручное оружие друида.';
     } else if (main?.primary?.hand === '2H') {
+      const alt = off.alternatives.map((a) => `${a.ru} (${a.name}) — ${a.implicit}`).join(', ');
       off.primary = null;
-      const alt = off.alternatives.map((a) => `${a.name} (${a.implicit})`).join(', ');
-      off.note = `Оффхенд пуст: ${main.primary.name} — двуручное оружие, оно занимает обе руки. Альтернатива — одноручное оружие + оффхенд: ${alt}.`;
+      off.implicitNow = null; off.tierNameNow = null;
+      off.note = `Оффхенд пуст: ${main.primary.ru} (${main.primary.name}) — двуручное оружие, оно занимает обе руки. Альтернатива — одноручное оружие + оффхенд: ${alt}.`;
       off.alternatives = [];
     } else if (off.primary) {
-      off.note = classId === 'rogue' ? 'Второе оружие: его имплисит (Double Hit или крит) работает так же, как в основной руке.' : '';
+      off.note = classId === 'rogue'
+        ? 'Второе оружие: его имплисит (Double Hit или крит) работает так же, как в основной руке.'
+        : '';
     }
   }
 
-  return { slots, class: cls, profile, priority };
+  return { slots, class: cls, profile, priority, ml, charLevel, tierInfo, gemInfo, sockets };
 }
 
-export function buildGemPlan(classId, goal, level = 1) {
-  const gear = buildGearPlan(classId, goal, level);
+export function buildGemPlan(classId, goal, opts = {}) {
+  const gear = buildGearPlan(classId, goal, opts);
   const byRegion = {};
   for (const s of gear.slots) {
     const r = s.gem.region;
@@ -398,15 +481,57 @@ export function buildGemPlan(classId, goal, level = 1) {
   return { byRegion, secondary: gear.profile.gems.secondary, slots: gear.slots };
 }
 
+/* --------------------------- 6. Что делать дальше (гайд) --------------------------- */
+
+/**
+ * Пошаговый список действий под текущие уровень персонажа, Monster Level и цель.
+ * Это шаг 6 интерфейса-гайда: конкретные следующие шаги, а не абстрактные советы.
+ */
+function buildTodo({ cls, classId, goal, level, ml, pointsAvailable, itemTier, sockets, profile }) {
+  const out = [];
+  out.push({
+    title: 'Персонаж',
+    text: `Уровень ${level}: доступно ${pointsAvailable} классовых очков. Следующий очок дадут на уровне ${nextPointLevel(level)}.`,
+  });
+  out.push({
+    title: 'Monster Level',
+    text: ml < 20
+      ? `ML ${ml}: гемы и первый сокет открываются на ML 20 — поднимите ML, потом вставляйте камни.`
+      : `ML ${ml}: чаще всего падает ${itemTier.ru} (${itemTier.name}, ${itemTier.tierLabel}) — около ${itemTier.chance}% дропа, аффиксов: ${itemTier.affixes}. Сокетов можно открыть: ${sockets.count}${sockets.next ? `, следующий — на ML ${sockets.next.ml}` : ' (максимум)'}.`,
+  });
+  if (ml < 25) out.push({ title: 'ML 25', text: 'Откроются двуручное оружие, когти Rogue и сайдгрейды брони — план экипировки обновится сам.' });
+  if (ml < 50) out.push({ title: 'ML 50', text: 'Появится Torch — отдельный слот с +All Class Skills, который поднимает эффективные ранги всех навыков.' });
+  if (ml < 65) out.push({ title: 'ML 65', text: 'Второй сокет и гемы Polished — держите камни во всех открытых сокетах.' });
+  if (ml < 115) out.push({ title: 'ML 115', text: 'Третий сокет и гемы Brilliant (2 вторичных стата) — с этого ML реролл вторичек уже имеет смысл.' });
+  if (ml < 160) out.push({ title: 'ML 160', text: 'Четвёртый сокет и гемы Flawless (3 вторички) — дроп-only, фьюзом не получить.' });
+  if (ml < 260) out.push({ title: 'ML 260', text: 'Появятся предметы T6 Infernal и бонусы дропа T7–T9 (Gilded/Radiant/Mythic).' });
+
+  const goalTodo = {
+    progress: 'Прогресс: держите баланс урона и выживаемости; когда снижение урона близко к капу 95%, перекладывайте статы в урон.',
+    farm: "Фарм: на броню и украшения ищите Drop Bonus-ы Prosperous / Scavenger's / Scholarly, в камни — Amber.",
+    boss: "Боссы: Slayer's (Boss Damage) падает только с T4 — до этого берите Brutal (урон крита), Precise (крит) и Devastating (Double Damage).",
+    pets: 'Пет-билд: бонус Companion\u2019s на украшениях, Jade в оружие и броню, Lapis в факел. Петов не разгоняйте выше самого слабого в команде — компоунд обрежется по нему.',
+    retaliation: 'Retaliation: каждая единица Defense — это и защита, и урон (Retaliation = Reflecting% × Defense). В стойке Bulwark уклонение обнуляется — Dodge не собирайте.',
+  };
+  out.push({ title: 'Под цель', text: goalTodo[goal] || goalTodo.progress });
+  out.push({ title: 'Снаряжение и мелочи', text: `Талисманы: ${(profile.talismans || []).join(' + ') || '—'}. Петы: ${profile.pets || '—'}` });
+  out.push({ title: '+All Class Skills', text: 'В шаге 3 укажите реальный бонус (Torch + легендарные петы + Sage Diadem) — эффективные ранги навыков и итоговые бонусы пересчитаются.' });
+  if (classId === 'druid') out.push({ title: 'Druid', text: 'Формулы навыков Druid в игре не опубликованы: значения посчитаны по аналогам других классов (значок «оценка» в дереве).' });
+  return out;
+}
+
 /* ---------------------------------- Общий план ---------------------------------- */
 
 export function planBuild({
-  classId = 'warrior', level = 1, goal = 'progress', plusAll = 0, extraPoints = 0, manual = null,
+  classId = 'warrior', level = 1, goal = 'progress', plusAll = 0, extraPoints = 0, manual = null, ml = null,
 }) {
   const cls = classById(classId);
   const goalDef = GOALS.find((g) => g.id === goal) || GOALS[0];
   const profile = profileFor(classId, goal);
-  const pointsAvailable = classPointsForLevel(level) + Math.max(0, extraPoints);
+  // Два независимых параметра: level (персонаж → очки навыков) и ml (что падает и что доступно).
+  const charLevel = Math.max(1, Math.floor(level || 1));
+  const monsterLevel = Math.max(1, Math.floor(ml == null ? charLevel : ml));
+  const pointsAvailable = classPointsForLevel(charLevel) + Math.max(0, extraPoints);
 
   const auto = allocatePoints(classId, level, goal, extraPoints);
   const weights = weightsFor(classId, goal);
@@ -458,13 +583,23 @@ export function planBuild({
     return { branch, ru: cls.branchRu?.[branch] || branch, share, target: auto.targets[branch], spent: branches[branch].spent, top: def };
   });
 
+  const itemTier = dropTierAtMl(monsterLevel);
+  const gemRarity = gemRarityAtMl(monsterLevel);
+  const sockets = socketsAtMl(monsterLevel);
+  const todo = buildTodo({
+    cls, classId, goal, level: charLevel, ml: monsterLevel,
+    pointsAvailable, itemTier, sockets, profile,
+  });
+
   return {
-    classId, className: cls.name, classRu: cls.ru, class: cls, level, goal, goalDef, profile,
+    classId, className: cls.name, classRu: cls.ru, class: cls,
+    level: charLevel, ml: monsterLevel, goal, goalDef, profile,
+    itemTier, gemRarity, sockets, todo,
     points: { available: pointsAvailable, spent: validation.spent, total: pointsAvailable, left: validation.left, over: validation.over },
     auto, allocations, usingManual, validation, skillList: details, branches, caps: {},
     bonuses: totals, bonusesWithoutPlus: withoutPlus, gained, cappedByPlus,
     statPriority: statPriorityFor(classId, goal),
-    gear: buildGearPlan(classId, goal, level),
+    gear: buildGearPlan(classId, goal, { level: charLevel, ml: monsterLevel }),
     weights, explanation, warnings, tips,
   };
 }
@@ -472,26 +607,31 @@ export function planBuild({
 /* ------------------------------- Экспорт и обмен ------------------------------- */
 
 export function planToText(plan) {
+  const bi = (ru, en) => (ru && en && ru !== en ? `${ru} (${en})` : (ru || en || ''));
   const L = [];
-  L.push(`IdleArc — план сборки: ${plan.className} (${plan.classRu}) · уровень ${plan.level}`);
+  L.push(`IdleArc — план сборки: ${bi(plan.classRu, plan.className)}`);
+  L.push(`Уровень персонажа: ${plan.level} (даёт ${plan.points.available} классовых очков) · Monster Level: ${plan.ml}`);
   L.push(`Цель: ${plan.goalDef.ru} · Стойка: ${plan.profile.stance} · +All Class Skills: ${plan.bonuses.plusAll ?? 0}`);
-  L.push(`Очки: ${plan.points.spent}/${plan.points.available}`);
+  L.push(`Очки: ${plan.points.spent}/${plan.points.available} · основной дроп: ${plan.itemTier.tierLabel} ${bi(plan.itemTier.ru, plan.itemTier.name)} (${plan.itemTier.chance}%) · гемы до ${bi(plan.gemRarity.ru, plan.gemRarity.name)}`);
   L.push('');
   L.push('КЛАССОВЫЕ НАВЫКИ');
   for (const s of plan.skillList) {
     const capNote = s.capped.length ? ` [кап: ${s.capped.join(', ')}]` : '';
-    L.push(`  ${s.branch || '—'} · T${s.tier ?? '?'} · ${s.name}: вложено ${s.points}/${s.max}, эффективный ранг ${s.effRank}${capNote}`);
+    L.push(`  ${s.branch || '—'} · T${s.tier ?? '?'} · ${bi(s.ru, s.name)}: вложено ${s.points}/${s.max}, эффективный ранг ${s.effRank}${capNote}`);
   }
   L.push('');
-  L.push('ЭКИПИРОВКА');
+  L.push(`ЭКИПИРОВКА (имплиситы для ${plan.itemTier.tierLabel})`);
   for (const s of plan.gear.slots) {
-    const fam = s.primary ? `${s.primary.name} (${s.primary.ru})` : '—';
-    const alts = s.alternatives.length ? ` | альтернативы: ${s.alternatives.map((a) => a.name).join(', ')}` : '';
+    const fam = s.primary ? bi(s.primary.ru, s.primary.name) : '—';
+    const alts = s.alternatives.length ? ` | альтернативы: ${s.alternatives.map((a) => bi(a.ru, a.name)).join(', ')}` : '';
     L.push(`  ${s.slotRu}: ${fam}${alts}`);
-    L.push(`      имплисит T6: ${s.primary ? s.primary.implicitTiers[5] + ' (' + s.primary.implicit + ')' : '—'}`);
-    L.push(`      аффиксы: ${[...s.affixes.prefixes.map((a) => a.name), ...s.affixes.suffixes.map((a) => a.name)].join(', ') || '—'}`);
-    L.push(`      Drop Bonus: ${s.dropBonuses.map((d) => d.name).join(', ') || '—'} · гем: ${s.gem.family.ru}${s.gem.baseValue ? ` (${s.gem.baseValue})` : ''}`);
+    L.push(`      ${s.tierNameNow ? `${s.tierNameNow}: ` : ''}имплисит: ${s.implicitNow || '—'}${s.primary ? ` (полная лестница: ${s.primary.implicitTiers.map((v, i) => `T${i + 1} ${v}`).join(' / ')})` : ''}`);
+    L.push(`      аффиксы: ${[...s.affixes.prefixes.map((a) => bi(a.ru, a.name)), ...s.affixes.suffixes.map((a) => bi(a.ru, a.name))].join(', ') || '—'}`);
+    L.push(`      Drop Bonus: ${s.dropBonuses.map((d) => bi(d.ru, d.name)).join(', ') || '—'} · камень: ${bi(s.gem.family.ru, s.gem.family.name)} (${s.gem.baseValue || '—'}), редкость ${bi(s.gem.rarityRu, s.gem.rarity)}`);
   }
+  L.push('');
+  L.push('ЧТО ДЕЛАТЬ ДАЛЬШЕ');
+  for (const t of plan.todo) L.push(`  • ${t.title}: ${t.text}`);
   L.push('');
   L.push(`Приоритет статов: ${plan.statPriority.join(' → ')}`);
   L.push(`Талисманы: ${plan.profile.talismans.join(' + ')}`);
@@ -507,7 +647,7 @@ export function planToText(plan) {
 
 export function encodePlan(plan, plusAll = 0) {
   const payload = {
-    v: 2, c: plan.classId, l: plan.level, g: plan.goal, p: plusAll || 0,
+    v: 2, c: plan.classId, l: plan.level, m: plan.ml, g: plan.goal, p: plusAll || 0,
     a: Object.fromEntries(Object.entries(plan.allocations).filter(([, v]) => v > 0)),
   };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/=+$/, '');
@@ -517,7 +657,10 @@ export function decodePlan(code) {
   try {
     const p = JSON.parse(decodeURIComponent(escape(atob(code))));
     if (!p || !p.c) return null;
-    return { classId: p.c, level: p.l || 1, goal: p.g || 'progress', plusAll: p.p || 0, allocations: p.a || {} };
+    return {
+      classId: p.c, level: p.l || 1, ml: p.m || p.l || 1,
+      goal: p.g || 'progress', plusAll: p.p || 0, allocations: p.a || {},
+    };
   } catch {
     return null;
   }

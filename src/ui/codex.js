@@ -2,10 +2,13 @@ import { el, card, table, chips } from './dom.js';
 import {
   AFFIXES, DROP_BONUSES, DROP_BONUS_TIER_LABELS, DROP_BONUS_CATEGORIES, RARITY,
   GEM_FAMILIES, GEM_RARITY, GEM_SECONDARY, GEM_SOCKET_UNLOCKS, GEM_SOCKET_LEVELS, GEM_DROP_TABLE,
-  GEAR_FAMILIES, SLOT_ORDER, SLOT_RU, SLOT_GEM_REGION, DROP_TIER_TABLE, ITEM_TIERS, familiesForSlot,
+  GEAR_FAMILIES, SLOT_ORDER, SLOT_RU, SLOT_EN, SLOT_GEM_REGION, DROP_TIER_TABLE, ITEM_TIERS, familiesForSlot,
 } from '../data/items.js';
 import { STATS, PRIMARY_ATTRS, STANCES, MASTERY, PETS, TALISMANS, RUNES, GUILD_TREE, PROGRESSION, CLASS_CHANGE, SEASON2_SYSTEMS } from '../data/systems.js';
 import { CLASSES, CLASS_SKILL_RULES, classPointsForLevel } from '../data/classes.js';
+
+/** «Русское (English)» — единый формат: сначала понятное по-русски, в скобках игровое название. */
+const bi = (ru, en) => (ru && en && ru !== en ? `${ru} (${en})` : (ru || en || ''));
 
 const filter = { query: '', cls: 'all', slot: 'all' };
 
@@ -38,7 +41,7 @@ function searchCard(root) {
             .map((o) => el('option', { value: o.v, selected: filter.cls === o.v ? 'selected' : null }, [o.t])))]),
       el('div', {}, [el('label', { text: 'Слот' }),
         el('select', { onchange: (e) => { filter.slot = e.target.value; render(root); } },
-          [{ v: 'all', t: 'Все слоты' }, ...SLOT_ORDER.map((s) => ({ v: s, t: SLOT_RU[s] }))]
+          [{ v: 'all', t: 'Все слоты' }, ...SLOT_ORDER.map((s) => ({ v: s, t: bi(SLOT_RU[s], SLOT_EN[s] || s) }))]
             .map((o) => el('option', { value: o.v, selected: filter.slot === o.v ? 'selected' : null }, [o.t])))]),
     ]),
     el('p', { class: 'muted', text: 'Данные — снапшот Item Codex и wiki на 04.10.2026 (патч 1.3.1).' }),
@@ -83,8 +86,8 @@ function familyBlock(f) {
   const names = (f.tierNames || []).map((n, i) => [(i < 6 ? RARITY[i]?.tier : 'A1'), n]);
   return el('details', {}, [
     el('summary', {}, [
-      el('b', { text: `${f.name} — ${f.ru}` }),
-      el('span', { class: 'muted', text: `  · ${classLabel} · ${SLOT_RU[f.slot]} · ${f.hand === '2H' ? 'двуручное' : f.hand === '1H' ? 'одноручное' : f.hand === 'Off' ? 'оффхенд' : '—'} · открытие: ${f.unlock}` }),
+      el('b', { text: `${f.ru} (${f.name})` }),
+      el('span', { class: 'muted', text: `  · ${classLabel} · ${bi(SLOT_RU[f.slot], (SLOT_EN[f.slot] || f.slot))} · ${f.hand === '2H' ? 'двуручное' : f.hand === '1H' ? 'одноручное' : f.hand === 'Off' ? 'оффхенд' : '—'} · открытие: ${f.unlock}` }),
     ]),
     el('p', { class: 'muted', text: f.note || '' }),
     el('div', { class: 'grid cols-2' }, [
@@ -94,7 +97,7 @@ function familyBlock(f) {
       ]),
       el('div', {}, [
         el('h3', { text: `Имплисит: ${f.implicit}` }),
-        table(['Тир', 'Значение'], RARITY.map((r, i) => [r.tier, f.implicitTiers[i]]).concat([['A1', 'после пробуждения — следующий диапазон']])),
+        table(['Тир', 'Значение'], RARITY.map((r, i) => [`${r.tier} ${bi(r.ru, r.name)}`, f.implicitTiers[i]]).concat([['A1', 'после пробуждения — следующий диапазон']])),
         el('h3', { text: 'Совместимые аффиксы' }),
         chips([
           ...(f.prefixes || []).map((p) => ({ text: p, kind: 'gold' })),
@@ -109,7 +112,7 @@ function familyBlock(f) {
 
 function affixCard() {
   const rows = AFFIXES.filter((a) => match(a.name, a.stat, a.ru, a.slots.join(' ')))
-    .map((a) => [a.type === 'prefix' ? 'Префикс' : 'Суффикс', a.name, a.ru, a.base, a.slots.join(', ')]);
+    .map((a) => [a.type === 'prefix' ? 'Префикс (Prefix)' : 'Суффикс (Suffix)', a.name, a.ru, a.base, a.slots.join(', ')]);
   return card('Аффиксы предметов', [
     el('p', { class: 'muted', text: `Базовый ролл × множитель редкости: ${RARITY.map((r) => `${r.tier} ${r.ru} ×${r.mult}`).join(', ')}. Плюс +3% за каждый +уровень предмета.` }),
     el('div', { class: 'scroll' }, [table(['Тип', 'Аффикс', 'Стат', 'Базовый ролл', 'Слоты'], rows.length ? rows : [['—', '—', '—', '—', 'Ничего не найдено']])]),
@@ -117,15 +120,15 @@ function affixCard() {
 }
 
 function dropBonusCard() {
-  const head = ['Бонус', 'Стат', 'Мин. тир', ...DROP_BONUS_TIER_LABELS];
+  const head = ['Бонус (RU (EN))', 'Стат в игре', 'Мин. тир', ...DROP_BONUS_TIER_LABELS];
   const rows = DROP_BONUSES.filter((d) => match(d.name, d.stat, d.ru, d.note, d.cat))
-    .map((d) => [el('div', {}, [el('b', { text: d.name }), el('span', { class: 'tag', text: d.cat })]), d.ru, d.min, ...d.values]);
+    .map((d) => [el('div', {}, [el('b', { text: bi(d.ru, d.name) }), el('span', { class: 'tag', text: d.cat })]), d.stat, d.min, ...d.values]);
   const notes = DROP_BONUSES.filter((d) => d.note).filter((d) => match(d.name, d.note));
   return card('Drop Bonuses (T2 → T9)', [
     el('p', { class: 'muted', text: `Категории: ${DROP_BONUS_CATEGORIES.join(', ')}. T7–T9 появляются только на Gilded / Radiant / Mythic дропе (с ML 260).` }),
     el('div', { class: 'scroll' }, [table(head, rows.length ? rows : [['—', '—', '—', '—', '—', '—', '—', '—', '—', '—', '—']])]),
     el('h3', { text: 'Важные нюансы' }),
-    el('ul', { class: 'tight' }, notes.map((d) => el('li', { text: `${d.name}: ${d.note}` }))),
+    el('ul', { class: 'tight' }, notes.map((d) => el('li', { text: `${bi(d.ru, d.name)}: ${d.note}` }))),
   ]);
 }
 
@@ -133,15 +136,15 @@ function dropBonusCard() {
 
 function gemCard() {
   const famRows = GEM_FAMILIES.filter((f) => match(f.name, f.ru, JSON.stringify(f.slots)))
-    .map((f) => [f.ru, f.slots.weapon, f.slots.torch, f.slots.armor, f.slots.jewelry]);
+    .map((f) => [bi(f.ru, f.name), f.slots.weapon, f.slots.torch, f.slots.armor, f.slots.jewelry]);
   return card('Гемы и сокеты', [
     table(['Семья', 'Оружие', 'Torch', 'Броня', 'Украшения'], famRows.length ? famRows : [['—', '—', '—', '—', '—']]),
     el('h3', { text: 'Вторичные статы по редкости' }),
-    el('div', { class: 'scroll' }, [table(['Стат', 'Cut', 'Polished', 'Brilliant', 'Flawless'], GEM_SECONDARY.map((s) => [s.ru, `+${s.cut}`, `+${s.polished}`, `+${s.brilliant}`, `+${s.flawless}`]))]),
+    el('div', { class: 'scroll' }, [table(['Стат', 'Cut', 'Polished', 'Brilliant', 'Flawless'], GEM_SECONDARY.map((s) => [bi(s.ru, s.stat), `+${s.cut}`, `+${s.polished}`, `+${s.brilliant}`, `+${s.flawless}`]))]),
     el('h3', { text: 'Открытие и уровни сокетов' }),
     (() => {
       const rows = GEM_SOCKET_UNLOCKS.map((s) => [s.socket, s.ml, s.gold]);
-      return table(['Сокет', 'ML', 'Золото'], rows);
+      return table(['Сокет', 'Monster Level', 'Золото'], rows);
     })(),
     el('div', { class: 'scroll' }, [table(['Ур. сокета', 'Множитель', 'Золото'], GEM_SOCKET_LEVELS.map((s) => [s.level, `×${s.mult.toFixed(2)}`, s.gold]))]),
     el('h3', { text: 'Дроп гемов по ML' }),
@@ -156,7 +159,7 @@ function classSkillsCard() {
     const rows = c.skills.filter((s) => match(s.name, s.ru, s.text, c.name))
       .map((s) => [
         `${s.branch || '—'} · T${s.tier ?? '?'}`,
-        el('div', {}, [el('b', { text: s.name }), s.estimated ? el('span', { class: 'tag est', title: s.estimateNote || '', text: 'оценка' }) : null]),
+        el('div', {}, [el('b', { text: bi(s.ru, s.name) }), s.estimated ? el('span', { class: 'tag est', title: s.estimateNote || '', text: 'оценка' }) : null]),
         `до ${s.max}`,
         el('div', {}, [
           el('div', { text: s.text }),
@@ -180,8 +183,8 @@ function classSkillsCard() {
 
 function talismanCard() {
   return card('Талисманы', [
-    table(['Тип', 'Name', 'Статы', 'Ур.0 → Ур.9 (стат 1)', 'Ур.0 → Ур.9 (стат 2)'],
-      TALISMANS.types.map((t) => [t.ru, t.name, t.stats, t.levels[0][1] + ' → ' + t.levels[9][1], t.levels[0][2] + ' → ' + t.levels[9][2]])),
+    table(['Тип (RU (EN))', 'Name', 'Статы', 'Ур.0 → Ур.9 (стат 1)', 'Ур.0 → Ур.9 (стат 2)'],
+      TALISMANS.types.map((t) => [bi(t.ru, t.name), t.name, t.stats, t.levels[0][1] + ' → ' + t.levels[9][1], t.levels[0][2] + ' → ' + t.levels[9][2]])),
     el('h3', { text: 'Sacrifice Bonuses (после +9, 8 шт.)' }),
     table(['Стат', 'Значение'], TALISMANS.sacrificeBonuses.map((s) => [s.stat, s.value])),
     el('h3', { text: 'Inscriptions' }),
@@ -205,11 +208,11 @@ function petCard() {
 
 function statsCard() {
   return card('Статы, атрибуты, стойки', [
-    table(['Стат', 'Название', 'Что делает'], STATS.filter((s) => match(s.name, s.ru, s.desc)).map((s) => [s.ru, s.name, s.desc || '—'])),
+    table(['Стат (RU)', 'Stat (EN)', 'Что делает'], STATS.filter((s) => match(s.name, s.ru, s.desc)).map((s) => [s.ru, s.name, s.desc || '—'])),
     el('h3', { text: 'Первичные атрибуты (за 1 пункт)' }),
-    table(['Атрибут', 'Эффекты'], PRIMARY_ATTRS.map((a) => [a.ru, a.perPoint.join(' · ')])),
+    table(['Атрибут', 'Эффекты'], PRIMARY_ATTRS.map((a) => [bi(a.ru, a.name), a.perPoint.join(' · ')])),
     el('h3', { text: 'Стойки' }),
-    table(['Стойка', 'Фокус', 'Когда брать', 'Нюанс'], STANCES.map((s) => [s.ru, s.focus, s.best, s.note])),
+    table(['Стойка', 'Фокус', 'Когда брать', 'Нюанс'], STANCES.map((s) => [bi(s.ru, s.name), s.focus, s.best, s.note])),
     el('h3', { text: 'Mastery' }),
     el('p', { class: 'muted', text: MASTERY.bossRule + ' ' + MASTERY.elementNote }),
     table(['Ур.', 'Бонус', 'Всего шардов'], MASTERY.table.map((m) => [m.level, `${m.bonus}%`, m.total])),
@@ -222,7 +225,7 @@ function progressionCard() {
     el('div', { class: 'scroll' }, [table(['До ML', 'Normal', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Infernal'],
       DROP_TIER_TABLE.map((t) => [t.upTo >= 9999 ? '999+' : t.upTo, `${t.normal}%`, `${t.uncommon}%`, `${t.rare}%`, `${t.epic}%`, `${t.legendary}%`, `${t.infernal}%`]))]),
     el('h3', { text: 'Тиры предметов и апгрейды' }),
-    table(['Тир', 'Макс. +ур.', 'Аффиксов', 'Фрагмент', 'Полный тир: золото', 'Фрагменты'], ITEM_TIERS.map((t) => [t.tier + ' ' + t.ru, t.maxPlus, t.affixes, t.fragment, t.fullGold, t.fullFragments])),
+    table(['Тир', 'Макс. +ур.', 'Аффиксов', 'Фрагмент', 'Полный тир: золото', 'Фрагменты'], ITEM_TIERS.map((t) => [`${t.tier} ${bi(t.ru, t.name)}`, t.maxPlus, t.affixes, t.fragment, t.fullGold, t.fullFragments])),
     el('h3', { text: 'Открытия по ML' }),
     table(['ML', 'Что открывается'], PROGRESSION.mlUnlocks.filter((m) => match(m.what, m.ml)).map((m) => [m.ml, m.what])),
     el('p', { class: 'muted', text: PROGRESSION.fightingLevel + ' ' + PROGRESSION.mlProgress }),

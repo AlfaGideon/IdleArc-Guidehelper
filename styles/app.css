@@ -175,3 +175,24 @@ b.want, td .want { color: var(--good); }
 .boot-error b { color: var(--bad); }
 .boot-error code { background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px; }
 .boot-actions { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* --- шаги-гайд --- */
+.card.step { scroll-margin-top: 14px; }
+.card.step > h2 { display: flex; align-items: center; gap: 10px; }
+.step-num { background: var(--accent); color: #1b1a17; border-radius: 999px; padding: 2px 10px; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.en { color: var(--muted); font-weight: 400; }
+.btn.link { background: transparent; border: none; color: var(--accent2); padding: 0; font: inherit; cursor: pointer; text-align: left; }
+.btn.link:hover { text-decoration: underline; }
+.guide { margin: 4px 0 10px; padding-left: 20px; }
+.guide li { margin: 3px 0; }
+.quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+.quick > div { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.quick label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.quick b { color: var(--text); }
+.level-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.level-box input[type="number"] { width: 120px; }
+.panel { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: rgba(255,255,255,.02); }
+ol.todo { padding-left: 20px; }
+ol.todo li { margin: 5px 0; }
+ol.todo b { color: var(--accent); }

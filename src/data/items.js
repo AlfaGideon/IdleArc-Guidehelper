@@ -10,12 +10,12 @@
  */
 
 export const RARITY = [
-  { tier: 'T1', ru: 'Normal', color: '#b7b7b7', affixes: 0, mult: 1.0, maxPlus: 4 },
-  { tier: 'T2', ru: 'Uncommon', color: '#69d17d', affixes: 1, mult: 1.2, maxPlus: 9 },
-  { tier: 'T3', ru: 'Rare', color: '#5ba7ff', affixes: 2, mult: 1.4, maxPlus: 14 },
-  { tier: 'T4', ru: 'Epic', color: '#bd76ff', affixes: 3, mult: 1.7, maxPlus: 19 },
-  { tier: 'T5', ru: 'Legendary', color: '#ffc857', affixes: 4, mult: 2.0, maxPlus: 24 },
-  { tier: 'T6', ru: 'Infernal', color: '#ff6b5f', affixes: 5, mult: 2.5, maxPlus: 30 },
+  { tier: 'T1', name: 'Normal', ru: 'Обычный', color: '#b7b7b7', affixes: 0, mult: 1.0, maxPlus: 4 },
+  { tier: 'T2', name: 'Uncommon', ru: 'Необычный', color: '#69d17d', affixes: 1, mult: 1.2, maxPlus: 9 },
+  { tier: 'T3', name: 'Rare', ru: 'Редкий', color: '#5ba7ff', affixes: 2, mult: 1.4, maxPlus: 14 },
+  { tier: 'T4', name: 'Epic', ru: 'Эпический', color: '#bd76ff', affixes: 3, mult: 1.7, maxPlus: 19 },
+  { tier: 'T5', name: 'Legendary', ru: 'Легендарный', color: '#ffc857', affixes: 4, mult: 2.0, maxPlus: 24 },
+  { tier: 'T6', name: 'Infernal', ru: 'Инфернальный', color: '#ff6b5f', affixes: 5, mult: 2.5, maxPlus: 30 },
 ];
 
 /** Аффиксы: базовый ролл × множитель редкости; +3% к значению за каждый +уровень предмета. */
@@ -132,11 +132,11 @@ export const GEM_FAMILIES = [
 ];
 
 export const GEM_RARITY = [
-  { id: 'rough', name: 'Rough', mult: 1.0, secondary: 0, socketCap: 10 },
-  { id: 'cut', name: 'Cut', mult: 1.6, secondary: 1, socketCap: 25 },
-  { id: 'polished', name: 'Polished', mult: 2.5, secondary: 1, socketCap: 50 },
-  { id: 'brilliant', name: 'Brilliant', mult: 4.0, secondary: 2, socketCap: 100 },
-  { id: 'flawless', name: 'Flawless', mult: 6.5, secondary: 3, socketCap: null,
+  { id: 'rough', name: 'Rough', ru: 'Черновой', mult: 1.0, secondary: 0, socketCap: 10 },
+  { id: 'cut', name: 'Cut', ru: 'Огранённый', mult: 1.6, secondary: 1, socketCap: 25 },
+  { id: 'polished', name: 'Polished', ru: 'Полированный', mult: 2.5, secondary: 1, socketCap: 50 },
+  { id: 'brilliant', name: 'Brilliant', ru: 'Блестящий', mult: 4.0, secondary: 2, socketCap: 100 },
+  { id: 'flawless', name: 'Flawless', ru: 'Безупречный', mult: 6.5, secondary: 3, socketCap: null,
     note: 'Только дроп с ML 160, не создаётся фьюзом, не подвержен луут-бустам.' },
 ];
 
@@ -378,6 +378,12 @@ export const SLOT_RU = {
   mainhand: 'Основная рука', offhand: 'Вторая рука', torch: 'Факел', chest: 'Нагрудник', head: 'Шлем',
   hands: 'Перчатки', feet: 'Обувь', amulet: 'Амулет', ring: 'Кольцо', belt: 'Пояс',
 };
+/** Английские названия слотов (как в игре) — для подписей «Русское (English)». */
+export const SLOT_EN = {
+  mainhand: 'Main Hand', offhand: 'Off Hand', torch: 'Torch', chest: 'Chest', head: 'Head',
+  hands: 'Hands', feet: 'Feet', amulet: 'Amulet', ring: 'Ring', belt: 'Belt',
+};
+
 /** К какому гем-«региону» относится слот (эффект гема зависит от региона). */
 export const SLOT_GEM_REGION = {
   mainhand: 'weapon', offhand: 'weapon', torch: 'torch',
@@ -406,13 +412,19 @@ export const DROP_TIER_TABLE = [
 
 /** Тир-таблица предметов (апгрейд/аффиксы/фрагменты). */
 export const ITEM_TIERS = [
-  { tier: 'T1', ru: 'Normal', color: '#b7b7b7', maxPlus: 4, affixes: 0, drop: 'ML 1+', fragment: 'Iron Fragment', fullGold: '1,700', fullFragments: 10 },
-  { tier: 'T2', ru: 'Uncommon', color: '#69d17d', maxPlus: 9, affixes: 1, drop: 'шанс с ML 10+, основной дроп ML 25+', fragment: 'Steel Fragment', fullGold: '35,100', fullFragments: 45 },
-  { tier: 'T3', ru: 'Rare', color: '#5ba7ff', maxPlus: 14, affixes: 2, drop: 'шанс с ML 45+, основной дроп ML 65+', fragment: 'Mithril Fragment', fullGold: '428,750', fullFragments: 84 },
-  { tier: 'T4', ru: 'Epic', color: '#bd76ff', maxPlus: 19, affixes: 3, drop: 'шанс с ML 90+, основной дроп ML 115+', fragment: 'Adamantine Fragment', fullGold: '4,180,000', fullFragments: 190 },
-  { tier: 'T5', ru: 'Legendary', color: '#ffc857', maxPlus: 24, affixes: 4, drop: 'шанс с ML 150+, основной дроп ML 185+', fragment: 'Celestial Fragment', fullGold: '31,800,000', fullFragments: 456 },
-  { tier: 'T6', ru: 'Infernal', color: '#ff6b5f', maxPlus: 30, affixes: 5, drop: 'ML 260+', fragment: 'Infernal Fragment', fullGold: '287,100,000', fullFragments: 1170 },
+  { tier: 'T1', name: 'Normal', ru: 'Обычный', color: '#b7b7b7', maxPlus: 4, affixes: 0, drop: 'ML 1+', fragment: 'Iron Fragment', fullGold: '1,700', fullFragments: 10 },
+  { tier: 'T2', name: 'Uncommon', ru: 'Необычный', color: '#69d17d', maxPlus: 9, affixes: 1, drop: 'шанс с ML 10+, основной дроп ML 25+', fragment: 'Steel Fragment', fullGold: '35,100', fullFragments: 45 },
+  { tier: 'T3', name: 'Rare', ru: 'Редкий', color: '#5ba7ff', maxPlus: 14, affixes: 2, drop: 'шанс с ML 45+, основной дроп ML 65+', fragment: 'Mithril Fragment', fullGold: '428,750', fullFragments: 84 },
+  { tier: 'T4', name: 'Epic', ru: 'Эпический', color: '#bd76ff', maxPlus: 19, affixes: 3, drop: 'шанс с ML 90+, основной дроп ML 115+', fragment: 'Adamantine Fragment', fullGold: '4,180,000', fullFragments: 190 },
+  { tier: 'T5', name: 'Legendary', ru: 'Легендарный', color: '#ffc857', maxPlus: 24, affixes: 4, drop: 'шанс с ML 150+, основной дроп ML 185+', fragment: 'Celestial Fragment', fullGold: '31,800,000', fullFragments: 456 },
+  { tier: 'T6', name: 'Infernal', ru: 'Инфернальный', color: '#ff6b5f', maxPlus: 30, affixes: 5, drop: 'ML 260+', fragment: 'Infernal Fragment', fullGold: '287,100,000', fullFragments: 1170 },
 ];
+
+/** Monster Level, с которого семейство становится доступным ('Standard' → 1, 'ML 25' → 25, 'ML 50, 3%…' → 50). */
+export function familyUnlockMl(family) {
+  const m = String(family?.unlock || '').match(/(\d+)/);
+  return m ? Number(m[1]) : 1;
+}
 
 export const familyById = (id) => GEAR_FAMILIES.find((f) => f.id === id);
 export const familiesForSlot = (slot) => GEAR_FAMILIES.filter((f) => f.slot === slot);
