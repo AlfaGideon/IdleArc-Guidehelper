@@ -294,3 +294,19 @@ export function bodySilhouette() {
     + '</g>';
   return `<svg viewBox="0 0 100 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${inner}</svg>`;
 }
+
+/* ------------------------- мелкие иконки для цен Кузницы ------------------------- */
+
+/** Монетка золота. */
+export function coinIcon() {
+  return '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
+    + '<circle cx="8" cy="8" r="7" fill="#a8883a"/><circle cx="8" cy="8" r="5.2" fill="#e8c46a"/>'
+    + '<path d="M8 4.4v7.2M5.6 6.2h4.8M5.6 9.8h4.8" stroke="#8a6c22" stroke-width="1.1" fill="none"/></svg>';
+}
+
+/** Осколок (фрагмент) нужного цвета. */
+export function shardIcon(color = '#9fb3d1') {
+  return '<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
+    + `<polygon points="8,1 13,6 11,15 5,15 3,6" fill="${color}"/>`
+    + '<polygon points="8,1 11,7 8,15 5,7" fill="rgba(255,255,255,.35)"/></svg>';
+}

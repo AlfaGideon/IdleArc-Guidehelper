@@ -19,11 +19,11 @@ import {
   familyUnlockMl, HAND2_LABELS,
 } from '../data/items.js';
 import {
-  FORGE_TIERS, forgeTierInfo, forgeStep, forgeRank, forgeCumulative, AWAKEN_MAX, AWAKEN_NOTE,
+  FORGE_TIERS, FORGE_MAX_RANK, forgeTierInfo, forgeStep, forgeRank, forgeCumulative, AWAKEN_MAX, AWAKEN_NOTE,
 } from '../data/forge.js';
 import { planBuild, planToText, encodePlan, decodePlan, nextPointLevel } from '../core/planner.js';
 import { el, card, table, kpi, copyButton } from './dom.js';
-import { itemArt, lockArt, tierColors, talismanArt, bodySilhouette } from './itemArt.js';
+import { itemArt, lockArt, tierColors, talismanArt, bodySilhouette, coinIcon, shardIcon } from './itemArt.js';
 import { artState, loadArt, artNode, lockedArtNode, artDownload, downloadArtViaBrowser } from './art.js';
 import {
   saveState, loadState, savedAt, clearState, listLoadouts, saveLoadout, getLoadout, deleteLoadout,
@@ -40,6 +40,7 @@ const state = {
   mode: 'auto',       // 'auto' | 'manual'
   shareCode: '',
   gear: {},           // экипировка по классам: { warrior: { mainhand: { family, tier, level, awaken }, … }, … }
+  page: 'class',      // текущая страница планировщика (вместо одной длинной ленты)
   restored: false,    // состояние поднято из localStorage при загрузке страницы
 };
 
@@ -55,6 +56,7 @@ function snapshot() {
     mode: state.mode,
     manual: state.manual,
     gear: state.gear,
+    page: state.page,
     shareCode: state.shareCode,
   };
 }
@@ -69,6 +71,7 @@ function applySnapshot(snap) {
   if (Number.isFinite(snap.plusAll)) state.plusAll = Math.max(0, Math.round(snap.plusAll));
   if (Number.isFinite(snap.extraPoints)) state.extraPoints = Math.max(0, Math.round(snap.extraPoints));
   if (snap.gear && typeof snap.gear === 'object') state.gear = snap.gear;
+  if (snap.page && PAGES.some((p) => p.id === snap.page)) state.page = snap.page;
   if (snap.manual && typeof snap.manual === 'object') { state.manual = snap.manual; state.mode = 'manual'; }
   else if (snap.mode === 'auto') { state.manual = null; state.mode = 'auto'; }
   if (typeof snap.shareCode === 'string') state.shareCode = snap.shareCode;
@@ -153,44 +156,92 @@ const fmtVal = (key, v) => `${Number(v.toFixed(1))}${PERCENT_KEYS.has(key) ? '%'
 
 /* -------------------------------- Каркас шагов -------------------------------- */
 
-const STEPS = [
-  [1, 'Класс и цель', 'выберите класс и под какую задачу собираете персонажа'],
-  [2, 'Уровни: персонаж и Monster Level', 'уровень персонажа даёт очки навыков, Monster Level — предметы и камни'],
-  [3, 'Куда вложить очки навыков', 'распределение по ветвям, +All Class Skills, итоговые бонусы'],
-  [4, 'Что надеть: слоты и предметы', 'скелет персонажа и что искать в каждом слоте'],
-  [5, 'Какие камни вставить', 'камень на каждый слот, редкость по ML, вторичные статы'],
-  [6, 'Что делать дальше', 'чек-лист под ваш уровень, ML и цель'],
+/* --------------------------- Страницы планировщика --------------------------- */
+/*
+ * Раньше это была одна длинная лента: экран снаряжения, Кузница, камни и чек-лист шли
+ * подряд, и на каждое нажатие перерисовывалось всё сразу — долго и неудобно.
+ * Теперь планировщик разбит на отдельные страницы: на экране всегда только одна,
+ * поэтому переключение мгновенное, а Кузница получила собственную страницу с дизайном.
+ */
+const PAGES = [
+  { id: 'class', n: 1, title: 'Класс и цель', short: 'Класс', hint: 'кто играет и под какую задачу' },
+  { id: 'levels', n: 2, title: 'Уровни: персонаж и Monster Level', short: 'Уровни', hint: 'уровень даёт очки, Monster Level — дроп' },
+  { id: 'skills', n: 3, title: 'Куда вложить очки навыков', short: 'Навыки', hint: 'ветки, тиры, +All Class Skills' },
+  { id: 'gear', n: 4, title: 'Снаряжение', short: 'Снаряжение', hint: 'экран персонажа и что искать в каждом слоте' },
+  { id: 'forge', n: 5, title: 'Кузница: тир, «+N» и цена шагов', short: 'Кузница', hint: 'прогресс по слотам и что качать первым' },
+  { id: 'gems', n: 6, title: 'Какие камни вставить', short: 'Камни', hint: 'камень на каждый слот и редкость по ML' },
+  { id: 'next', n: 7, title: 'Что делать дальше', short: 'Что дальше', hint: 'чек-лист под ваш уровень и ML' },
+  { id: 'build', n: 8, title: 'Сборка и сохранение', short: 'Сборка', hint: 'код сборки, наборы, автосохранение' },
 ];
 
-function stepCard(n, title, children) {
-  return el('section', { class: 'card step', id: `step-${n}` }, [
-    el('h2', {}, [el('span', { class: 'step-num', text: `Шаг ${n}` }), el('span', { text: title })]),
+const PAGE_IDS = PAGES.map((p) => p.id);
+const pageIndex = (id) => Math.max(0, PAGES.findIndex((p) => p.id === id));
+const currentPage = () => PAGES[pageIndex(state.page)] || PAGES[0];
+
+/** Перейти на страницу: перерисовываем только её — это и быстро, и без «простыни» текста. */
+function goTo(root, id) {
+  state.page = PAGE_IDS.includes(id) ? id : PAGES[0].id;
+  render(root);
+  if (typeof document !== 'undefined' && document.getElementById) {
+    const nav = document.getElementById('pagenav');
+    if (nav && nav.scrollIntoView) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+/** Короткая шапка-гайд: объясняет, что это пошаговый план, а не одна длинная форма. */
+function guideHead(plan) {
+  return el('section', { class: 'card guide-head' }, [
+    el('h2', { text: 'Гайд: как собрать персонажа в IdleArc' }),
+    el('p', { class: 'muted', text: 'План разбит на страницы — идите по номерам слева направо: класс и цель → уровни → навыки → снаряжение → Кузница → камни → что делать дальше. Состояние сохраняется в браузере, можно вернуться на любую страницу.' }),
+    statusLine(plan),
+  ]);
+}
+
+/** Верхняя полоса: где вы сейчас (класс, цель, уровни, +All) — видна на любой странице. */
+function statusLine(plan) {
+  return el('div', { class: 'statusline' }, [
+    el('span', { class: 'chip', text: `${plan.classRu} (${plan.className})` }),
+    el('span', { class: 'chip', text: plan.goalDef.ru }),
+    el('span', { class: 'chip', text: `ур. ${plan.level}` }),
+    el('span', { class: 'chip', text: `ML ${plan.ml}` }),
+    el('span', { class: 'chip', text: `+All ${state.plusAll}` }),
+  ]);
+}
+
+/** Навигация по страницам: вместо одной длинной ленты — 8 отдельных экранов. */
+function pageNav(root) {
+  return el('nav', { class: 'pagenav', id: 'pagenav' }, PAGES.map((p) => el('button', {
+    class: `pnav${p.id === state.page ? ' active' : ''}`,
+    'data-page': p.id,
+    title: p.hint,
+    onclick: () => goTo(root, p.id),
+  }, [
+    el('span', { class: 'pnum', text: String(p.n) }),
+    el('span', { class: 'ptitle', text: p.short }),
+  ])));
+}
+
+function pageCard(page, children) {
+  return el('section', { class: 'card step', id: `page-${page.id}`, 'data-page': page.id }, [
+    el('h2', {}, [el('span', { class: 'step-num', text: `Страница ${page.n}` }), el('span', { text: page.title })]),
+    el('p', { class: 'muted small', text: page.hint }),
     ...[].concat(children),
   ]);
 }
 
-function jump(n) {
-  const target = document.getElementById(`step-${n}`);
-  if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-/* --------------------------------- Шаг 0: гайд --------------------------------- */
-
-function guideCard(plan, root) {
-  return card('Гайд: как собрать персонажа в IdleArc', [
-    el('ol', { class: 'guide' }, STEPS.map(([n, title, hint]) => el('li', {}, [
-      el('button', { class: 'btn link', text: `${n}. ${title}`, onclick: () => jump(n) }),
-      el('span', { class: 'muted', text: ` — ${hint}` }),
-    ]))),
-    el('div', { class: 'quick' }, [
-      el('div', {}, [el('label', { text: 'Класс' }), el('b', { text: biText(plan.classRu, plan.className) })]),
-      el('div', {}, [el('label', { text: 'Цель' }), el('b', { text: plan.goalDef.ru })]),
-      el('div', {}, [el('label', { text: 'Уровень персонажа' }), el('b', { text: `${plan.level} · ${plan.points.available} очк.` })]),
-      el('div', {}, [el('label', { text: 'Monster Level' }), el('b', { text: `${plan.ml} · ${plan.itemTier.tierLabel} ${plan.itemTier.ru}` })]),
-      el('div', {}, [el('label', { text: '+All Class Skills' }), el('b', { text: `+${state.plusAll}` })]),
-    ]),
-    el('p', { class: 'muted', text: 'Идите по шагам сверху вниз: сначала класс и цель, потом уровни, затем очки навыков, предметы и камни. В конце — чек-лист, что делать в игре прямо сейчас. Все цифры пересчитываются мгновенно.' }),
-    el('div', { class: 'actions' }, [el('button', { class: 'btn', text: 'Перейти к чек-листу →', onclick: () => jump(6) })]),
+/** Низ страницы: переходы «назад/далее», чтобы листать по порядку. */
+function pageFooter(root) {
+  const i = pageIndex(state.page);
+  const prev = PAGES[i - 1];
+  const next = PAGES[i + 1];
+  return el('div', { class: 'pagefoot' }, [
+    prev
+      ? el('button', { class: 'btn', text: `← ${prev.n}. ${prev.short}`, onclick: () => goTo(root, prev.id) })
+      : el('span', { class: 'muted small', text: 'Это первая страница' }),
+    el('span', { class: 'muted small', text: `Страница ${i + 1} из ${PAGES.length}` }),
+    next
+      ? el('button', { class: 'btn primary', text: `${next.n}. ${next.short} →`, onclick: () => goTo(root, next.id) })
+      : el('span', { class: 'muted small', text: 'Это последняя страница' }),
   ]);
 }
 
@@ -621,55 +672,6 @@ function gearCellCard(plan, root, gear, cell) {
 }
 
 /** Строка Кузницы: выбор предмета, тира, шагов «+N» и цена следующего шага. */
-function forgeRow(plan, root, gear, cell) {
-  const st = gear[cell.id];
-  const info = forgeTierInfo(st.tier);
-  const rank = forgeRank(st.tier, st.level);
-  const step = st.level < info.maxLevel ? forgeStep(st.tier, st.level) : null;
-  const families = cellFamilies(plan, cell);
-  const label = cellLabels(plan, cell);
-
-  const familySelect = el('select', {
-    onchange: (e) => { st.family = e.target.value || null; render(root); },
-  }, [
-    el('option', { value: '', selected: st.family ? null : 'selected' }, ['— не выбран —']),
-    ...families.map((f) => el('option', { value: f.id, selected: f.id === st.family ? 'selected' : null }, [`${f.ru} (${f.name})`])),
-  ]);
-
-  const tierSelect = el('select', {
-    onchange: (e) => {
-      st.tier = Number(e.target.value);
-      st.level = Math.min(st.level, forgeTierInfo(st.tier).maxLevel);
-      render(root);
-    },
-  }, FORGE_TIERS.map((t) => el('option', { value: String(t.tier), selected: t.tier === st.tier ? 'selected' : null },
-    [`T${t.tier} ${t.ru} (${t.name})`])));
-
-  const levelOptions = [];
-  for (let i = 0; i <= info.maxLevel; i += 1) levelOptions.push(el('option', { value: String(i), selected: i === st.level ? 'selected' : null }, [`+${i}`]));
-
-  const awakenSelect = el('select', {
-    onchange: (e) => { st.awaken = Number(e.target.value); render(root); },
-  }, [0, 1, 2, 3, 4, 5].map((r) => el('option', { value: String(r), selected: r === st.awaken ? 'selected' : null },
-    [r === 0 ? 'Awaken 0' : `Awaken ${r}`])));
-
-  return [
-    el('div', {}, [el('b', { text: label.ru }), el('div', { class: 'muted small', text: label.en })]),
-    familySelect,
-    tierSelect,
-    el('select', { onchange: (e) => { st.level = Number(e.target.value); render(root); } }, levelOptions),
-    el('div', {}, [el('b', { text: `${rank.rank}/100` }), el('div', { class: 'muted small', text: `T${st.tier} +${st.level} из +${info.maxLevel}` })]),
-    step
-      ? el('div', {}, [
-        el('b', { text: `${fmtNum(step.gold)} золота` }),
-        el('div', { class: 'muted small', text: `${step.fragments} × ${info.fragmentRu} · успех ${Math.round(step.success * 100)}%` }),
-      ])
-      : el('div', { class: 'muted small', text: 'тир прокачан полностью' }),
-    el('div', {}, [el('b', { text: `+${info.affixSlots}` }), el('div', { class: 'muted small', text: 'аффикс-позиций' })]),
-    awakenSelect,
-  ];
-}
-
 /** Панель «картинки предметов»: настоящие игровые иконки или нарисованные. */
 function artPanel(root) {
   const st = artState;
@@ -734,6 +736,7 @@ function artPanel(root) {
 }
 
 /** Шаг 4 целиком: экран снаряжения как в игре (силуэт персонажа) + панель Кузницы. */
+/** Шаг 4: экран снаряжения как в игре (без Кузницы — она на своей странице). */
 function gearStep(plan, root) {
   const gear = gearStateFor(plan);
   const usableCells = GEAR_CELLS.filter((c) => cellUsable(plan, c) && c.slot !== 'talisman');
@@ -749,23 +752,6 @@ function gearStep(plan, root) {
 
   const rankTotal = usableCells.reduce((a, c) => a + forgeRank(gear[c.id].tier, gear[c.id].level).rank, 0);
   const awakenCount = usableCells.filter((c) => gear[c.id].awaken > 0).length;
-
-  const forgeRows = usableCells.map((cell) => forgeRow(plan, root, gear, cell));
-
-  const scale = el('div', { class: 'scroll' }, [table(
-    ['Тир', 'Шагов «+N»', 'Золото до максимума', 'Фрагменты', 'Аффикс-позиций', 'Ранг слота'],
-    FORGE_TIERS.map((t) => {
-      const cum = forgeCumulative(t.tier, t.maxLevel);
-      return [
-        `T${t.tier} ${t.ru} (${t.name})`,
-        `+${t.maxLevel}`,
-        fmtNum(cum.gold),
-        `${fmtNum(cum.fragments)} × ${t.fragmentRu}`,
-        String(t.affixSlots),
-        `${forgeRank(t.tier, t.maxLevel).rank}/100`,
-      ];
-    }),
-  )]);
 
   const slotRows = plan.gear.slots.map((s) => {
     const p = s.primary;
@@ -788,7 +774,7 @@ function gearStep(plan, root) {
 
   return [
     el('h3', { text: `Экран снаряжения — ${biText(plan.classRu, plan.className)}, ML ${plan.ml}` }),
-    el('p', { class: 'muted', text: 'Ячейки стоят так же, как в игровом окне снаряжения: сверху факел, шлем и амулет, ниже оружие, нагрудник и вторая рука, затем кольца и пояс, в последней строке — талисманы, перчатки и обувь. На карточке видно то же, что в игре: тир и «+N» Кузницы. Нажмите на карточку — она перевернётся и покажет параметры предмета.' }),
+    el('p', { class: 'muted', text: 'Ячейки стоят как в игровом окне снаряжения: сверху факел, шлем и амулет, ниже оружие, нагрудник и вторая рука, затем кольца и пояс, в последней строке — талисманы, перчатки и обувь. На карточке видно то же, что в игре: тир и «+N» Кузницы. Нажмите на карточку — она перевернётся и покажет параметры предмета.' }),
     grid,
     el('div', { class: 'gear-legend' }, [
       el('span', { class: 'chip', text: 'T1…T6 — тир Кузницы' }),
@@ -802,18 +788,9 @@ function gearStep(plan, root) {
       el('ul', { class: 'tight' }, lockedNotes),
     ]) : null,
     el('div', { class: 'infobox' }, [
-      el('b', { text: 'Кузница поднимает слот выше тира предмета' }),
-      el('p', { text: 'Кузница (Forge) качает СЛОТ, а не отдельный предмет: у слота свой тир и свои шаги «+N». Поэтому в игре на карточке стоит, например, «T4 +19», даже если сам предмет выпал T2 — слот уже поднят Кузницей. Ранг слота (0…100) складывает шаги всех тиров: T1 +4, T2 +9, T3 +14, T4 +19, T5 +24, T6 +30. Ниже выберите предмет, тир и «+N» — планировщик покажет ранг слота и цену следующего шага Кузницы.' }),
-      el('p', { class: 'muted', text: 'Цифры стоимости — из официальных данных Item Codex (Кузница → Forge). К каждому шагу в игре ещё нужны материалы монстров: их список каждый уровень разный, его видно в Кузнице.' }),
+      el('b', { text: 'Что важно про тир и «+N»' }),
+      el('p', { text: `В карточке слота стоит тир Кузницы и шаги «+N» — это прогресс СЛОТА, а не выпавшего предмета. Кузница качает слот отдельно: подробности, цены шагов и что качать первым — на странице «${PAGES[4].n}. ${PAGES[4].short}».` }),
     ]),
-    el('h3', { text: 'Кузница: что стоит в каждом слоте' }),
-    el('div', { class: 'scroll' }, [table(
-      ['Ячейка', 'Предмет', 'Тир', '+N', 'Ранг слота', 'Следующий шаг', 'Аффиксы', 'Awaken'],
-      forgeRows,
-    )]),
-    el('p', { class: 'muted', text: AWAKEN_NOTE }),
-    el('h3', { text: 'Сколько стоит прокачать тир целиком' }),
-    scale,
     el('h3', { text: 'Что искать в каждом слоте' }),
     el('div', { class: 'scroll' }, [table(
       ['Слот', 'Семейство предметов', 'Имя на вашем ML', 'Аффиксы (ищите эти)', 'Drop Bonus'],
@@ -821,6 +798,227 @@ function gearStep(plan, root) {
     )]),
     el('p', { class: 'muted', text: `Имплиситы и дроп — для тира, который чаще всего падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru} — ${plan.itemTier.chance}%).` }),
     ...plan.profile.notes.map((n) => el('div', { class: 'infobox', text: n })),
+  ];
+}
+
+/* ------------------------------- Шаг 5: Кузница ------------------------------- */
+
+/** Полоса прогресса с подписью внутри (уровень в тире, ранг слота). */
+function progressBar(value, max, label, color) {
+  const pct = Math.max(0, Math.min(100, (value / Math.max(1, max)) * 100));
+  return el('div', { class: 'pbar' }, [
+    el('i', { style: `width:${pct}%;background:${color}` }),
+    el('span', { text: label }),
+  ]);
+}
+
+/** Стоимость шага: золото, фрагменты и шанс успеха одной строкой. */
+function stepCost(step, tier) {
+  if (!step) return el('div', { class: 'cost' }, [
+    el('span', { class: 'muted small', text: 'Следующий шаг:' }),
+    el('b', { text: 'тир прокачан полностью' }),
+    el('span', { text: '— дальше открывается следующий тир' }),
+  ]);
+  const fragColor = tierColors(tier)[0];
+  return el('div', { class: 'cost' }, [
+    el('span', { class: 'muted small', text: 'Следующий шаг:' }),
+    el('span', { class: 'ico', html: coinIcon() }), el('b', { text: fmtNum(step.gold) }),
+    el('span', { class: 'ico', html: shardIcon(fragColor) }), el('b', { text: String(step.fragments) }),
+    el('span', { text: forgeTierInfo(tier).fragmentRu }),
+    el('span', { class: step.fail > 0 ? 'chip warn' : 'chip good', text: `успех ${Math.round(step.success * 100)}%` }),
+  ]);
+}
+
+/**
+ * Карточка слота в Кузнице: тир, шаги «+N», полосы прогресса, цена следующего шага
+ * и быстрые кнопки. Именно так удобно вести прокачку: видно, что сейчас и сколько стоит.
+ */
+function forgeCard(plan, root, gear, cell) {
+  const st = gear[cell.id];
+  const info = forgeTierInfo(st.tier);
+  const rank = forgeRank(st.tier, st.level);
+  const maxed = st.level >= info.maxLevel;
+  const step = maxed ? null : forgeStep(st.tier, st.level);
+  const families = cellFamilies(plan, cell);
+  const label = cellLabels(plan, cell);
+  const family = st.family ? familyById(st.family) : null;
+  const color = tierColors(st.tier)[0];
+  const promoteStep = maxed && st.tier < 6 ? forgeStep(st.tier + 1, 0) : null;
+
+  const setLevel = (v) => {
+    st.level = Math.max(0, Math.min(info.maxLevel, v));
+    render(root);
+  };
+  const setTier = (t) => {
+    st.tier = Math.max(1, Math.min(6, t));
+    st.level = Math.min(st.level, forgeTierInfo(st.tier).maxLevel);
+    render(root);
+  };
+
+  const levelOptions = [];
+  for (let i = 0; i <= info.maxLevel; i += 1) levelOptions.push(el('option', { value: String(i), selected: i === st.level ? 'selected' : null }, [`+${i}`]));
+
+  return el('div', { class: `forgecard${maxed ? ' maxed' : ''}` }, [
+    el('header', {}, [
+      el('span', { class: 'fart' }, [usableArt(family, st)]),
+      el('div', {}, [
+        el('b', { text: `${label.ru} (${label.en})` }),
+        el('div', { class: 'muted small', text: family ? biText(family.ru, family.name) : 'предмет не выбран' }),
+      ]),
+      el('span', { class: 'tag tiertag', style: `border-color:${color};color:${color};margin-left:auto`, text: `T${st.tier}` }),
+      el('span', { class: 'tag plus', text: `+${st.level}` }),
+    ]),
+    el('div', { class: 'fcontrols' }, [
+      el('select', { onchange: (e) => { st.family = e.target.value || null; render(root); } }, [
+        el('option', { value: '', selected: st.family ? null : 'selected' }, ['— предмет —']),
+        ...families.map((f) => el('option', { value: f.id, selected: f.id === st.family ? 'selected' : null }, [f.name])),
+      ]),
+      el('select', { onchange: (e) => setTier(Number(e.target.value)) },
+        FORGE_TIERS.map((t) => el('option', { value: String(t.tier), selected: t.tier === st.tier ? 'selected' : null }, [`T${t.tier} ${t.ru}`]))),
+      el('select', { onchange: (e) => setLevel(Number(e.target.value)) }, levelOptions),
+      el('select', { onchange: (e) => { st.awaken = Number(e.target.value); render(root); } },
+        [0, 1, 2, 3, 4, 5].map((r) => el('option', { value: String(r), selected: r === st.awaken ? 'selected' : null }, [r === 0 ? 'Awaken 0' : `Awaken ${r}`]))),
+    ]),
+    progressBar(st.level, info.maxLevel, `уровень тира: +${st.level} из +${info.maxLevel}`, color),
+    progressBar(rank.rank, FORGE_MAX_RANK, `ранг слота: ${rank.rank} / ${FORGE_MAX_RANK}`, 'linear-gradient(90deg,#5ba7ff,#ffc857)'),
+    stepCost(step, st.tier),
+    el('div', { class: 'factions' }, [
+      el('button', { class: 'btn tiny', text: '−1', disabled: st.level <= 0 ? 'disabled' : null, onclick: () => setLevel(st.level - 1) }),
+      el('button', { class: 'btn tiny', text: '+1', disabled: maxed ? 'disabled' : null, onclick: () => setLevel(st.level + 1) }),
+      el('button', { class: 'btn tiny', text: 'макс', disabled: maxed ? 'disabled' : null, onclick: () => setLevel(info.maxLevel) }),
+      maxed && st.tier < 6
+        ? el('button', { class: 'btn tiny primary', text: `Поднять тир → T${st.tier + 1}`, onclick: () => setTier(st.tier + 1) })
+        : null,
+      el('span', { class: 'muted small', text: `${info.affixSlots} аффикс-позиций · камней: ${SLOT_GEM_COUNT[cell.slot] || 0}` }),
+    ]),
+    promoteStep
+      ? el('div', { class: 'muted small', text: `Промоушен в T${st.tier + 1}: первый шаг — ${fmtNum(promoteStep.gold)} золота и ${promoteStep.fragments} × ${forgeTierInfo(st.tier + 1).fragmentRu}.` })
+      : null,
+    st.awaken > 0 && family && FAMILY_AWAKEN[family.id]
+      ? el('div', { class: 'muted small', text: `Awaken ${st.awaken}/${AWAKEN_MAX}: ${FAMILY_AWAKEN[family.id]}` })
+      : null,
+  ]);
+}
+
+/** Картинка предмета для карточки Кузницы (игровая или нарисованная). */
+function usableArt(family, st) {
+  if (!family) return el('span', { class: 'art-svg', html: itemArt(null, st.tier) });
+  return artNode(family, st.tier, st.awaken, { size: 40 });
+}
+
+/** Что качать первым: самые дешёвые шаги и слоты, где тир упирается в максимум. */
+function forgeAdvice(plan, gear, cells) {
+  const rows = cells.map((cell) => {
+    const st = gear[cell.id];
+    const info = forgeTierInfo(st.tier);
+    const maxed = st.level >= info.maxLevel;
+    return {
+      cell,
+      st,
+      info,
+      maxed,
+      step: maxed ? null : forgeStep(st.tier, st.level),
+      promote: maxed && st.tier < 6 ? forgeStep(st.tier + 1, 0) : null,
+      rank: forgeRank(st.tier, st.level).rank,
+    };
+  });
+
+  const cheapest = rows.filter((r) => r.step).sort((a, b) => a.step.gold - b.step.gold).slice(0, 3);
+  const promotions = rows.filter((r) => r.promote).sort((a, b) => a.promote.gold - b.promote.gold).slice(0, 3);
+  const lowest = rows.slice().sort((a, b) => a.rank - b.rank).slice(0, 3);
+
+  const items = [];
+  if (cheapest.length) {
+    items.push(el('div', { class: 'row' }, [
+      el('b', { text: 'Дешевле всего прокачать' }),
+      el('span', { text: cheapest.map((r) => `${cellLabels(plan, r.cell).ru} → ${fmtNum(r.step.gold)} золота (T${r.st.tier} +${r.st.level + 1})`).join(' · ') }),
+    ]));
+  }
+  if (promotions.length) {
+    items.push(el('div', { class: 'row' }, [
+      el('b', { text: 'Тир уже максимум — пора на промоушен' }),
+      el('span', { text: promotions.map((r) => `${cellLabels(plan, r.cell).ru} → T${r.st.tier + 1} (${fmtNum(r.promote.gold)} золота)`).join(' · ') }),
+    ]));
+  }
+  if (lowest.length) {
+    items.push(el('div', { class: 'row' }, [
+      el('b', { text: 'Самые слабые слоты' }),
+      el('span', { text: lowest.map((r) => `${cellLabels(plan, r.cell).ru} — ранг ${r.rank}/100`).join(' · ') }),
+    ]));
+  }
+  items.push(el('div', { class: 'row' }, [
+    el('b', { text: 'Как это работает' }),
+    el('span', { text: 'Кузница качает слот целиком: сначала закрывайте дешёвые шаги в текущем тире, потом поднимайте тир. Каждый шаг усиливает имплисит слота, а каждый новый тир добавляет аффикс-позицию (Free Pick).' }),
+  ]));
+  return el('div', { class: 'advice' }, items);
+}
+
+/** Страница Кузницы: сводка, советник, карточки слотов и таблица тиров. */
+function forgePage(plan, root) {
+  const gear = gearStateFor(plan);
+  const cells = GEAR_CELLS.filter((c) => cellUsable(plan, c) && c.slot !== 'talisman');
+  const rows = cells.map((cell) => {
+    const st = gear[cell.id];
+    const info = forgeTierInfo(st.tier);
+    return { st, info, rank: forgeRank(st.tier, st.level).rank, maxed: st.level >= info.maxLevel };
+  });
+  const rankTotal = rows.reduce((a, r) => a + r.rank, 0);
+  const rankMax = cells.length * FORGE_MAX_RANK;
+  const maxedSlots = rows.filter((r) => r.maxed).length;
+  const byTier = FORGE_TIERS.map((t) => ({
+    t,
+    count: rows.filter((r) => r.st.tier === t.tier).length,
+  })).filter((x) => x.count);
+
+  const nextUp = cells
+    .map((cell) => {
+      const st = gear[cell.id];
+      const info = forgeTierInfo(st.tier);
+      const maxed = st.level >= info.maxLevel;
+      const step = maxed ? (st.tier < 6 ? forgeStep(st.tier + 1, 0) : null) : forgeStep(st.tier, st.level);
+      return step ? { cell, st, step, maxed } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.step.gold - b.step.gold)[0];
+
+  const scale = el('div', { class: 'scroll' }, [table(
+    ['Тир', 'Шагов «+N»', 'Золото до максимума', 'Фрагменты', 'Аффикс-позиций', 'Ранг слота'],
+    FORGE_TIERS.map((t) => {
+      const cum = forgeCumulative(t.tier, t.maxLevel);
+      return [
+        `T${t.tier} ${t.ru} (${t.name})`,
+        `+${t.maxLevel}`,
+        fmtNum(cum.gold),
+        `${fmtNum(cum.fragments)} × ${t.fragmentRu}`,
+        String(t.affixSlots),
+        `${forgeRank(t.tier, t.maxLevel).rank}/100`,
+      ];
+    }),
+  )]);
+
+  return [
+    el('h3', { text: 'Кузница: прогресс по слотам' }),
+    el('div', { class: 'kpi' }, [
+      el('div', { class: 'k' }, [el('b', { text: String(cells.length) }), el('span', { text: 'слотов в Кузнице' })]),
+      el('div', { class: 'k' }, [el('b', { text: `${rankTotal} / ${rankMax}` }), el('span', { text: 'суммарный ранг' })]),
+      el('div', { class: 'k' }, [el('b', { text: String(maxedSlots) }), el('span', { text: 'слотов на максимуме тира' })]),
+      el('div', { class: 'k' }, [el('b', { text: byTier.map((x) => `${x.t.tier}×${x.count}`).join(' ') || '—' }), el('span', { text: 'слоты по тирам' })]),
+    ]),
+    nextUp
+      ? el('p', { class: 'muted', text: `Ближайший выгодный шаг: ${cellLabels(plan, nextUp.cell).ru} — ${nextUp.maxed ? `промоушен в T${nextUp.st.tier + 1}` : `+${nextUp.st.level + 1} к T${nextUp.st.tier}`} за ${fmtNum(nextUp.step.gold)} золота, ${nextUp.step.fragments} × ${forgeTierInfo(nextUp.maxed ? nextUp.st.tier + 1 : nextUp.st.tier).fragmentRu} (успех ${Math.round(nextUp.step.success * 100)}%).` })
+      : null,
+    el('h3', { text: 'Что качать первым' }),
+    forgeAdvice(plan, gear, cells),
+    el('h3', { text: 'Слоты: тир, «+N» и цена следующего шага' }),
+    el('div', { class: 'forgegrid' }, cells.map((cell) => forgeCard(plan, root, gear, cell))),
+    el('div', { class: 'infobox' }, [
+      el('b', { text: 'Кузница поднимает слот выше тира предмета' }),
+      el('p', { text: 'Кузница (Forge) качает СЛОТ, а не отдельный предмет: у слота свой тир и свои шаги «+N». Поэтому в игре на карточке стоит, например, «T4 +19», даже если сам предмет выпал T2 — слот уже поднят Кузницей. Ранг слота (0…100) складывает шаги всех тиров: T1 +4, T2 +9, T3 +14, T4 +19, T5 +24, T6 +30.' }),
+      el('p', { class: 'muted', text: 'Цифры стоимости — из официальных данных Item Codex (Кузница → Forge). К каждому шагу в игре ещё нужны материалы монстров: их список каждый уровень разный, его видно в Кузнице.' }),
+    ]),
+    el('h3', { text: 'Сколько стоит прокачать тир целиком' }),
+    scale,
+    el('p', { class: 'muted', text: AWAKEN_NOTE }),
   ];
 }
 
@@ -1017,15 +1215,22 @@ export function render(root) {
   });
   if (state.mode === 'auto') state.manual = { ...plan.allocations };
 
-  root.appendChild(guideCard(plan, root));
-  root.appendChild(stepCard(1, 'Класс и цель', classStep(root, plan)));
-  root.appendChild(stepCard(2, 'Уровни: персонаж и Monster Level', levelsStep(root, plan)));
-  root.appendChild(stepCard(3, 'Куда вложить очки навыков', skillsStep(root, plan)));
-  root.appendChild(stepCard(4, 'Что надеть: слоты и предметы', gearStep(plan, root)));
-  root.appendChild(stepCard(5, 'Какие камни вставить', gemsStep(plan)));
-  root.appendChild(stepCard(6, 'Что делать дальше', nextStep(plan)));
-  root.appendChild(shareCard(root, plan));
-  root.appendChild(saveCard(root, plan));
+  const page = currentPage();
+  root.appendChild(guideHead(plan));
+  root.appendChild(pageNav(root));
+
+  // Рисуем ТОЛЬКО активную страницу: меньше работы на каждое нажатие — интерфейс не тормозит.
+  if (page.id === 'class') root.appendChild(pageCard(page, classStep(root, plan)));
+  else if (page.id === 'levels') root.appendChild(pageCard(page, levelsStep(root, plan)));
+  else if (page.id === 'skills') root.appendChild(pageCard(page, skillsStep(root, plan)));
+  else if (page.id === 'gear') root.appendChild(pageCard(page, gearStep(plan, root)));
+  else if (page.id === 'forge') root.appendChild(pageCard(page, forgePage(plan, root)));
+  else if (page.id === 'gems') root.appendChild(pageCard(page, gemsStep(plan)));
+  else if (page.id === 'next') root.appendChild(pageCard(page, nextStep(plan)));
+  else if (page.id === 'build') root.appendChild(pageCard(page, [shareCard(root, plan), saveCard(root, plan)]));
+  else root.appendChild(pageCard(page, classStep(root, plan)));
+
+  root.appendChild(pageFooter(root));
 
   // Каждый рендер = свежий снимок в localStorage: ничего не теряется при перезагрузке.
   saveState(snapshot());

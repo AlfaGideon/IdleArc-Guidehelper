@@ -260,3 +260,41 @@ ol.todo b { color: var(--accent); }
   align-items: center; flex-wrap: wrap; background: rgba(255,255,255,.02); }
 .loadout b { color: var(--accent); }
 .loadout .btn.tiny { padding: 2px 8px; }
+
+/* --- страницы планировщика: вместо одной длинной ленты — отдельные экраны --- */
+.statusline { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
+.pagenav { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.pnav { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.02); color: var(--muted); border-radius: 999px; padding: 5px 13px;
+  cursor: pointer; font: inherit; font-size: 13px; }
+.pnav:hover { color: var(--text); border-color: var(--accent2); }
+.pnav.active { background: var(--accent); border-color: var(--accent); color: #1b1a17; font-weight: 600; }
+.pnav .pnum { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+  border-radius: 50%; background: rgba(0,0,0,.28); font-size: 11px; }
+.pnav.active .pnum { background: rgba(0,0,0,.2); }
+.pagefoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 0 4px; flex-wrap: wrap; }
+.card.step > p.muted.small { margin-top: -2px; }
+
+/* --- кузница: карточки слотов --- */
+.forgegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; margin: 10px 0; }
+.forgecard { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: rgba(255,255,255,.02);
+  display: flex; flex-direction: column; gap: 7px; }
+.forgecard.maxed { border-color: rgba(105,209,125,.45); }
+.forgecard header { display: flex; align-items: center; gap: 8px; }
+.forgecard header b { color: var(--text); }
+.forgecard .fart svg, .forgecard .fart img { width: 40px; height: 40px; display: block; }
+.forgecard .fcontrols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.forgecard select { width: 100%; }
+.forgecard .pbar { position: relative; height: 16px; border-radius: 999px; background: #0b0f14;
+  border: 1px solid var(--line); overflow: hidden; }
+.forgecard .pbar > i { position: absolute; left: 0; top: 0; bottom: 0; display: block; }
+.forgecard .pbar > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.75); }
+.forgecard .cost { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.forgecard .cost b { color: var(--text); }
+.forgecard .cost .ico svg { width: 15px; height: 15px; display: block; }
+.forgecard .factions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.advice { display: grid; gap: 6px; margin: 8px 0; }
+.advice .row { display: flex; gap: 8px; align-items: baseline; border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; flex-wrap: wrap; }
+.advice .row b { color: var(--accent); white-space: nowrap; }

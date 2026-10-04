@@ -154,14 +154,89 @@ function textOf(node, acc = []) {
   return acc.join('');
 }
 
-check('гайд: интерфейс собран в 6 шагов и двуязычен (Русское (English))', () => {
+function findByClass(node, cls, acc = []) {
+  for (const c of node.children || []) {
+    if (c.nodeType === 1 && String(c.className || '').split(/\s+/).includes(cls)) acc.push(c);
+    findByClass(c, cls, acc);
+  }
+  return acc;
+}
+
+/** Идентификаторы страниц планировщика (вместо одной длинной ленты). */
+const PAGE_IDS = ['class', 'levels', 'skills', 'gear', 'forge', 'gems', 'next', 'build'];
+
+/** Отрисовать указанные страницы и вернуть их текст: { id, root, text }. */
+function renderPages(ids = PAGE_IDS) {
+  const st = views.planner.plannerState;
+  const saved = st.page;
+  const out = [];
+  for (const id of ids) {
+    st.page = id;
+    const root = new El('main');
+    views.planner.render(root);
+    out.push({ id, root, text: textOf(root) });
+  }
+  st.page = saved;
+  return out;
+}
+
+const pagesText = (ids) => renderPages(ids).map((p) => p.text).join('');
+
+/** Все узлы, подходящие под условие (обход дерева). */
+function findAll(node, pred, acc = []) {
+  if (pred(node)) acc.push(node);
+  for (const c of node.children || []) if (c && c.nodeType === 1) findAll(c, pred, acc);
+  return acc;
+}
+
+/** Первая кнопка с указанной подписью. */
+const findButton = (node, label) => findAll(node, (n) => n.tagName === 'BUTTON' && String(n.textContent || '').trim() === label)[0] || null;
+
+/** Сколько элементов в поддереве. */
+function countNodes(node) {
+  let c = 1;
+  for (const ch of node.children || []) if (ch && ch.nodeType === 1) c += countNodes(ch);
+  return c;
+}
+
+check('страницы: планировщик разбит на отдельные экраны, а не одну длинную ленту', () => {
+  const st = views.planner.plannerState;
+  st.page = 'class';
   const root = new El('main');
   views.planner.render(root);
-  const text = textOf(root);
-  for (let n = 1; n <= 6; n++) if (!text.includes(`Шаг ${n}`)) throw new Error(`нет «Шаг ${n}»`);
+  const navs = findByClass(root, 'pagenav');
+  if (navs.length !== 1) throw new Error('нет навигации по страницам');
+  const btns = (navs[0].children || []).filter((c) => c.tagName === 'BUTTON');
+  if (btns.length !== 8) throw new Error('страниц в навигации: ' + btns.length);
+  let text = textOf(root);
+  if (!text.includes('Страница 1')) throw new Error('нет заголовка первой страницы');
+  if (text.includes('План действий прямо сейчас')) throw new Error('на экране видно содержимое других страниц');
+  if (findByClass(root, 'forgecard').length) throw new Error('карточки Кузницы не должны рисоваться на чужой странице');
+  // клик по кнопке переключает страницу и запоминается
+  const forgeBtn = btns.find((b) => b.attrs['data-page'] === 'forge');
+  if (!forgeBtn) throw new Error('нет кнопки страницы «Кузница»');
+  forgeBtn.dispatch('click');
+  text = textOf(root);
+  if (!text.includes('Кузница: прогресс по слотам')) throw new Error('страница Кузницы не открылась по клику');
+  if (text.includes('Экран снаряжения')) throw new Error('на странице Кузницы видно чужое содержимое');
+  if (st.page !== 'forge') throw new Error('страница не запомнена в состоянии');
+  const saved = JSON.parse(globalThis.localStorage.getItem('iac:helper:state:v1')).state;
+  if (saved.page !== 'forge') throw new Error('страница не сохраняется в браузере');
+  // «назад/далее» листают по порядку
+  const foot = findByClass(root, 'pagefoot')[0];
+  const nextBtn = (foot.children || []).find((c) => c.tagName === 'BUTTON' && String(c.textContent).includes('→'));
+  if (!nextBtn) throw new Error('нет кнопки «далее»');
+  nextBtn.dispatch('click');
+  if (st.page !== 'gems') throw new Error('кнопка «далее» не переключает страницу: ' + st.page);
+  st.page = 'class';
+});
+
+check('гайд: интерфейс двуязычен (Русское (English)) и все страницы отвечают', () => {
+  const text = pagesText();
   for (const needle of ['Гайд: как собрать персонажа', 'Уровень персонажа', 'Monster Level (ML)', 'План действий прямо сейчас']) {
     if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
   }
+
   // двуязычные подписи: русское рядом с игровым английским
   const pairs = [
     ['Могучие удары', 'Mighty Strikes'],
@@ -211,35 +286,39 @@ check('двуручное оружие и Torch появляются по ML, а
   if (enough.gear.slots.find((s) => s.slot === 'mainhand').primary.hand !== '2H') throw new Error('на ML 60 босс-билд должен советовать двуручку');
 });
 
-check('планировщик: на экране есть блоки распределения, +All, гемов и экипировки', () => {
-  const root = new El('main');
-  views.planner.render(root);
-  const text = textOf(root);
-  const must = [
-    'Классовые навыки — распределение',
-    'Почему очки распределены именно так',
-    '+All Class Skills',
-    'Гемы: какой камень куда ставить',
-    'Лучшие камни под цель',
-    'Когда менять основной камень',
-    'Другие камни в этом слоте',
-    'Экран снаряжения',
-    'Кузница поднимает слот выше тира предмета',
-    'Что искать в каждом слоте',
-    'Сохранение: данные не теряются при перезагрузке',
-    'Обмен сборкой',
-    'Вторичный стат',
-    'Имплисит',
-  ];
-  for (const needle of must) if (!text.includes(needle)) throw new Error(`нет блока/строки: «${needle}»`);
-  const slots = views.planner.plannerState ? null : null;
-  // ячейки должны называться как в игровом окне
+check('каждая страница на своём месте: навыки, снаряжение, Кузница, камни, чек-лист', () => {
+  const pages = renderPages();
+  const by = Object.fromEntries(pages.map((p) => [p.id, p.text]));
+  const need = (id, needle) => { if (!by[id].includes(needle)) throw new Error(`на странице «${id}» нет «${needle}»`); };
+  need('skills', 'Классовые навыки — распределение');
+  need('skills', 'Почему очки распределены именно так');
+  need('skills', '+All Class Skills');
+  need('skills', 'Итоговые бонусы от навыков');
+  need('gear', 'Экран снаряжения');
+  need('gear', 'Что искать в каждом слоте');
+  need('gear', 'Картинки предметов');
+  need('gear', 'Имплисит');
+  need('forge', 'Кузница: прогресс по слотам');
+  need('forge', 'Что качать первым');
+  need('forge', 'Слоты: тир, «+N» и цена следующего шага');
+  need('forge', 'Кузница поднимает слот выше тира предмета');
+  need('forge', 'Сколько стоит прокачать тир целиком');
+  need('gems', 'Гемы: какой камень куда ставить');
+  need('gems', 'Когда менять основной камень');
+  need('gems', 'Другие камни в этом слоте');
+  need('gems', 'Вторичные статы камней');
+  need('next', 'План действий прямо сейчас');
+  need('build', 'Обмен сборкой');
+  need('build', 'Сохранение: данные не теряются при перезагрузке');
+  // Кузница не должна дублироваться на странице снаряжения
+  if (by.gear.includes('Кузница: прогресс по слотам')) throw new Error('Кузница снова показана в двух местах');
+  // слоты экипировки перечислены на странице снаряжения
   for (const slot of ['Факел', 'Шлем', 'Амулет', 'Оружие', 'Нагрудник', 'Кольцо 1', 'Кольцо 2', 'Пояс', 'Перчатки', 'Обувь', 'Талисман 1', 'Талисман 2']) {
-    if (!text.includes(slot)) throw new Error(`в блоке экипировки нет слота «${slot}»`);
+    if (!by.gear.includes(slot)) throw new Error(`в блоке снаряжения нет слота «${slot}»`);
   }
 });
 
-check('планировщик: рендерится для всех 5 классов × 5 целей × 3 уровней', () => {
+check('планировщик: рендерится для всех 5 классов × 5 целей × 3 уровней (все страницы)', () => {
   const st = views.planner.plannerState;
   const problems = [];
   for (const cls of classes.CLASSES) {
@@ -247,18 +326,19 @@ check('планировщик: рендерится для всех 5 класс
       for (const lvl of [1, 45, 200]) {
         try {
           st.classId = cls.id; st.goal = goal; st.level = lvl; st.ml = lvl; st.plusAll = 3; st.manual = null; st.mode = 'auto';
-          const root = new El('main');
-          views.planner.render(root);
-          const text = textOf(root);
-          if (!text.includes('Экран снаряжения')) problems.push(`${cls.id}/${goal}/${lvl}: нет экрана экипировки`);
-          if (!text.includes('лучшие выбор') && !text.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
+          const pages = renderPages();
+          const by = Object.fromEntries(pages.map((p) => [p.id, p.text]));
+          if (!by.gear.includes('Экран снаряжения')) problems.push(`${cls.id}/${goal}/${lvl}: нет экрана снаряжения`);
+          if (!by.forge.includes('Кузница: прогресс по слотам')) problems.push(`${cls.id}/${goal}/${lvl}: нет страницы Кузницы`);
+          if (!by.gems.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
+          if (!by.skills.includes('Классовые навыки')) problems.push(`${cls.id}/${goal}/${lvl}: нет распределения навыков`);
         } catch (e) {
           problems.push(`${cls.id}/${goal}/${lvl}: ${e.message}`);
         }
       }
     }
   }
-  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.plusAll = 0; st.manual = null; st.mode = 'auto';
+  st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.plusAll = 0; st.manual = null; st.mode = 'auto'; st.page = 'class';
   if (problems.length) throw new Error(problems.slice(0, 3).join(' | '));
 });
 
@@ -498,6 +578,7 @@ check('навыки: у всех есть значения за очко, тек
 });
 
 check('таблица навыков в шаге 3 сгруппирована по тирам и показывает максимумы', () => {
+  views.planner.plannerState.page = 'skills';
   const root = new El('main');
   views.planner.render(root);
   const text = textOf(root);
@@ -515,6 +596,7 @@ check('таблица навыков в шаге 3 сгруппирована п
 });
 
 check('таблица навыков: каждый навык стоит под своим тиром и со своим максимумом (все 5 классов)', () => {
+  views.planner.plannerState.page = 'skills';
   const st = views.planner.plannerState;
   for (const cls of classes.CLASSES) {
     st.classId = cls.id; st.goal = 'progress'; st.level = 60; st.ml = 60; st.plusAll = 0; st.manual = null; st.mode = 'auto';
@@ -632,13 +714,6 @@ check('формула гема и компоунд петов', () => {
 /* ---------- Кузница, экран персонажа, картинки, сохранение ---------- */
 
 /** Найти узлы по классу (querySelectorAll в шиме умеет только id/теги). */
-function findByClass(node, cls, acc = []) {
-  for (const c of node.children || []) {
-    if (c.nodeType === 1 && String(c.className || '').split(/\s+/).includes(cls)) acc.push(c);
-    findByClass(c, cls, acc);
-  }
-  return acc;
-}
 
 check('Кузница: шаги, фрагменты и шансы совпадают с данными Item Codex', () => {
   const eq = (a, b, what) => { if (Math.abs(a - b) > 1e-9) throw new Error(`${what}: ${a} != ${b}`); };
@@ -704,6 +779,7 @@ check('экран снаряжения: силуэт 3+3+3+4 ячейки, ка�
 });
 
 check('экран снаряжения: силуэт человека нарисован под ячейками и строки как в игре', () => {
+  views.planner.plannerState.page = 'gear';
   const root = new El('main');
   views.planner.render(root);
   const dolls = findByClass(root, 'gear-doll');
@@ -722,6 +798,7 @@ check('экран снаряжения: силуэт человека нарис
 });
 
 check('карточки предметов: картинка + переворот на статы', () => {
+  views.planner.plannerState.page = 'gear';
   const root = new El('main');
   views.planner.render(root);
   const cards = findByClass(root, 'flipcard');
@@ -741,8 +818,13 @@ check('карточки предметов: картинка + переворо�
   cards[0].dispatch('click');
   if (cards[0].classList.contains('flipped')) throw new Error('карточка не возвращается обратно');
   const text = textOf(root);
-  for (const needle of ['Кузница поднимает слот выше тира предмета', 'Шаг Кузницы:', 'камней:', 'Awaken', 'Картинки предметов']) {
+  for (const needle of ['Шаг Кузницы:', 'камней:', 'Картинки предметов', 'Что искать в каждом слоте']) {
     if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
+  }
+  // выборы тира, «+N», Awaken и цены шагов живут на странице Кузницы
+  const forgeText = renderPages(['forge'])[0].text;
+  for (const needle of ['Awaken', 'Следующий шаг', 'Что качать первым', 'успех']) {
+    if (!forgeText.includes(needle)) throw new Error(`нет строки «${needle}» на странице Кузницы`);
   }
 });
 
@@ -762,8 +844,11 @@ check('картинки предметов: рисуются для всех 40 
 check('сохранение в браузере: состояние пишется и восстанавливается', () => {
   const st = views.planner.plannerState;
   st.classId = 'rogue'; st.level = 77; st.ml = 123; st.goal = 'farm'; st.plusAll = 7; st.extraPoints = 3; st.manual = null; st.mode = 'auto';
+  st.page = 'gear';
   const root = new El('main');
   views.planner.render(root);
+  const pages = renderPages();
+  const buildText = pages.find((p) => p.id === 'build').text;
   const raw = globalThis.localStorage.getItem('iac:helper:state:v1');
   if (!raw) throw new Error('состояние не сохранено в localStorage');
   const saved = JSON.parse(raw);
@@ -777,11 +862,13 @@ check('сохранение в браузере: состояние пишетс
   if (!back || back.classId !== 'rogue' || back.ml !== 123) throw new Error('набор не читается');
   const again = store.loadState();
   if (!again || again.ml !== 123 || again.classId !== 'rogue') throw new Error('loadState не вернул сохранённое');
-  const text = textOf(root);
-  if (!text.includes('Сохранение: данные не теряются при перезагрузке')) throw new Error('нет блока сохранения');
-  if (!text.includes('Набор 1') || !text.includes('Набор 2')) throw new Error('нет наборов');
+  if (!buildText.includes('Сохранение: данные не теряются при перезагрузке')) throw new Error('нет блока сохранения');
+  if (!buildText.includes('Набор 1') || !buildText.includes('Набор 2')) throw new Error('нет наборов');
+  // страница тоже восстанавливается после перезагрузки
+  const again2 = store.loadState();
+  if (again2.page !== 'build') throw new Error('страница не восстанавливается: ' + again2.page);
   // вернуть стенд в исходное состояние и почистить хранилище
-  st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0; st.manual = null; st.mode = 'auto';
+  st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0; st.manual = null; st.mode = 'auto'; st.page = 'class';
   store.clearState();
 });
 
@@ -863,6 +950,76 @@ check('загрузка иконок через браузер: скачивае
     globalThis.fetch = realFetch;
     artUi.artDownload.active = false; artUi.artDownload.note = '';
   }
+});
+
+check('Кузница: карточки слотов с полосами прогресса, шагами и ценами', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'warrior'; st.page = 'forge'; st.gear = {};
+  const root = new El('main');
+  views.planner.render(root);
+  const cards = findByClass(root, 'forgecard');
+  if (cards.length !== 11) throw new Error('карточек Кузницы: ' + cards.length); // у воина 11 слотов (без второго оружия)
+  const bars = findByClass(root, 'pbar');
+  if (bars.length !== cards.length * 2) throw new Error('полос прогресса: ' + bars.length);
+  for (const card of cards) {
+    const selects = findAll(card, (n) => n.tagName === 'SELECT');
+    if (selects.length !== 4) throw new Error('в карточке слота должно быть 4 выбора (предмет, тир, +N, Awaken), а не ' + selects.length);
+    if (!findButton(card, '+1') || !findButton(card, 'макс')) throw new Error('нет кнопок шага');
+  }
+  const advice = findByClass(root, 'advice')[0];
+  if (!advice || (advice.children || []).length < 3) throw new Error('советник «что качать первым» пуст');
+});
+
+check('Кузница: кнопки двигают шаги слота, «макс» открывает промоушен тира', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'warrior'; st.page = 'forge'; st.gear = {};
+  const root = new El('main');
+  views.planner.render(root);
+  const torch = st.gear.warrior.torch;
+  torch.tier = 2; torch.level = 0;
+  views.planner.render(root);
+  const card = findByClass(root, 'forgecard')[0];
+  const plus = findButton(card, '+1');
+  if (!plus) throw new Error('нет кнопки +1');
+  plus.dispatch('click');
+  if (torch.level !== 1) throw new Error('шаг +1 не применился: ' + torch.level);
+  const card2 = findByClass(root, 'forgecard')[0];
+  if (!textOf(card2).includes('+1')) throw new Error('карточка не показала новый шаг');
+  const maxBtn = findButton(card2, 'макс');
+  maxBtn.dispatch('click');
+  if (torch.level !== 9) throw new Error('«макс» не выставил уровень тира: ' + torch.level);
+  // на максимуме тира появляется промоушен и кнопка поднятия тира
+  const card3 = findByClass(root, 'forgecard')[0];
+  if (!textOf(card3).includes('Промоушен')) throw new Error('нет подсказки про промоушен');
+  const promote = findButton(card3, 'Поднять тир → T3');
+  if (!promote) throw new Error('нет кнопки поднятия тира');
+  promote.dispatch('click');
+  if (torch.tier !== 3) throw new Error('тир не поднялся: ' + torch.tier);
+  st.page = 'class'; st.gear = {}; st.classId = 'warrior';
+});
+
+check('страницы: на экране одна страница, а не вся лента целиком (скорость)', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'warrior'; st.manual = null; st.mode = 'auto'; st.gear = {};
+  const counts = {};
+  let total = 0;
+  for (const id of PAGE_IDS) {
+    st.page = id;
+    const root = new El('main');
+    views.planner.render(root);
+    counts[id] = countNodes(root);
+    total += counts[id];
+  }
+  const biggest = Math.max(...Object.values(counts));
+  if (biggest > 900) throw new Error('страница слишком тяжёлая: ' + biggest + ' узлов');
+  if (total < biggest * 2.5) throw new Error('страницы не разделены: всего ' + total + ', максимум ' + biggest);
+  // на каждой странице есть своя навигация и переходы
+  st.page = 'gems';
+  const root = new El('main');
+  views.planner.render(root);
+  if (findByClass(root, 'pagenav').length !== 1) throw new Error('нет навигации');
+  if (findByClass(root, 'pagefoot').length !== 1) throw new Error('нет переходов назад/далее');
+  st.page = 'class';
 });
 
 await Promise.all(pending);
