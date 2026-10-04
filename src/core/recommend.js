@@ -52,7 +52,7 @@ export const STAT_TEXT = {
   mainstat: ['основной атрибут (Strength / Dexterity / Intelligence)', 'даёт и урон, и защиту по формуле класса'],
 };
 
-const statText = (key) => (STAT_TEXT[key] ? STAT_TEXT[key][0] : key);
+export const statText = (key) => (STAT_TEXT[key] ? STAT_TEXT[key][0] : key);
 
 /* --------------------- что даёт имплисит предмета: разбор строк --------------------- */
 
@@ -173,7 +173,69 @@ function gemValueStats(value) {
   return [...out];
 }
 
+/**
+ * Что даёт каждый атрибут за пункт (официальные данные игры, см. docs/RESEARCH.md).
+ * Украшения дают именно атрибуты, поэтому их надо сравнивать по эффекту, а не по названию линии.
+ */
+export const ATTRIBUTE_EFFECTS = {
+  strength: [['ad', 0.75], ['maxHp', 0.5], ['retal', 0.5]],
+  dexterity: [['dodge', 0.05], ['petDamage', 0.1]],
+  intelligence: [['ad', 0.38], ['petDamage', 0.05], ['dd', 0.2]],
+};
+
+export const ATTRIBUTE_LABELS = {
+  strength: ['Сила', 'Strength'],
+  dexterity: ['Ловкость', 'Dexterity'],
+  intelligence: ['Интеллект', 'Intelligence'],
+};
+
+/** Линии украшений: какое семейство какую линию атрибутов даёт. */
+export const JEWELRY_LINES = {
+  warriors: ['strength'],
+  rangers: ['dexterity'],
+  scholars: ['intelligence'],
+  adventurers: ['strength', 'dexterity'],
+};
+
+/**
+ * Семейство выбранной линии для слота. У «авантюриста» нет пояса —
+ * в поясе его роль играет Пояс учёного (все атрибуты).
+ */
+export function lineFamilyId(line, slot) {
+  if (slot === 'belt') return line === 'warriors' ? 'warriors_belt' : (line === 'rangers' ? 'rangers_belt' : 'scholars_belt');
+  if (slot === 'amulet' || slot === 'ring') return `${line}_${slot}`;
+  return null;
+}
+
+/** Прочитать список атрибутов из имплисита украшения. */
+function jewelryAttributes(family) {
+  const implicit = String(family.implicit || '');
+  if (/all attributes/i.test(implicit)) return ['strength', 'dexterity', 'intelligence'];
+  const out = [];
+  if (/strength/i.test(implicit)) out.push('strength');
+  if (/dexterity/i.test(implicit)) out.push('dexterity');
+  if (/intelligence/i.test(implicit)) out.push('intelligence');
+  return out;
+}
+
+/** Середина диапазона тира — грубая оценка ролла (диапазоны официальные, ролл — средний). */
+function tierRoll(family, tierIdx) {
+  const range = (family.implicitTiers || [])[tierIdx] || '';
+  const nums = String(range).replace(/[^0-9\-–]/g, '').split(/[\-–]/).map((n) => Number(n)).filter(Number.isFinite);
+  if (!nums.length) return 0;
+  return nums.length > 1 ? (nums[0] + nums[1]) / 2 : nums[0];
+}
+
 const CLASS_MAIN_STAT = { warrior: 'strength', archer: 'dexterity', mage: 'intelligence', rogue: 'dexterity', druid: 'strength' };
+
+/**
+ * Классовый скейл. Точная формула конверсии чужих атрибутов в урон в игре не раскрыта,
+ * поэтому здесь оценка: атрибут своего класса считается полнее (×1.25), а чужой урон
+ * от атрибута — слабее (×0.4). Урон пета, двойной урон и Max Health считаются одинаково
+ * для всех, потому что это самостоятельные статы, а не «свой/чужой» скейл.
+ */
+const OWN_ATTR_BONUS = 1.25;
+const FOREIGN_DAMAGE_PENALTY = 0.4;
 
 /* --------------------------------- основная функция --------------------------------- */
 
@@ -194,6 +256,7 @@ export function recommendBuild(classId, goal, opts = {}) {
   const sockets = socketsAtMl(ml);
   const mainStat = CLASS_MAIN_STAT[classId] || 'strength';
   const goalRu = (GOALS.find((g) => g.id === goal) || {}).ru || goal;
+  const jewelryLine = opts.jewelryLine && JEWELRY_LINES[opts.jewelryLine] ? opts.jewelryLine : 'auto';
 
   /** Вес стата: чем выше в приоритете цели, тем больше. */
   const weightOf = (stat) => {
@@ -226,8 +289,43 @@ export function recommendBuild(classId, goal, opts = {}) {
       continue;
     }
 
+    // --- украшения: у них нет «класса», только линия атрибутов, поэтому считаем эффект ---
+    const isJewelry = ['amulet', 'ring', 'belt'].includes(cell.slot);
+    const slotMultPre = SLOT_IMPLICIT_MULT[cell.slot] || 1;
+
+    /** Оценка украшения: суммарный вклад его атрибутов в приоритеты цели. */
+    const jewelryScore = (family) => {
+      const attrs = jewelryAttributes(family);
+      const roll = tierRoll(family, Math.min(5, Math.max(0, dropTier.tier - 1)));
+      let score = 0;
+      const parts = [];
+      for (const attr of attrs) {
+        for (const [stat, per] of ATTRIBUTE_EFFECTS[attr]) {
+          // классовое: свой атрибут полнее, чужой урон от атрибута слабее
+          const own = attr === mainStat;
+          const mult = stat === 'ad'
+            ? (own ? OWN_ATTR_BONUS : FOREIGN_DAMAGE_PENALTY)
+            : (own ? OWN_ATTR_BONUS : 1);
+          const gain = (per * mult * roll);
+          const w = weightOf(stat);
+          if (w > 0) score += gain * w;
+          if (w > 0) {
+            const note = own ? ' — это атрибут вашего класса' : (stat === 'ad' ? ' — чужой атрибут, для вашего класса слабее (оценка)' : '');
+            parts.push(`${ATTRIBUTE_LABELS[attr][0]} (${ATTRIBUTE_LABELS[attr][1]}): +${per}% ${statText(stat)} за пункт → при прокруте ~${Math.round(roll)} это ≈ +${gain.toFixed(1)}%${note}`);
+          }
+        }
+      }
+      // Плоские эффекты (Life on Hit / Life on Kill у поясов) — в том же весе, но без процентов.
+      const flat = /life on hit/i.test(family.implicit) ? 'loh' : (/life on kill/i.test(family.implicit) ? 'lok' : null);
+      if (flat && weightOf(flat) > 0) {
+        score += roll * weightOf(flat);
+        parts.push(`${statText(flat)} → +${roll} за удар/убийство`);
+      }
+      return { score: score * slotMultPre, parts, attrs, roll };
+    };
+
     // --- предметные ячейки ---
-    const allowed = (rules[cell.slot] || []).filter((id) => familyById(id));
+    const allowed = (isJewelry ? [] : (rules[cell.slot] || [])).filter((id) => familyById(id));
     const candidates = familiesForCell(classId, cell)
       .filter((f) => f.slot === cell.slot || (cell.id === 'hand2' && f.slot === 'mainhand'))
       .filter((f) => familyUnlockMl(f) <= ml || allowed.includes(f.id));
@@ -244,10 +342,20 @@ export function recommendBuild(classId, goal, opts = {}) {
       const imp = implicitStats(family.implicit);
       const aff = affixStats(family);
       let score = 0;
-      for (const s of imp) score += 2 * weightOf(s) * slotMult;
-      for (const s of aff) score += 1 * weightOf(s);
-      if (index === 0) score += 0.5; // при равенстве выигрывает кураторский выбор цели
-      if (!best || score > best.score) best = { family, score, imp, aff, index };
+      let info = null;
+      if (isJewelry) {
+        info = jewelryScore(family);
+        score = info.score;
+        // принудительно выбранная линия всегда впереди (точное совпадение семейства)
+        if (jewelryLine !== 'auto' && family.id === lineFamilyId(jewelryLine, cell.slot)) score += 1e6;
+        // иначе при равенстве выигрывает линия основного атрибута класса
+        else if (jewelryLine === 'auto' && info.attrs.includes(mainStat)) score += 1;
+      } else {
+        for (const s of imp) score += 2 * weightOf(s) * slotMult;
+        for (const s of aff) score += 1 * weightOf(s);
+        if (index === 0) score += 0.5; // при равенстве выигрывает кураторский выбор цели
+      }
+      if (!best || score > best.score) best = { family, score, imp, aff, index, info };
     });
 
     // Кураторский список приоритетнее: если он даёт хоть какой-то вклад, берём его,
@@ -255,19 +363,34 @@ export function recommendBuild(classId, goal, opts = {}) {
     const curated = ordered[0] || null;
     const curatedScore = curated ? (implicitStats(curated.implicit).reduce((a, s) => a + 2 * weightOf(s) * slotMult, 0)
       + affixStats(curated).reduce((a, s) => a + weightOf(s), 0)) : 0;
-    const chosenRecord = curated && curatedScore > 0 ? { family: curated, imp: implicitStats(curated.implicit), aff: affixStats(curated) } : best;
+    const chosenRecord = !isJewelry && curated && curatedScore > 0
+      ? { family: curated, imp: implicitStats(curated.implicit), aff: affixStats(curated) }
+      : best;
     const chosen = chosenRecord ? chosenRecord.family : null;
 
     const alternatives = ordered
       .filter((f) => f !== chosen)
-      .slice(0, 2)
+      .slice(0, isJewelry ? 3 : 2)
       .map((f) => ({
         family: f,
-        why: implicitStats(f.implicit).filter((s) => weightOf(s) > 0).map((s) => statText(s)).join(', ') || f.implicit,
+        why: isJewelry
+          ? jewelryScore(f).parts.slice(0, 3).join(', ') || f.implicit
+          : (implicitStats(f.implicit).filter((s) => weightOf(s) > 0).map((s) => statText(s)).join(', ') || f.implicit),
       }));
 
     const why = [];
-    if (chosen) {
+    if (chosen && isJewelry) {
+      const info = (chosenRecord && chosenRecord.info) || jewelryScore(chosen);
+      const attrsText = info.attrs.length === 3
+        ? 'все атрибуты сразу: Сила (Strength) + Ловкость (Dexterity) + Интеллект (Intelligence)'
+        : info.attrs.map((a) => `${ATTRIBUTE_LABELS[a][0]} (${ATTRIBUTE_LABELS[a][1]})`).join(' + ');
+      why.push(jewelryLine !== 'auto'
+        ? `Линия украшений выбрана вами вручную: ${chosen.ru} (${chosen.name}) — ${attrsText}.`
+        : `Линия подобрана расчётом под цель «${goalRu}»: ${chosen.ru} (${chosen.name}) — ${attrsText}. На T${dropTier.tier} это прокрут ${Math.round(info.roll)} пунктов на атрибут.`);
+      for (const p2 of info.parts.slice(0, 4)) why.push(`${p2} (официальные значения за пункт атрибута).`);
+      why.push(`Для сравнения: ${alternatives.slice(0, 2).map((a) => `${a.family.ru} — ${a.why}`).join('; ') || 'ближайших вариантов нет'}.`);
+    }
+    if (chosen && !isJewelry) {
       why.push(`Имплисит: ${chosen.implicit} — это гарантированный стат, он не зависит от ролла аффиксов.`);
       const matched = implicitStats(chosen.implicit).filter((s) => weightOf(s) > 0).sort((a, b) => weightOf(b) - weightOf(a));
       for (const s of matched.slice(0, 2)) {
@@ -335,6 +458,11 @@ export function recommendBuild(classId, goal, opts = {}) {
       dropBonuses,
       gem: { family: gemFamily, region, value: gemValue, why: gemWhy },
       alternatives,
+      jewelry: isJewelry && best ? {
+        attrs: (best.info && best.info.attrs) || [],
+        parts: (best.info && best.info.parts) || [],
+        roll: best.info ? Math.round(best.info.roll) : 0,
+      } : null,
       forge: {
         tier: dropTier.tier,
         level: targetLevel,

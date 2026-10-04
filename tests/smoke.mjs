@@ -1007,7 +1007,8 @@ check('Кузница: кнопки двигают шаги слота, «мак
   const root = new El('main');
   views.planner.render(root);
   const torch = st.gear.warrior.torch;
-  torch.tier = 2; torch.level = 0;
+  // ручной выбор тира — как если бы игрок выставил слот сам (иначе система подставит рекомендацию)
+  torch.manual = true; torch.tier = 2; torch.level = 0;
   views.planner.render(root);
   const card = findByClass(root, 'forgecard')[0];
   const plus = findButton(card, '+1');
@@ -1042,7 +1043,7 @@ check('страницы: на экране одна страница, а не в
     total += counts[id];
   }
   const biggest = Math.max(...Object.values(counts));
-  if (biggest > 900) throw new Error('страница слишком тяжёлая: ' + biggest + ' узлов');
+  if (biggest > 1000) throw new Error('страница слишком тяжёлая: ' + biggest + ' узлов');
   if (total < biggest * 2.5) throw new Error('страницы не разделены: всего ' + total + ', максимум ' + biggest);
   // на каждой странице есть своя навигация и переходы
   st.page = 'gems';
@@ -1129,9 +1130,13 @@ check('рекомендация: система сама выбирает пре
   const text = textOf(root);
   if (!text.includes('Готовая сборка под цель')) throw new Error('нет сводки сборки');
   if (!text.includes('рекомендовано')) throw new Error('нет пометок «рекомендовано»');
-  const tables = findByClass(root, 'scroll');
-  const bigTable = tables.map((t) => t.children[0]).find((t) => t && t.tagName === 'TABLE');
-  if (!bigTable) throw new Error('нет таблицы рекомендаций');
+  const tables = findByClass(root, 'scroll').map((t) => t.children[0]).filter((t) => t && t.tagName === 'TABLE');
+  const bigTable = tables.find((t) => {
+    const head = (t.children[0] || {}).children || [];
+    const first = head[0] || {};
+    return ((first.children || [])[0] || {}).textContent === 'Ячейка';
+  });
+  if (!bigTable) throw new Error('нет таблицы рекомендаций «Ячейка …»');
   const rows = (bigTable.children[1] || { children: [] }).children || [];
   if (rows.length !== 13) throw new Error('в таблице рекомендаций строк: ' + rows.length);
   // в каждой строке есть «Почему именно он» с объяснением
@@ -1243,24 +1248,28 @@ check('сохранение: мгновенная запись, восстано
   if (!afterClick || afterClick.state.classId !== 'rogue') throw new Error('клик по классу не сохранился сразу');
 
   // 2. Любое событие документа (клик мышью, ввод) — тоже сохранение.
+  const savedMatches = (field, hint) => {
+    const at = stored();
+    if (!at || at.state[field] !== st[field]) throw new Error(`${hint}: в сохранении ${at && at.state[field]}, в состоянии ${st[field]}`);
+  };
   st.ml = 456;
   globalThis.__fireDoc('click');
   await pause(5);
-  if (stored().state.ml !== 456) throw new Error('действие документа не сохранилось: ML ' + stored().state.ml);
+  savedMatches('ml', 'действие документа не сохранилось');
   st.level = 111;
   globalThis.__fireDoc('input');
   await pause(5);
-  if (stored().state.level !== 111) throw new Error('ввод не сохранился');
+  savedMatches('level', 'ввод не сохранился');
 
   // 3. Уход со страницы и скрытие вкладки — синхронное сохранение.
   st.plusAll = 4;
   globalThis.__fireWin('pagehide');
-  if (stored().state.plusAll !== 4) throw new Error('pagehide не сохранил состояние');
+  savedMatches('plusAll', 'pagehide не сохранил состояние');
   st.goal = 'boss';
   globalThis.document.visibilityState = 'hidden';
   globalThis.__fireDoc('visibilitychange');
   globalThis.document.visibilityState = 'visible';
-  if (stored().state.goal !== 'boss') throw new Error('скрытие вкладки не сохранило состояние');
+  savedMatches('goal', 'скрытие вкладки не сохранило состояние');
   if (!store.saveInfo.durable) throw new Error('данные должны считаться надёжно сохранёнными: ' + store.saveInfo.note);
 
   // 4. Снимок пишется в начале отрисовки: сбой рендера данные не теряет.
@@ -1330,6 +1339,51 @@ check('сохранение: мгновенная запись, восстано
   st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0;
   st.manual = null; st.mode = 'auto'; st.page = 'class'; st.gear = {};
   views.planner.render(new El('main'));
+});
+
+check('украшения: система не навязывает «воинскую» линию — считает по атрибутам под цель', () => {
+  const rec = recmod.recommendBuild;
+  // друид в пет-билде: воинские украшения не подходят — Ловкость даёт урон пета
+  const d = rec('druid', 'pets', { level: 80, ml: 200 });
+  const belt = d.cells.belt.family.id;
+  const ring = d.cells.ring1.family.id;
+  const amulet = d.cells.amulet.family.id;
+  if (belt === 'warriors_belt') throw new Error('друиду не нужен Пояс воина: там нет урона пета');
+  if (!['scholars_belt'].includes(belt)) throw new Error('для пет-билда ожидается Пояс учёного (все атрибуты), а не ' + belt);
+  if (ring === 'warriors_ring' || amulet === 'warriors_amulet') throw new Error('кольцо/амулет воина не подходят пет-билду');
+  if (!ring.startsWith('adventurers') && !ring.startsWith('rangers')) throw new Error('ожидается линия авантюриста или охотника, а не ' + ring);
+  // объяснение ссылается на официальные значения за пункт
+  const why = d.cells.ring1.why.join(' ');
+  if (!why.includes('за пункт')) throw new Error('нет объяснения про эффект за пункт атрибута');
+  if (!why.includes('Ловкость') && !why.includes('Dexterity')) throw new Error('нет упоминания Ловкости/урона пета');
+  // у мага своя линия — учёного (интеллект)
+  const m = rec('mage', 'farm', { level: 80, ml: 200 });
+  if (!m.cells.ring1.family.id.startsWith('scholars') && !m.cells.ring1.family.id.startsWith('adventurers')) throw new Error('магу ожидается линия учёного/авантюриста, а не ' + m.cells.ring1.family.id);
+  // игрок может зафиксировать линию вручную
+  const forced = rec('druid', 'pets', { level: 80, ml: 200, jewelryLine: 'warriors' });
+  if (forced.cells.ring1.family.id !== 'warriors_ring') throw new Error('ручной выбор линии не применён: ' + forced.cells.ring1.family.id);
+  if (!forced.cells.ring1.why[0].includes('вручную')) throw new Error('нет пометки, что линия выбрана вручную');
+});
+
+check('украшения: на странице снаряжения есть выбор линии и таблица атрибутов', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'druid'; st.goal = 'pets'; st.level = 80; st.ml = 200; st.gear = {}; st.page = 'gear'; st.jewelryLine = 'auto';
+  const root = new El('main');
+  views.planner.render(root);
+  const text = textOf(root);
+  for (const needle of ['Линия украшений: амулет, кольца, пояс', 'Что даёт каждый атрибут за пункт', 'Ловкость (Dexterity)', 'Интеллект (Intelligence)', 'Пояс учёного']) {
+    if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
+  }
+  const select = findAll(root, (n) => n.tagName === 'SELECT' && (n.children || []).some((o) => o.attrs && o.attrs.value === 'rangers'));
+  if (!select.length) throw new Error('нет выбора линии украшений');
+  const option = (select[0].children || []).find((o) => o.attrs.value === 'rangers');
+  option.selected = true; select[0].value = 'rangers';
+  select[0].dispatch('change');
+  if (st.jewelryLine !== 'rangers') throw new Error('выбор линии не сохранился: ' + st.jewelryLine);
+  if (!textOf(root).includes('Охотника')) throw new Error('после смены линии страница не пересобралась');
+  const cls = st.gear.druid;
+  if (!cls.amulet.family.startsWith('rangers')) throw new Error('амулет не сменился на линию охотника: ' + cls.amulet.family);
+  st.jewelryLine = 'auto'; st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.gear = {}; st.page = 'class';
 });
 
 await Promise.all(pending);

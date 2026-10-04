@@ -22,7 +22,7 @@ import {
   FORGE_TIERS, FORGE_MAX_RANK, forgeTierInfo, forgeStep, forgeRank, forgeCumulative, AWAKEN_MAX, AWAKEN_NOTE,
 } from '../data/forge.js';
 import { planBuild, planToText, encodePlan, decodePlan, nextPointLevel } from '../core/planner.js';
-import { recommendBuild } from '../core/recommend.js';
+import { recommendBuild, ATTRIBUTE_EFFECTS, ATTRIBUTE_LABELS, JEWELRY_LINES, statText } from '../core/recommend.js';
 import { el, card, table, kpi, copyButton } from './dom.js';
 import { itemArt, lockArt, tierColors, talismanArt, bodySilhouette, coinIcon, shardIcon } from './itemArt.js';
 import { artState, loadArt, artNode, lockedArtNode, artDownload, downloadArtViaBrowser } from './art.js';
@@ -43,6 +43,7 @@ const state = {
   shareCode: '',
   gear: {},           // экипировка по классам: { warrior: { mainhand: { family, tier, level, awaken }, … }, … }
   page: 'class',      // текущая страница планировщика (вместо одной длинной ленты)
+  jewelryLine: 'auto', // линия украшений: auto = расчёт под цель, иначе warriors/rangers/scholars/adventurers
   restored: false,    // состояние поднято из хранилища браузера при загрузке страницы
   restoredAt: null,   // когда это состояние сохранили
   restoredFrom: null, // из какого канала оно поднялось (localStorage, sessionStorage, окно)
@@ -61,6 +62,7 @@ function snapshot() {
     manual: state.manual,
     gear: state.gear,
     page: state.page,
+    jewelryLine: state.jewelryLine,
     shareCode: state.shareCode,
   };
 }
@@ -76,6 +78,7 @@ function applySnapshot(snap) {
   if (Number.isFinite(snap.extraPoints)) state.extraPoints = Math.max(0, Math.round(snap.extraPoints));
   if (snap.gear && typeof snap.gear === 'object') state.gear = snap.gear;
   if (snap.page && PAGES.some((p) => p.id === snap.page)) state.page = snap.page;
+  if (snap.jewelryLine && (snap.jewelryLine === 'auto' || JEWELRY_LINES[snap.jewelryLine])) state.jewelryLine = snap.jewelryLine;
   if (snap.manual && typeof snap.manual === 'object') { state.manual = snap.manual; state.mode = 'manual'; }
   else if (snap.mode === 'auto') { state.manual = null; state.mode = 'auto'; }
   if (typeof snap.shareCode === 'string') state.shareCode = snap.shareCode;
@@ -163,9 +166,9 @@ const talismanById = (id) => TALISMAN_TYPES.find((t) => t.id === id) || TALISMAN
  */
 let recCache = { key: '', value: null };
 function recommendationFor(plan) {
-  const key = `${plan.classId}|${plan.goal}|${plan.level}|${plan.ml}`;
+  const key = `${plan.classId}|${plan.goal}|${plan.level}|${plan.ml}|${state.jewelryLine}`;
   if (recCache.key !== key) {
-    recCache = { key, value: recommendBuild(plan.classId, plan.goal, { level: plan.level, ml: plan.ml }) };
+    recCache = { key, value: recommendBuild(plan.classId, plan.goal, { level: plan.level, ml: plan.ml, jewelryLine: state.jewelryLine }) };
   }
   return recCache.value;
 }
@@ -816,6 +819,63 @@ function artPanel(root) {
 
 /** Шаг 4 целиком: экран снаряжения как в игре (силуэт персонажа) + панель Кузницы. */
 /**
+ * Линия украшений: по умолчанию система считает лучший вариант под цель,
+ * но игрок может зафиксировать свою линию (Воина / Охотника / Учёного / Авантюриста).
+ * Здесь же — официальные эффекты атрибутов за пункт, чтобы выбор был понятным.
+ */
+function jewelryPanel(plan, root, rec) {
+  const lineOf = (id) => {
+    const attrs = JEWELRY_LINES[id] || [];
+    if (id === 'adventurers') return 'Сила + Ловкость (Strength & Dexterity)';
+    return attrs.map((a) => `${ATTRIBUTE_LABELS[a][0]} (${ATTRIBUTE_LABELS[a][1]})`).join(' + ');
+  };
+  const effectText = (id) => {
+    const attrs = JEWELRY_LINES[id] || [];
+    return attrs.map((a) => a).flatMap((a) => ATTRIBUTE_EFFECTS[a].map(([stat, per]) => `+${per}% ${statText(stat)}`)).join(', ');
+  };
+  const options = [['auto', 'Подбирать расчётом под цель']]
+    .concat(Object.keys(JEWELRY_LINES).map((id) => [id, `Линия ${id === 'warriors' ? 'воина (Warrior\'s)' : id === 'rangers' ? 'охотника (Ranger\'s)' : id === 'scholars' ? 'учёного (Scholar\'s)' : 'авантюриста (Adventurer\'s)'}`]));
+
+  const current = rec.cells.amulet && rec.cells.amulet.family ? rec.cells.amulet.family.ru : '—';
+  return el('div', { class: 'branch' }, [
+    el('header', {}, [
+      el('strong', { text: 'Линия украшений: амулет, кольца, пояс' }),
+      el('div', { class: 'chips' }, [
+        el('span', { class: 'chip', text: state.jewelryLine === 'auto' ? 'сейчас: расчёт под цель' : `сейчас: ${state.jewelryLine}` }),
+        el('span', { class: 'chip gold', text: `амулет: ${current}` }),
+      ]),
+    ]),
+    el('p', { class: 'muted small', text: 'Украшения в Item Codex — не «классовые»: Воинский, Охотника, Учёного и Авантюриста — это линии атрибутов, их может носить любой класс. Ниже — официальные эффекты атрибутов за пункт и выбор линии.' }),
+    el('div', { class: 'chips' }, [
+      el('label', { class: 'muted small', text: 'Ваша линия:' }),
+      el('select', {
+        onchange: (e) => { state.jewelryLine = e.target.value; render(root); },
+      }, options.map(([id, title]) => el('option', { value: id, selected: id === state.jewelryLine ? 'selected' : null }, [title]))),
+    ]),
+    el('div', { class: 'scroll' }, [table(
+      ['Линия украшений', 'Атрибуты', 'Что даёт за пункт'],
+      Object.keys(JEWELRY_LINES).map((id) => [
+        el('div', {}, [
+          el('b', { text: id === 'warriors' ? 'Воина (Warrior\'s)' : id === 'rangers' ? 'Охотника (Ranger\'s)' : id === 'scholars' ? 'Учёного (Scholar\'s)' : 'Авантюриста (Adventurer\'s)' }),
+          state.jewelryLine === id ? el('div', { class: 'chip gold', text: 'выбрана' }) : null,
+        ]),
+        lineOf(id),
+        effectText(id),
+      ]),
+    )]),
+    el('h4', { text: 'Что даёт каждый атрибут за пункт (официальные значения)' }),
+    el('div', { class: 'scroll' }, [table(
+      ['Атрибут', 'Эффект за пункт', 'Линия украшений'],
+      Object.entries(ATTRIBUTE_LABELS).map(([id, [ru, en]]) => [
+        biText(ru, en),
+        ATTRIBUTE_EFFECTS[id].map(([stat, per]) => `+${per}% ${statText(stat)}`).join(', '),
+        id === 'strength' ? 'Воина, Авантюриста, Пояс учёного' : id === 'dexterity' ? 'Охотника, Авантюриста, Пояс учёного' : 'Учёного, Пояс учёного',
+      ]),
+    )]),
+  ]);
+}
+
+/**
  * Таблица «что надеть» прямо по рекомендации: система уже выбрала предмет и камень,
  * здесь видно ЧТО и ПОЧЕМУ — в порядке игрового экрана снаряжения, включая талисманы.
  */
@@ -950,12 +1010,13 @@ function gearStep(plan, root) {
       el('b', { text: 'Что важно про тир и «+N»' }),
       el('p', { text: `В карточке слота стоит тир Кузницы и шаги «+N» — это прогресс СЛОТА, а не выпавшего предмета. Кузница качает слот отдельно: подробности, цены шагов и что качать первым — на странице «${PAGES[4].n}. ${PAGES[4].short}».` }),
     ]),
+    jewelryPanel(plan, root, rec),
     el('h3', { text: 'Что надеть: рекомендация системы по каждому слоту' }),
     el('div', { class: 'scroll' }, [table(
       ['Ячейка', 'Предмет (рекомендация)', 'Тир и имя на вашем ML', 'Почему именно он', 'Аффиксы (ищите эти)', 'Drop Bonus', 'Камень'],
       recommendRows(plan, rec),
     )]),
-    el('p', { class: 'muted', text: `Тир и имплиситы — для того, что реально падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru}, ${plan.itemTier.chance}%). Предметы с пометкой «рекомендовано» на карточках подставлены системой: правьте их только если хотите свой вариант.` }),
+    el('p', { class: 'muted', text: `Тир и имплиситы — для того, что реально падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru}, ${plan.itemTier.chance}%). Броня (Вардплейт, Капюшон провидца, Диадема мудреца и др.) в Item Codex общая для всех классов — «вардплейт» не значит «только для воина», различается только имплисит. Предметы с пометкой «рекомендовано» на карточках подставлены системой: правьте их только если хотите свой вариант.` }),
     ...plan.profile.notes.map((n) => el('div', { class: 'infobox', text: n })),
   ];
 }
