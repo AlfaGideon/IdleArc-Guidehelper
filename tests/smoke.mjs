@@ -96,8 +96,8 @@ if (!globalThis.atob) globalThis.atob = (s) => Buffer.from(s, 'base64').toString
 
 /* ---------- Загрузка модулей ---------- */
 let failures = 0;
-const check = async (name, fn) => {
-  try { await fn(); console.log(`  ok  ${name}`); }
+const check = (name, fn) => {
+  try { fn(); console.log(`  ok  ${name}`); }
   catch (e) { failures++; console.error(` FAIL ${name}: ${e.message}`); }
 };
 
@@ -179,14 +179,12 @@ check('планировщик: рендерится для всех 5 класс
   if (problems.length) throw new Error(problems.slice(0, 3).join(' | '));
 });
 
-check('app.js: загружается в строгом DOM и рендерит вкладки', async () => {
-  const mod = await import(src('app.js') + '?strict=' + Date.now());
-  if (!mod) throw new Error('app.js не загрузился');
-});
+
 
 // Реальная точка входа: рендерит в #view из index.html. Клики по вкладкам идут через делегирование на #tabs.
 try {
-  await import(src('app.js') + '?smoke=2');
+  const mod = await import(src('app.js') + '?smoke=2');
+  if (!mod) throw new Error('app.js не загрузился');
   const view = registry.get('view');
   if (!view.children.length) throw new Error('#view пуст — планировщик не отрисовался при старте');
   if (!registry.get('meta-build').textContent) throw new Error('метка сборки не проставлена');
