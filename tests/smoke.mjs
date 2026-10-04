@@ -953,6 +953,32 @@ check('сервер: маршруты статуса и загрузки игр�
   if (!script.includes('downloadArt')) throw new Error('скрипт загрузки не использует art-core');
 });
 
+check('локальный запуск на ПК: start.bat (Windows) и scripts/serve.mjs', () => {
+  const bat = fs.readFileSync(path.join(ROOT, 'start.bat'), 'utf8');
+  // cmd.exe требует CRLF и не переваривает UTF-8 BOM в начале файла.
+  if (bat.charCodeAt(0) === 0xfeff) throw new Error('start.bat начинается с BOM — cmd сломается');
+  if (/\n/.test(bat.replace(/\r\n/g, ''))) throw new Error('в start.bat есть строки без CRLF');
+  // Кириллица допустима только в тексте (echo/rem/title): в самих командах cmd её может исказить.
+  const risky = bat.split('\r\n').find((line) => {
+    const t = line.trim().toLowerCase();
+    if (!t || t.startsWith('rem') || t.startsWith('echo') || t.startsWith('title')) return false;
+    return /[^\x00-\x7F]/.test(line);
+  });
+  if (risky) throw new Error('кириллица в команде start.bat (cmd её не поймёт): ' + risky.trim());
+  for (const needle of ['chcp 65001', 'serve.mjs', 'pause', 'nodejs.org', '%~1']) {
+    if (!bat.includes(needle)) throw new Error('в start.bat нет ' + needle);
+  }
+
+  // Лаунчер: сам выбирает свободный порт, ждёт готовности и открывает браузер.
+  const serve = fs.readFileSync(path.join(ROOT, 'scripts', 'serve.mjs'), 'utf8');
+  for (const needle of ['/api/build', '--no-open', '--lan', 'MIN_NODE_MAJOR', 'isPortFree', 'openBrowser', 'server.js']) {
+    if (!serve.includes(needle)) throw new Error('serve.mjs: нет ' + needle);
+  }
+  // Иначе bat-файл после клонирования получит LF и перестанет запускаться на Windows.
+  const attrs = fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8');
+  if (!/\*\.bat\s+text\s+eol=crlf/.test(attrs)) throw new Error('.gitattributes не закрепляет CRLF для *.bat');
+});
+
 check('загрузка иконок через браузер: скачивает codex, картинки и отправляет на сервер', async () => {
   const realFetch = globalThis.fetch;
   const calls = { uploads: [] };
