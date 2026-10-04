@@ -298,3 +298,12 @@ ol.todo b { color: var(--accent); }
 .advice .row { display: flex; gap: 8px; align-items: baseline; border: 1px solid var(--line);
   border-radius: 8px; padding: 6px 10px; flex-wrap: wrap; }
 .advice .row b { color: var(--accent); white-space: nowrap; }
+
+/* --- плашка сохранения: видно, что любое действие уже записано --- */
+.statusline .save-chip { cursor: pointer; font: inherit; background: rgba(255,255,255,.02); }
+.statusline .save-chip:hover { border-color: var(--accent); color: var(--text); }
+.save-chip.flash { animation: saveflash .6s ease; }
+@keyframes saveflash {
+  from { box-shadow: 0 0 0 3px rgba(105, 209, 125, .45); }
+  to { box-shadow: 0 0 0 0 rgba(105, 209, 125, 0); }
+}

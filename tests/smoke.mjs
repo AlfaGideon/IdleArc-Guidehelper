@@ -80,12 +80,34 @@ for (const name of ['planner', 'calc', 'codex', 'nuances', 'nuances']) {
   if (tabsEl && !tabsEl.querySelectorAll('button[data-tab]').some((x) => x.attrs['data-tab'] === name)) tabsEl.appendChild(b);
 }
 
+const docListeners = { capture: {}, bubble: {} };
+const winListeners = {};
 globalThis.document = {
   createElement: (t) => new El(t),
   createTextNode: (t) => ({ nodeType: 3, textContent: String(t), children: [] }),
   getElementById: (id) => registry.get(id) || null,
+  visibilityState: 'visible',
+  addEventListener(type, fn, capture = false) {
+    const bag = capture ? docListeners.capture : docListeners.bubble;
+    (bag[type] = bag[type] || []).push(fn);
+  },
+  removeEventListener(type, fn, capture = false) {
+    const bag = capture ? docListeners.capture : docListeners.bubble;
+    bag[type] = (bag[type] || []).filter((f) => f !== fn);
+  },
 };
-globalThis.window = { addEventListener() {}, location: { hash: '' } };
+/** Событие документа: сначала фаза перехвата, потом всплытие — как в браузере. */
+globalThis.__fireDoc = (type, ev = {}) => {
+  for (const fn of [...(docListeners.capture[type] || [])]) fn({ type, target: null, ...ev });
+  for (const fn of [...(docListeners.bubble[type] || [])]) fn({ type, target: null, ...ev });
+};
+globalThis.window = {
+  name: '',
+  location: { hash: '' },
+  addEventListener(type, fn) { (winListeners[type] = winListeners[type] || []).push(fn); },
+  removeEventListener(type, fn) { winListeners[type] = (winListeners[type] || []).filter((f) => f !== fn); },
+};
+globalThis.__fireWin = (type, ev = {}) => { for (const fn of [...(winListeners[type] || [])]) fn({ type, ...ev }); };
 globalThis.location = { hash: '' };
 Object.defineProperty(globalThis, 'navigator', { value: { clipboard: { writeText: async () => {} } }, configurable: true });
 globalThis.prompt = () => null;
@@ -97,6 +119,12 @@ globalThis.localStorage = {
   getItem: (k) => (lsData.has(k) ? lsData.get(k) : null),
   setItem: (k, v) => { lsData.set(k, String(v)); },
   removeItem: (k) => { lsData.delete(k); },
+};
+const ssData = new Map();
+globalThis.sessionStorage = {
+  getItem: (k) => (ssData.has(k) ? ssData.get(k) : null),
+  setItem: (k, v) => { ssData.set(k, String(v)); },
+  removeItem: (k) => { ssData.delete(k); },
 };
 if (!globalThis.btoa) globalThis.btoa = (s) => Buffer.from(s, 'binary').toString('base64');
 if (!globalThis.atob) globalThis.atob = (s) => Buffer.from(s, 'base64').toString('binary');
@@ -1019,6 +1047,132 @@ check('страницы: на экране одна страница, а не в
   views.planner.render(root);
   if (findByClass(root, 'pagenav').length !== 1) throw new Error('нет навигации');
   if (findByClass(root, 'pagefoot').length !== 1) throw new Error('нет переходов назад/далее');
+  st.page = 'class';
+});
+
+check('сохранение: мгновенная запись, восстановление, резервные каналы и копия', async () => {
+  const st = views.planner.plannerState;
+  const pause = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
+  const reset = () => { lsData.clear(); ssData.clear(); globalThis.window.name = ''; };
+  const stored = () => {
+    const raw = globalThis.localStorage.getItem('iac:helper:state:v1');
+    return raw ? JSON.parse(raw) : null;
+  };
+
+  // 1. Клик по классу сохраняется сразу, без захода на страницу «Сборка».
+  reset();
+  store.markTouched();
+  st.page = 'class'; st.classId = 'warrior'; st.ml = 30; st.level = 30;
+  const root = new El('main');
+  views.planner.render(root);
+  const classButtons = findAll(root, (n) => n.tagName === 'BUTTON' && textOf(n).includes('Разбойник'));
+  if (!classButtons.length) throw new Error('на странице класса нет кнопки разбойника');
+  classButtons[0].dispatch('click');
+  const afterClick = stored();
+  if (!afterClick || afterClick.state.classId !== 'rogue') throw new Error('клик по классу не сохранился сразу');
+
+  // 2. Любое событие документа (клик мышью, ввод) — тоже сохранение.
+  st.ml = 456;
+  globalThis.__fireDoc('click');
+  await pause(5);
+  if (stored().state.ml !== 456) throw new Error('действие документа не сохранилось: ML ' + stored().state.ml);
+  st.level = 111;
+  globalThis.__fireDoc('input');
+  await pause(5);
+  if (stored().state.level !== 111) throw new Error('ввод не сохранился');
+
+  // 3. Уход со страницы и скрытие вкладки — синхронное сохранение.
+  st.plusAll = 4;
+  globalThis.__fireWin('pagehide');
+  if (stored().state.plusAll !== 4) throw new Error('pagehide не сохранил состояние');
+  st.goal = 'boss';
+  globalThis.document.visibilityState = 'hidden';
+  globalThis.__fireDoc('visibilitychange');
+  globalThis.document.visibilityState = 'visible';
+  if (stored().state.goal !== 'boss') throw new Error('скрытие вкладки не сохранило состояние');
+  if (!store.saveInfo.durable) throw new Error('данные должны считаться надёжно сохранёнными: ' + store.saveInfo.note);
+
+  // 4. Снимок пишется в начале отрисовки: сбой рендера данные не теряет.
+  st.ml = 777;
+  let crashed = false;
+  try { views.planner.render(null); } catch { crashed = true; }
+  if (!crashed) throw new Error('тест ожидал падение отрисовки');
+  if (stored().state.ml !== 777) throw new Error('снимок не записан до отрисовки');
+
+  // 5. localStorage почистили — данные поднимаются из резервных каналов.
+  reset();
+  store.saveState({
+    classId: 'druid', level: 88, ml: 99, goal: 'farm', plusAll: 2, extraPoints: 0,
+    mode: 'auto', manual: null, gear: {}, page: 'forge', shareCode: '',
+  }, { allowOverwrite: true });
+  if (!ssData.has('iac:helper:state:v1')) throw new Error('sessionStorage не заполняется');
+  if (!String(globalThis.window.name).startsWith('iac-helper:')) throw new Error('резервный канал окна не заполняется');
+  lsData.clear();
+  const restored = store.loadState();
+  if (!restored || restored.classId !== 'druid' || restored.ml !== 99) throw new Error('данные потерялись после очистки localStorage');
+  // самый свежий снимок побеждает: старый в localStorage не должен перебивать новый
+  lsData.set('iac:helper:state:v1', JSON.stringify({ v: 1, savedAt: '2001-01-01T00:00:00.000Z', state: { classId: 'warrior', level: 1, ml: 1 } }));
+  if (store.loadState().classId !== 'druid') throw new Error('выбран не самый свежий снимок');
+
+  // 6. Хранилище запрещено полностью (приватный режим, iframe) — работает резерв окна.
+  const blocked = {
+    getItem: () => { throw new Error('blocked'); },
+    setItem: () => { throw new Error('blocked'); },
+    removeItem: () => { throw new Error('blocked'); },
+  };
+  const realLs = globalThis.localStorage; const realSs = globalThis.sessionStorage;
+  globalThis.localStorage = blocked; globalThis.sessionStorage = blocked;
+  try {
+    store.saveState({
+      classId: 'mage', level: 5, ml: 7, goal: 'progress', plusAll: 1, extraPoints: 0,
+      mode: 'auto', manual: null, gear: {}, page: 'class', shareCode: '',
+    }, { allowOverwrite: true });
+    const back = store.loadState();
+    if (!back || back.classId !== 'mage') throw new Error('при запрете хранилища данные не восстановились');
+    if (store.saveInfo.durable !== true) throw new Error('резервный канал окна должен считаться надёжным');
+  } finally {
+    globalThis.localStorage = realLs; globalThis.sessionStorage = realSs;
+  }
+
+  // 7. Перед перезаписью остаётся предыдущая версия (кнопка «вернуть»).
+  reset();
+  store.saveState({
+    classId: 'warrior', level: 10, ml: 10, goal: 'progress', plusAll: 0, extraPoints: 0,
+    mode: 'auto', manual: null, gear: {}, page: 'class', shareCode: '',
+  }, { allowOverwrite: true });
+  store.saveState({
+    classId: 'rogue', level: 60, ml: 70, goal: 'boss', plusAll: 3, extraPoints: 1,
+    mode: 'manual', manual: { x: 1 }, gear: {}, page: 'skills', shareCode: '',
+  }, { allowOverwrite: true });
+  const backup = store.loadBackupRecord();
+  if (!backup || backup.state.classId !== 'warrior') throw new Error('предыдущая версия не сохранена');
+  if (store.loadState().classId !== 'rogue') throw new Error('текущий снимок испорчен');
+
+  // 8. Если снимок есть, но прочитать его нельзя — он не перезаписывается молча.
+  reset();
+  lsData.set('iac:helper:state:v1', '{это не json');
+  if (!store.hasStoredState()) throw new Error('битый снимок должен считаться имеющимся');
+
+  // стенд возвращаем в исходное состояние
+  reset();
+  store.clearState();
+  st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0;
+  st.manual = null; st.mode = 'auto'; st.page = 'class'; st.gear = {};
+  views.planner.render(new El('main'));
+});
+
+check('сохранение: плашка «сохранено» видна на каждой странице и показывает канал', () => {
+  const st = views.planner.plannerState;
+  for (const id of PAGE_IDS) {
+    st.page = id;
+    const root = new El('main');
+    views.planner.render(root);
+    const chip = findAll(root, (n) => n.attrs && n.attrs.id === 'save-chip')[0];
+    if (!chip) throw new Error(`нет плашки сохранения на странице «${id}»`);
+    const text = String(chip.textContent);
+    if (!text.includes('сохранено') && !text.includes('ещё не сохранялось')) throw new Error('плашка без времени: ' + text);
+    if (!text.includes('в браузере') && !text.includes('до перезагрузки')) throw new Error('плашка без канала: ' + text);
+  }
   st.page = 'class';
 });
 

@@ -26,7 +26,8 @@ import { el, card, table, kpi, copyButton } from './dom.js';
 import { itemArt, lockArt, tierColors, talismanArt, bodySilhouette, coinIcon, shardIcon } from './itemArt.js';
 import { artState, loadArt, artNode, lockedArtNode, artDownload, downloadArtViaBrowser } from './art.js';
 import {
-  saveState, loadState, savedAt, clearState, listLoadouts, saveLoadout, getLoadout, deleteLoadout,
+  saveState, loadStateRecord, savedAt, clearState, listLoadouts, saveLoadout, getLoadout, deleteLoadout,
+  bindAutosave, saveInfo, markTouched, hasStoredState, loadBackupRecord, isTouched,
 } from './store.js';
 
 const state = {
@@ -41,7 +42,9 @@ const state = {
   shareCode: '',
   gear: {},           // экипировка по классам: { warrior: { mainhand: { family, tier, level, awaken }, … }, … }
   page: 'class',      // текущая страница планировщика (вместо одной длинной ленты)
-  restored: false,    // состояние поднято из localStorage при загрузке страницы
+  restored: false,    // состояние поднято из хранилища браузера при загрузке страницы
+  restoredAt: null,   // когда это состояние сохранили
+  restoredFrom: null, // из какого канала оно поднялось (localStorage, sessionStorage, окно)
 };
 
 /** Снимок для сохранения в браузере (всё, что ввёл пользователь). */
@@ -79,7 +82,17 @@ function applySnapshot(snap) {
 }
 
 // Поднимаем прошлую сессию из браузера: заполнять заново не нужно.
-if (applySnapshot(loadState())) state.restored = true;
+// Если снимок есть, но прочитать его не удалось — ничего не перезаписываем,
+// пользователь сможет вернуть предыдущую версию кнопкой на странице «Сборка».
+let protectStored = false;
+const bootRecord = loadStateRecord();
+if (bootRecord && applySnapshot(bootRecord.state)) {
+  state.restored = true;
+  state.restoredAt = bootRecord.savedAt;
+  state.restoredFrom = bootRecord.channel;
+} else if (!bootRecord && hasStoredState()) {
+  protectStored = true;
+}
 
 // Карта игровых иконок: ищем локальные (assets/items) или тянем Item Codex.
 // Когда карта придёт, один раз перерисовываем экран — карточки подменятся на игровые картинки.
@@ -91,15 +104,48 @@ loadArt().then(() => {
   if (view && view.children && view.children.length) render(view);
 }).catch(() => {});
 
-/** Человеческое время последнего сохранения. */
+/** Человеческое время последнего сохранения (с секундами — видно, что пишется сразу). */
 function savedAtText() {
   const iso = savedAt();
   if (!iso) return 'ещё не сохранялось';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return 'сохранено';
   const two = (n) => String(n).padStart(2, '0');
-  return `сохранено ${two(d.getHours())}:${two(d.getMinutes())}`;
+  return `сохранено ${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
 }
+
+/** Короткая правда о том, где лежат данные: переживут ли они перезагрузку. */
+const storageWord = () => (saveInfo.durable ? 'в браузере' : 'только до перезагрузки');
+
+/** Плашка «сохранено»: видна на каждой странице, по клику сохраняет ещё раз. */
+function saveChip() {
+  return el('button', {
+    class: `chip save-chip${saveInfo.durable ? ' good' : ' warn'}`,
+    id: 'save-chip',
+    title: 'Любое действие сохраняется сразу. Нажмите, чтобы сохранить ещё раз.',
+    text: `${savedAtText()} · ${storageWord()}`,
+    onclick: () => {
+      markTouched();
+      saveState(snapshot(), { allowOverwrite: true });
+      const chip = globalThis.document ? globalThis.document.getElementById('save-chip') : null;
+      if (chip) chip.textContent = `${savedAtText()} · ${storageWord()}`;
+    },
+  });
+}
+
+/** Обновляем плашку сразу после автосохранения, не дожидаясь перерисовки. */
+function refreshSaveChip() {
+  const chip = globalThis.document ? globalThis.document.getElementById('save-chip') : null;
+  if (!chip) return;
+  chip.textContent = `${savedAtText()} · ${storageWord()}`;
+  chip.className = `chip save-chip flash${saveInfo.durable ? ' good' : ' warn'}`;
+}
+
+// Любое действие (клик, ввод, переключение) сохраняется немедленно — ещё до отрисовки.
+bindAutosave(() => snapshot(), {
+  onSave: () => refreshSaveChip(),
+  allowOverwrite: () => !protectStored,
+});
 
 const TALISMAN_TYPES = TALISMANS.types;
 const talismanById = (id) => TALISMAN_TYPES.find((t) => t.id === id) || TALISMAN_TYPES[0];
@@ -205,6 +251,7 @@ function statusLine(plan) {
     el('span', { class: 'chip', text: `ур. ${plan.level}` }),
     el('span', { class: 'chip', text: `ML ${plan.ml}` }),
     el('span', { class: 'chip', text: `+All ${state.plusAll}` }),
+    saveChip(),
   ]);
 }
 
@@ -1186,26 +1233,57 @@ function loadoutRow(root, name) {
 function saveCard(root, plan) {
   const names = listLoadouts();
   const count = Object.keys(names).length;
+  const backup = loadBackupRecord();
+  const backupText = backup
+    ? new Date(backup.savedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : null;
   return card('Сохранение: данные не теряются при перезагрузке', [
-    el('p', { class: 'muted', text: 'Всё, что вы ввели — класс, цель, уровни персонажа и Monster Level, очки навыков, экипировка и Кузница, — автоматически сохраняется в браузере. После Ctrl+R, перезапуска сервера или закрытия вкладки планировщик откроется на том же состоянии.' }),
+    el('p', { class: 'muted', text: 'Ничего нажимать не нужно: любое действие — выбор класса, ввод уровня, распределение очков, правка Кузницы — сохраняется сразу. Эта страница нужна только для наборов и заметок. После Ctrl+R, перезапуска сервера или закрытия вкладки планировщик откроется на том же состоянии.' }),
     el('div', { class: 'chips' }, [
-      el('span', { class: 'chip good', text: state.restored ? 'прошлая сессия восстановлена из браузера' : 'автосохранение включено' }),
+      el('span', { class: `chip ${saveInfo.durable ? 'good' : 'warn'}`, text: saveInfo.durable ? 'любое действие сохраняется в браузере' : 'внимание: хранилище браузера недоступно, данные живут до перезагрузки' }),
       el('span', { class: 'chip', text: savedAtText() }),
+      el('span', { class: 'chip', text: saveInfo.note || 'канал записи неизвестен' }),
       el('span', { class: 'chip', text: `класс: ${plan.classRu}` }),
       el('span', { class: 'chip', text: `наборов сохранено: ${count}` }),
     ]),
+    state.restored
+      ? el('div', { class: 'infobox' }, [
+        el('b', { text: 'Прошлая сессия восстановлена' }),
+        el('p', { text: `Данные подняты из канала «${state.restoredFrom || 'браузер'}», снимок от ${state.restoredAt ? new Date(state.restoredAt).toLocaleString('ru-RU') : '—'}. Продолжайте с того же места.` }),
+      ])
+      : null,
+    protectStored
+      ? el('div', { class: 'infobox' }, [
+        el('b', { text: 'В браузере есть снимок, который не удалось прочитать' }),
+        el('p', { text: 'Чтобы ничего не потерять, новый снимок не записывается поверх. Нажмите «Вернуть предыдущую версию», чтобы поднять его, либо «Сохранить сейчас», если хотите начать заново.' }),
+      ])
+      : null,
     el('div', { class: 'loadoutbar' }, ['Набор 1', 'Набор 2', 'Набор 3'].map((n) => loadoutRow(root, n))),
     el('div', { class: 'actions' }, [
-      el('button', { class: 'btn primary', text: 'Сохранить сейчас', onclick: () => { saveState(snapshot()); render(root); } }),
-      el('button', { class: 'btn', text: 'Сбросить всё', onclick: () => { clearState(); state.restored = false; location.reload(); } }),
+      el('button', { class: 'btn primary', text: 'Сохранить сейчас', onclick: () => { markTouched(); protectStored = false; saveState(snapshot(), { allowOverwrite: true }); render(root); } }),
+      backup
+        ? el('button', {
+          class: 'btn',
+          text: `Вернуть предыдущую версию (${backupText})`,
+          onclick: () => {
+            const rec = loadBackupRecord();
+            if (rec && applySnapshot(rec.state)) { markTouched(); render(root); }
+          },
+        })
+        : null,
+      el('button', { class: 'btn', text: 'Сбросить всё', onclick: () => { clearState(); protectStored = false; state.restored = false; location.reload(); } }),
     ]),
-    el('p', { class: 'muted small', text: 'Данные лежат только в вашем браузере (localStorage), никуда не отправляются. Кнопка «Сбросить всё» очищает их полностью.' }),
+    el('p', { class: 'muted small', text: 'Данные лежат только в вашем браузере, никуда не отправляются. Пишем сразу в несколько мест (localStorage, sessionStorage, значение окна) и читаем самый свежий снимок — поэтому данные переживают перезагрузку страницы и перезапуск сервера.' }),
   ]);
 }
 
 /* ---------------------------------- Рендер ---------------------------------- */
 
 export function render(root) {
+  // Сначала фиксируем состояние: даже если отрисовка сорвётся, введённое уже сохранено.
+  try {
+    saveState(snapshot(), { allowOverwrite: protectStored ? false : (isTouched() ? true : undefined) });
+  } catch { /* сохранение не должно ломать интерфейс */ }
   root.innerHTML = '';
 
   const plan = planBuild({
@@ -1232,8 +1310,10 @@ export function render(root) {
 
   root.appendChild(pageFooter(root));
 
-  // Каждый рендер = свежий снимок в localStorage: ничего не теряется при перезагрузке.
-  saveState(snapshot());
+  // И ещё раз в конце отрисовки: снимок всегда актуален.
+  try {
+    saveState(snapshot(), { allowOverwrite: protectStored ? false : true });
+  } catch { /* ignore */ }
 }
 
 export { state as plannerState };
