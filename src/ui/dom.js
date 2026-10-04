@@ -12,7 +12,12 @@ export function el(tag, attrs = {}, children = []) {
   }
   for (const c of [].concat(children)) {
     if (c == null || c === false) continue;
-    node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    // Числа/булевы/строки превращаем в текстовый узел: appendChild(0) в браузере бросает TypeError,
+    // а в таблицы часто попадают числа прямо из данных (кол-во вторичек, ML, золото).
+    if (typeof c === 'object') {
+      if (!c.nodeType) throw new Error(`el(${tag}): в children попал объект без nodeType (${Object.keys(c).slice(0, 4).join(', ')}) — для карточек передавайте массив, а не объект`);
+      node.appendChild(c);
+    } else node.appendChild(document.createTextNode(String(c)));
   }
   return node;
 }
@@ -27,7 +32,7 @@ export function card(title, children, extraClass = '') {
 export function table(headers, rows, opts = {}) {
   const thead = el('thead', {}, [el('tr', {}, headers.map((h) => el('th', { text: h, class: opts.numeric?.includes(h) ? 'num' : '' })))]);
   const tbody = el('tbody', {}, rows.map((r) => el('tr', {}, r.map((cell, i) =>
-    el('td', { class: opts.numeric?.includes(headers[i]) ? 'num' : '' }, [cell == null ? '—' : (typeof cell === 'string' ? cell : cell)])))));
+    el('td', { class: opts.numeric?.includes(headers[i]) ? 'num' : '' }, [cell == null || cell === '' ? '—' : cell])))));
   return el('table', {}, [thead, tbody]);
 }
 

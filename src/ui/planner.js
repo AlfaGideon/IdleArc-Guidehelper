@@ -1,7 +1,7 @@
 import { CLASSES, classById, classPointsForLevel, CLASS_SKILL_RULES } from '../data/classes.js';
 import { GOALS } from '../data/builds.js';
 import { STATS, STANCES } from '../data/systems.js';
-import { GEM_RARITY, GEM_SECONDARY, RARITY } from '../data/items.js';
+import { GEM_FAMILIES, GEM_RARITY, GEM_SECONDARY, RARITY } from '../data/items.js';
 import { planBuild, planToText, encodePlan, decodePlan, effectAtRank } from '../core/planner.js';
 import { el, card, table, chips, kpi, copyButton } from './dom.js';
 
@@ -238,8 +238,17 @@ function gearSection(root, plan) {
       ],
     };
   });
+  const skeleton = el('div', { class: 'skeleton' }, plan.gear.slots.map((s) => el('div', { class: 'slot-tile' + (s.primary ? '' : ' empty') }, [
+    el('span', { class: 'slot-name', text: s.slotRu }),
+    el('b', { text: s.primary ? s.primary.name : '— пусто —' }),
+    el('span', { class: 'muted small', text: s.primary ? s.primary.implicit : (s.slot === 'offhand' ? 'двуручное оружие в основной руке' : 'нет данных') }),
+    el('span', { class: 'muted small', text: `гем: ${s.gem.family.name} · ${s.gem.rarity}` }),
+  ])));
+
   return card('Экипировка: что надевать в каждый слот', [
-    el('p', { class: 'muted', text: `Каталог основан на Item Codex (40 семейств): имя, имплисит, совместимые аффиксы и рекомендованный Drop Bonus для каждого слота. Значения имплисита показаны для текущего этапа (уровень ${state.level}).` }),
+    el('h3', { text: `Скелет персонажа — ${plan.classRu} (${plan.className}), уровень ${state.level}` }),
+    skeleton,
+    el('p', { class: 'muted', text: 'Это те же 10 слотов, что в окне персонажа в игре: основная рука, вторая рука, факел, нагрудник, шлем, перчатки, обувь, амулет, кольцо, пояс. Ниже — подробно по каждому: семейство, имплисит, аффиксы и Drop Bonus.' }),
     el('div', { class: 'scroll' }, [table(
       ['Слот', 'Семейство', 'Имплисит', 'Аффиксы (ищите эти)', 'Drop Bonus', 'Гем'],
       rows.map((r) => r.row),
@@ -259,31 +268,68 @@ function tierIndex(level) {
 /* ------------------------------------ Гемы ------------------------------------ */
 
 function gemsSection(plan) {
+  const regionRu = {
+    weapon: 'Оружие — основная и вторая рука',
+    torch: 'Факел (отдельный слот)',
+    armor: 'Броня — нагрудник, шлем, перчатки, обувь',
+    jewelry: 'Украшения — амулет, кольцо, пояс',
+  };
   const regions = ['weapon', 'torch', 'armor', 'jewelry'];
-  const regionRu = { weapon: 'Оружие (main/off hand)', torch: 'Факел', armor: 'Броня (нагрудник, шлем, перчатки, обувь)', jewelry: 'Украшения (амулет, кольцо, пояс)' };
+  const goal = plan.goalDef.ru;
+
   const blocks = regions.map((r) => {
-    const slots = plan.gear.slots.filter((s) => s.gem.region === r);
+    const slots = plan.gear.slots.filter((s) => s.gem.region === r && s.gem.region);
     if (!slots.length) return null;
     const fam = slots[0].gem.family;
-    const rows = slots.map((s) => [s.slotRu, fam.ru, fam.slots[r], slotRarity(plan)]);
+    const rows = slots.map((s) => {
+      const alt = GEM_FAMILIES.filter((f) => f.id !== s.gem.family.id)
+        .map((f) => `${f.name} — ${f.slots[r]}`)
+        .join(' · ');
+      return [
+        el('b', { text: s.slotRu }),
+        el('div', {}, [el('b', { class: 'want', text: `${s.gem.family.name} (${s.gem.family.ru})` }), el('div', { class: 'muted small', text: 'ставить сюда' })]),
+        el('div', {}, [el('b', { text: s.gem.baseValue }), el('div', { class: 'muted small', text: `Rough, качество 100, сокет 0 — ${s.gem.rarity} даст больше` })]),
+        el('div', { class: 'muted small', text: `Другие камни в этом слоте: ${alt}` }),
+      ];
+    });
     return el('div', { class: 'branch' }, [
       el('header', {}, [
         el('strong', { text: regionRu[r] }),
         el('div', { class: 'chips' }, [
-          el('span', { class: 'chip gold', text: fam.name }),
+          el('span', { class: 'chip gold', text: `лучший выбор: ${fam.name}` }),
           el('span', { class: 'chip', text: fam.slots[r] }),
         ]),
       ]),
-      table(['Слот', 'Семья гема', 'Эффект (Rough, q100, сокет 0)', 'Целевая редкость'], rows),
+      el('div', { class: 'scroll' }, [table(['Слот', 'Камень', 'Что даёт в этом слоте', 'Альтернативы'], rows)]),
     ]);
   }).filter(Boolean);
 
-  return card('Гемы: что вставлять и куда', [
-    el('p', { class: 'muted', text: 'Одна и та же семья гема даёт разный эффект в зависимости от слота. Стартовая рекомендация — под цель билда; если нужно фармить, соберите отдельный пресет.' }),
+  // Короткая памятка «какой камень лучше» под цель — чтобы не читать таблицы целиком.
+  const summary = regions.map((r) => {
+    const fam = plan.gear.slots.find((s) => s.gem.region === r)?.gem.family;
+    if (!fam) return null;
+    const skill = plan.gear.profile.gems[r];
+    return el('li', {}, [
+      el('b', { text: `${regionRu[r]}: ${fam.name} (${fam.ru})` }),
+      el('span', { text: ` — ${fam.slots[r]}` }),
+    ]);
+  }).filter(Boolean);
+
+  return card('Гемы: какой камень куда ставить', [
+    el('div', { class: 'infobox' }, [
+      el('b', { text: `Лучшие камни под цель «${goal}»` }),
+      el('ul', { class: 'tight' }, summary),
+      el('p', { class: 'muted', text: 'Камень занимает слот и даёт эффект, зависящий от группы слотов: один и тот же Garnet в оружии — это урон, в броне — Defense, в украшениях — основной атрибут. Поэтому «лучший» камень определяется слотом и целью, а не редкостью.' }),
+    ]),
     ...blocks,
-    el('h3', { text: `Вторичные статы для ${plan.classRu} · ${plan.goalDef.ru}` }),
-    el('div', { class: 'chips' }, plan.gear.profile.gems.secondary.map((s) => el('span', { class: 'chip good', text: s }))),
-    el('p', { class: 'muted', text: 'Вторички появляются с Cut-редкости: Cut — 1, Polished — 1, Brilliant — 2, Flawless — 3. Значения растут с редкостью; рероллить можно только на Brilliant и Flawless.' }),
+    el('h3', { text: 'Когда менять основной камень' }),
+    el('ul', { class: 'tight' }, [
+      el('li', { text: 'Не хватает выживаемости на высоком ML — поставьте Lapis в броню (Max Health/Defense) вместо Garnet/Jade.' }),
+      el('li', { text: 'Фармите золото/материалы — Amber во все слоты: он даёт фарм-статы в каждой группе.' }),
+      el('li', { text: 'Пет-билд — Jade в оружие и броню (Pet Damage) и Lapis в факел (Pet Mastery).' }),
+      el('li', { text: 'Retaliation — Garnet везде: Defense и Max Health напрямую усиливают урон Retaliation.' }),
+    ]),
+    el('h3', { text: `Вторичные статы для ${plan.classRu} · ${goal}` }),
     el('div', { class: 'scroll' }, [
       table(['Вторичный стат', 'Cut', 'Polished', 'Brilliant', 'Flawless', 'Для этой цели'],
         GEM_SECONDARY.map((s) => {
@@ -291,6 +337,7 @@ function gemsSection(plan) {
           return [el('b', { text: s.ru, class: wanted ? 'want' : '' }), `+${s.cut}`, `+${s.polished}`, `+${s.brilliant}`, `+${s.flawless}`, wanted ? '★ приоритет' : '—'];
         })),
     ]),
+    el('p', { class: 'muted', text: 'Вторички появляются с Cut-редкости: Cut — 1, Polished — 1, Brilliant — 2, Flawless — 3. Рероллить вторички можно только на Brilliant и Flawless.' }),
     el('h3', { text: 'Редкости гемов' }),
     table(['Редкость', 'Множитель', 'Вторичек', 'Кап сокета'], GEM_RARITY.map((g) => [g.name, `×${g.mult}`, g.secondary, g.socketCap == null ? 'нет' : g.socketCap])),
     el('div', { class: 'infobox' }, [

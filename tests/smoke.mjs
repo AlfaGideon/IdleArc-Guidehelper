@@ -14,27 +14,76 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = (p) => path.join(ROOT, 'src', p);
 
 /* ---------- DOM-шим ---------- */
+// Строгий DOM-шим: ведёт себя как браузер там, где это важно.
+// appendChild(число/строка/undefined) в браузере бросает TypeError — шим делает так же,
+// иначе ошибки вида «в таблицу попало число» проходят мимо тестов (и ломают весь интерфейс).
+const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const HTML_IDS = [...HTML.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+
 class El {
   constructor(tag) {
-    this.tagName = tag; this.children = []; this.attrs = {}; this.style = {};
-    this._text = ''; this._html = ''; this.dataset = {};
-    this.classList = { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); }, toggle(c, v) { v ? this._s.add(c) : this._s.delete(c); }, contains(c) { return this._s.has(c); } };
+    this.nodeType = 1; this.tagName = String(tag).toUpperCase(); this.children = []; this.attrs = {}; this.style = {};
+    this._text = ''; this._html = ''; this.dataset = {}; this.parentNode = null; this._listeners = {};
+    this.classList = { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); },
+      toggle(c, v) { if (v === undefined) this._s.has(c) ? this._s.delete(c) : this._s.add(c); else v ? this._s.add(c) : this._s.delete(c); },
+      contains(c) { return this._s.has(c); } };
   }
-  appendChild(c) { this.children.push(c); return c; }
-  setAttribute(k, v) { this.attrs[k] = v; }
-  addEventListener() {}
+  appendChild(c) {
+    if (typeof c === 'string') throw new Error(`appendChild получил строку «${c}» — нужен текстовый узел`);
+    if (!c || typeof c !== 'object') throw new Error(`appendChild получил ${JSON.stringify(c)} (${typeof c}) — в браузере это TypeError`);
+    c.parentNode = this; this.children.push(c); return c;
+  }
+  prepend(c) { if (!c) throw new Error('prepend получил пустое значение'); c.parentNode = this; this.children.unshift(c); return c; }
+  insertBefore(c) { return this.appendChild(c); }
+  setAttribute(k, v) { if (v === undefined || v === null) throw new Error(`setAttribute(${k}, ${v})`); this.attrs[k] = String(v); }
+  getAttribute(k) { return this.attrs[k] ?? null; }
+  addEventListener(type, fn) { (this._listeners[type] = this._listeners[type] || []).push(fn); }
+  dispatch(type, ev = {}) { for (const fn of this._listeners[type] || []) fn({ target: this, ...ev }); }
+  querySelectorAll(sel) {
+    const out = [];
+    const walk = (n) => {
+      for (const c of n.children || []) {
+        if (sel.startsWith('#')) { if (c.attrs.id === sel.slice(1)) out.push(c); }
+        else if (sel === 'button[data-tab]') { if (c.tagName === 'BUTTON' && c.attrs['data-tab']) out.push(c); }
+        else if (sel.startsWith('button')) { if (c.tagName === 'BUTTON') out.push(c); }
+        else if (c.tagName === sel.toUpperCase()) out.push(c);
+        walk(c);
+      }
+    };
+    walk(this);
+    return out;
+  }
+  querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+  closest(sel) {
+    let n = this;
+    while (n) {
+      if (sel === 'button' && n.tagName === 'BUTTON') return n;
+      if (sel.startsWith('button[') && n.tagName === 'BUTTON' && n.attrs[sel.slice(7, -1)]) return n;
+      n = n.parentNode;
+    }
+    return null;
+  }
   set className(v) { this.classList._s = new Set(String(v).split(/\s+/).filter(Boolean)); }
   get className() { return [...this.classList._s].join(' '); }
   set textContent(v) { this._text = String(v); this.children = []; }
   get textContent() { return this._text; }
-  set innerHTML(v) { this._html = v; this.children = []; }
+  set innerHTML(v) { this._html = String(v); this.children = []; }
   get innerHTML() { return this._html; }
-  querySelectorAll() { return []; }
 }
+
+/** Реестр элементов из index.html: getElementById возвращает null для неизвестных id, как браузер. */
+const registry = new Map();
+for (const id of HTML_IDS) registry.set(id, new El(id === 'view' ? 'main' : 'div'));
+for (const name of ['planner', 'calc', 'codex', 'nuances', 'nuances']) {
+  const b = new El('button'); b.setAttribute('data-tab', name); b.textContent = name;
+  const tabsEl = registry.get('tabs');
+  if (tabsEl && !tabsEl.querySelectorAll('button[data-tab]').some((x) => x.attrs['data-tab'] === name)) tabsEl.appendChild(b);
+}
+
 globalThis.document = {
   createElement: (t) => new El(t),
-  createTextNode: (t) => ({ nodeType: 3, textContent: String(t) }),
-  getElementById: () => new El('div'),
+  createTextNode: (t) => ({ nodeType: 3, textContent: String(t), children: [] }),
+  getElementById: (id) => registry.get(id) || null,
 };
 globalThis.window = { addEventListener() {}, location: { hash: '' } };
 globalThis.location = { hash: '' };
@@ -47,8 +96,8 @@ if (!globalThis.atob) globalThis.atob = (s) => Buffer.from(s, 'base64').toString
 
 /* ---------- Загрузка модулей ---------- */
 let failures = 0;
-const check = (name, fn) => {
-  try { fn(); console.log(`  ok  ${name}`); }
+const check = async (name, fn) => {
+  try { await fn(); console.log(`  ok  ${name}`); }
   catch (e) { failures++; console.error(` FAIL ${name}: ${e.message}`); }
 };
 
@@ -72,10 +121,58 @@ for (const [name, view] of Object.entries(views)) {
   });
 }
 
-// Реальная точка входа: ловит ошибки импортов/роутинга, которые не видны при рендере вкладок по отдельности.
+/** Собрать весь текст отрисованного дерева — по нему проверяем, что нужные блоки реально есть. */
+function textOf(node, acc = []) {
+  if (!node || typeof node !== 'object') return acc;
+  if (node.nodeType === 3) { acc.push(String(node.textContent)); return acc; }
+  if (node._text) acc.push(String(node._text));
+  for (const c of node.children || []) textOf(c, acc);
+  return acc;
+}
+
+check('планировщик: на экране есть блоки распределения, +All, гемов и экипировки', () => {
+  const root = new El('main');
+  views.planner.render(root);
+  const text = textOf(root).join('\n');
+  const must = [
+    'Классовые навыки — распределение',
+    'Почему очки распределены именно так',
+    '+All Class Skills',
+    'Гемы: какой камень куда ставить',
+    'Лучшие камни под цель',
+    'Когда менять основной камень',
+    'Другие камни в этом слоте',
+    'Скелет персонажа',
+    'Экипировка: что надевать в каждый слот',
+    'Обмен сборкой',
+    'Вторичный стат',
+    'Имплисит',
+  ];
+  for (const needle of must) if (!text.includes(needle)) throw new Error(`нет блока/строки: «${needle}»`);
+  const slots = views.planner.plannerState ? null : null;
+  // 10 слотов экипировки должны быть перечислены в таблице
+  for (const slot of ['Основная рука', 'Вторая рука', 'Факел', 'Нагрудник', 'Шлем', 'Перчатки', 'Обувь', 'Амулет', 'Кольцо', 'Пояс']) {
+    if (!text.includes(slot)) throw new Error(`в блоке экипировки нет слота «${slot}»`);
+  }
+});
+
+check('app.js: загружается в строгом DOM и рендерит вкладки', async () => {
+  const mod = await import(src('app.js') + '?strict=' + Date.now());
+  if (!mod) throw new Error('app.js не загрузился');
+});
+
+// Реальная точка входа: рендерит в #view из index.html. Клики по вкладкам идут через делегирование на #tabs.
 try {
-  await import(src('app.js') + '?smoke=1');
-  console.log('  ok  app.js: точка входа загружается и активирует вкладки');
+  await import(src('app.js') + '?smoke=2');
+  const view = registry.get('view');
+  if (!view.children.length) throw new Error('#view пуст — планировщик не отрисовался при старте');
+  if (!registry.get('meta-build').textContent) throw new Error('метка сборки не проставлена');
+  for (const btn of registry.get('tabs').querySelectorAll('button[data-tab]')) {
+    view.children = [];
+    registry.get('tabs').dispatch('click', { target: btn });
+    if (!view.children.length) throw new Error(`вкладка ${btn.attrs['data-tab']} не отрендерилась`);
+  }
+  console.log('  ok  app.js: старт + переключение всех вкладок');
 } catch (e) {
   failures++;
   console.error(` FAIL app.js: ${e.message}`);

@@ -119,7 +119,7 @@ function affixCard() {
 function dropBonusCard() {
   const head = ['Бонус', 'Стат', 'Мин. тир', ...DROP_BONUS_TIER_LABELS];
   const rows = DROP_BONUSES.filter((d) => match(d.name, d.stat, d.ru, d.note, d.cat))
-    .map((d) => [[d.name, el('span', { class: 'tag', text: d.cat })], d.ru, d.min, ...d.values]);
+    .map((d) => [el('div', {}, [el('b', { text: d.name }), el('span', { class: 'tag', text: d.cat })]), d.ru, d.min, ...d.values]);
   const notes = DROP_BONUSES.filter((d) => d.note).filter((d) => match(d.name, d.note));
   return card('Drop Bonuses (T2 → T9)', [
     el('p', { class: 'muted', text: `Категории: ${DROP_BONUS_CATEGORIES.join(', ')}. T7–T9 появляются только на Gilded / Radiant / Mythic дропе (с ML 260).` }),

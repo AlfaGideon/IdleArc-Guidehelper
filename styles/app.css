@@ -160,3 +160,11 @@ b.want, td .want { color: var(--good); }
 .tabs .btn.ghost:hover { color: var(--text); border-color: var(--accent); }
 .warnbox.stale { background: rgba(255,200,87,.12); border-color: var(--accent); }
 .tag.est { background: rgba(255,200,87,.16); color: var(--accent); border-color: var(--accent); }
+
+/* «скелет» персонажа: 10 слотов как в окне персонажа в игре */
+.skeleton { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+.slot-tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: rgba(255,255,255,.02); display: flex; flex-direction: column; gap: 2px; }
+.slot-tile .slot-name { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.slot-tile b { color: var(--accent); }
+.slot-tile.empty { opacity: .6; border-style: dashed; }
+.slot-tile.empty b { color: var(--muted); }
