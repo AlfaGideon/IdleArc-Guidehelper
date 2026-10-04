@@ -13,9 +13,19 @@
 import { CLASSES, classById, classPointsForLevel, CLASS_SKILL_RULES } from '../data/classes.js';
 import { GOALS } from '../data/builds.js';
 import { STATS, STANCES, TALISMANS } from '../data/systems.js';
-import { GEM_FAMILIES, GEM_RARITY, GEM_SECONDARY, RARITY, ITEM_TIERS, SLOT_EN } from '../data/items.js';
+import {
+  GEM_FAMILIES, GEM_RARITY, GEM_SECONDARY, RARITY, ITEM_TIERS, SLOT_EN, SLOT_RU,
+  GEAR_CELLS, CLASS_GEAR_RULES, SLOT_GEM_COUNT, FAMILY_AWAKEN, familyById, GEAR_FAMILIES, gearCellById, familyUnlockMl,
+} from '../data/items.js';
+import {
+  FORGE_TIERS, forgeTierInfo, forgeStep, forgeRank, forgeCumulative, AWAKEN_MAX, AWAKEN_NOTE,
+} from '../data/forge.js';
 import { planBuild, planToText, encodePlan, decodePlan, nextPointLevel } from '../core/planner.js';
 import { el, card, table, kpi, copyButton } from './dom.js';
+import { itemArt, lockArt, tierColors } from './itemArt.js';
+import {
+  saveState, loadState, savedAt, clearState, listLoadouts, saveLoadout, getLoadout, deleteLoadout,
+} from './store.js';
 
 const state = {
   classId: 'warrior',
@@ -27,7 +37,54 @@ const state = {
   manual: null,       // null = авто-распределение, объект = ручные правки
   mode: 'auto',       // 'auto' | 'manual'
   shareCode: '',
+  gear: {},           // экипировка по классам: { warrior: { mainhand: { family, tier, level, awaken }, … }, … }
+  restored: false,    // состояние поднято из localStorage при загрузке страницы
 };
+
+/** Снимок для сохранения в браузере (всё, что ввёл пользователь). */
+function snapshot() {
+  return {
+    classId: state.classId,
+    level: state.level,
+    ml: state.ml,
+    goal: state.goal,
+    plusAll: state.plusAll,
+    extraPoints: state.extraPoints,
+    mode: state.mode,
+    manual: state.manual,
+    gear: state.gear,
+    shareCode: state.shareCode,
+  };
+}
+
+/** Применить снимок (загрузка из браузера или из набора). */
+function applySnapshot(snap) {
+  if (!snap) return false;
+  if (snap.classId && CLASSES.some((c) => c.id === snap.classId)) state.classId = snap.classId;
+  if (Number.isFinite(snap.level)) state.level = Math.max(1, Math.round(snap.level));
+  if (Number.isFinite(snap.ml)) state.ml = Math.max(1, Math.round(snap.ml));
+  if (snap.goal && GOALS.some((g) => g.id === snap.goal)) state.goal = snap.goal;
+  if (Number.isFinite(snap.plusAll)) state.plusAll = Math.max(0, Math.round(snap.plusAll));
+  if (Number.isFinite(snap.extraPoints)) state.extraPoints = Math.max(0, Math.round(snap.extraPoints));
+  if (snap.gear && typeof snap.gear === 'object') state.gear = snap.gear;
+  if (snap.manual && typeof snap.manual === 'object') { state.manual = snap.manual; state.mode = 'manual'; }
+  else if (snap.mode === 'auto') { state.manual = null; state.mode = 'auto'; }
+  if (typeof snap.shareCode === 'string') state.shareCode = snap.shareCode;
+  return true;
+}
+
+// Поднимаем прошлую сессию из браузера: заполнять заново не нужно.
+if (applySnapshot(loadState())) state.restored = true;
+
+/** Человеческое время последнего сохранения. */
+function savedAtText() {
+  const iso = savedAt();
+  if (!iso) return 'ещё не сохранялось';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'сохранено';
+  const two = (n) => String(n).padStart(2, '0');
+  return `сохранено ${two(d.getHours())}:${two(d.getMinutes())}`;
+}
 
 /* ------------------------------ Двуязычные подписи ------------------------------ */
 
@@ -382,60 +439,242 @@ function skillsStep(root, plan) {
 
 /* ----------------------------- Шаг 4: экипировка ----------------------------- */
 
-function gearStep(plan) {
-  const skeleton = el('div', { class: 'skeleton' }, plan.gear.slots.map((s) => el('div', { class: 'slot-tile' + (s.primary ? '' : ' empty') }, [
-    el('span', { class: 'slot-name', text: `${s.slotRu} (${SLOT_EN[s.slot] || s.slot})` }),
-    el('b', { text: s.primary ? biText(s.primary.ru, s.primary.name) : (s.slot === 'offhand' ? '— (занято двуручным)' : '— пусто —') }),
-    s.primary && s.tierNameNow ? el('span', { class: 'muted small', text: `${plan.itemTier.tierLabel} сейчас: ${s.tierNameNow}` }) : null,
-    el('span', { class: 'muted small', text: s.implicitNow ? `Имплисит: ${s.implicitNow}` : (s.note || 'нет данных') }),
-    el('span', { class: 'muted small', text: `Камень: ${s.gem.family.ru} (${s.gem.family.name}) · ${s.gem.rarityRu} (${s.gem.rarity})` }),
-  ])));
+/** Формат больших чисел: 4 180 000. */
+const fmtNum = (n) => Number(n).toLocaleString('ru-RU').replace(/\u00a0/g, ' ');
 
-  const rows = plan.gear.slots.map((s) => {
+/** Семейства предметов, которые класс реально может носить в этой ячейке. */
+function cellFamilies(plan, cell) {
+  // «Оружие 2» у разбойника — это второе одноручное оружие в руке.
+  const dual = cell.id === 'weapon2' || (cell.id === 'offhand' && plan.classId === 'rogue');
+  if (dual) {
+    return GEAR_FAMILIES.filter((f) => f.slot === 'mainhand' && f.hand !== '2H' && (f.cls === 'all' || f.cls === plan.classId));
+  }
+  return GEAR_FAMILIES.filter((f) => f.slot === cell.slot && (f.cls === 'all' || f.cls === plan.classId));
+}
+
+/**
+ * Экипировка текущего класса. Хранится в состоянии (и в localStorage), поэтому не теряется
+ * при перезагрузке. Для каждой ячейки: семейство предмета, тир и шаги Кузницы (+N).
+ */
+function gearStateFor(plan) {
+  if (!state.gear || typeof state.gear !== 'object') state.gear = {};
+  const cls = (state.gear[plan.classId] = state.gear[plan.classId] || {});
+  for (const cell of GEAR_CELLS) {
+    if (cls[cell.id] && typeof cls[cell.id] === 'object') {
+      const st = cls[cell.id];
+      st.tier = Math.min(6, Math.max(1, Math.round(Number(st.tier) || plan.itemTier.tier)));
+      st.level = Math.min(forgeTierInfo(st.tier).maxLevel, Math.max(0, Math.round(Number(st.level) || 0)));
+      st.awaken = Math.min(AWAKEN_MAX, Math.max(0, Math.round(Number(st.awaken) || 0)));
+      if (st.family && !familyById(st.family)) st.family = null;
+      continue;
+    }
+    const list = cellFamilies(plan, cell);
+    const pick = cell.id === 'weapon2' && list.length > 1 ? list[1] : list[0];
+    cls[cell.id] = {
+      family: pick ? pick.id : null,
+      tier: plan.itemTier.tier,
+      level: 0,
+      awaken: 0,
+    };
+  }
+  return cls;
+}
+
+/** Карточка-перевёртыш ячейки: снаружи — картинка и тир, внутри — статы предмета. */
+function gearCellCard(plan, root, gear, cell, usable) {
+  const st = gear[cell.id];
+  const info = forgeTierInfo(st.tier);
+  const family = st.family ? familyById(st.family) : null;
+  const rank = forgeRank(st.tier, st.level);
+  const step = st.level < info.maxLevel ? forgeStep(st.tier, st.level) : null;
+  const tierName = family ? (family.tierNames[st.tier - 1] || family.name) : null;
+  const implicit = family ? (family.implicitTiers[st.tier - 1] || family.implicit) : null;
+  const awakenName = family && st.awaken > 0 ? FAMILY_AWAKEN[family.id] : null;
+  const gems = SLOT_GEM_COUNT[cell.id] == null ? 0 : SLOT_GEM_COUNT[cell.id];
+  const color = tierColors(st.tier)[0];
+  const dropMl = family ? familyUnlockMl(family) : 1;
+  const notYet = usable && family && dropMl > plan.ml;
+
+  const front = el('div', { class: 'face front' }, [
+    el('div', { class: 'art', html: usable ? itemArt(family, st.tier) : lockArt(st.tier) }),
+    el('div', { class: 'badges' }, [
+      el('span', { class: 'tag tiertag', style: `border-color:${color};color:${color}`, text: `T${st.tier}` }),
+      usable ? el('span', { class: 'tag plus', text: `+${st.level}` }) : el('span', { class: 'tag', text: 'закрыто' }),
+    ]),
+    el('div', { class: 'cellname', text: `${cell.ru} (${cell.en})` }),
+    el('div', { class: 'muted small', text: usable
+      ? (family ? (st.awaken > 0 && awakenName ? awakenName : tierName) : 'предмет не выбран')
+      : 'недоступно классу' }),
+    notYet ? el('div', { class: 'chip warn', text: `выпадает с ML ${dropMl}` }) : null,
+  ]);
+
+  const back = el('div', { class: 'face back' }, [
+    el('div', { class: 'cellname', text: `${cell.ru} (${cell.en})` }),
+    family
+      ? el('div', {}, [
+        el('b', { text: biText(family.ru, family.name) }),
+        el('div', { class: 'muted small', text: `Тир ${st.tier} ${info.ru} (${info.name}) · ${tierName}` }),
+      ])
+      : el('div', { class: 'muted', text: usable ? 'предмет не выбран' : 'ячейка закрыта для класса' }),
+    family ? el('div', { class: 'muted small', text: `Имплисит: ${family.implicit} — ${implicit}` }) : null,
+    family ? el('div', { class: 'muted small', text: `Аффиксов от тира: ${info.affixSlots} · позиций под камни: ${gems}` }) : null,
+    usable ? el('div', { class: 'muted small', text: `Кузница слота: T${st.tier} +${st.level} из +${info.maxLevel} → ранг ${rank.rank}/100` }) : null,
+    usable && step ? el('div', { class: 'muted small', text: `Следующий шаг Кузницы: ${fmtNum(step.gold)} золота · ${step.fragments} × ${info.fragmentRu} · успех ${Math.round(step.success * 100)}%` }) : null,
+    usable && !step ? el('div', { class: 'muted small', text: 'Тир прокачан полностью — дальше открывается следующий тир.' }) : null,
+    family && st.awaken > 0 && awakenName ? el('div', { class: 'muted small', text: `Awaken ${st.awaken}/${AWAKEN_MAX}: ${awakenName}` }) : null,
+    family ? el('div', { class: 'muted small', text: `Появляется: ${family.unlock}` }) : null,
+    notYet ? el('div', { class: 'muted small', text: `На вашем ML ${plan.ml} этот предмет ещё не выпадает — слот начнёт падать с ML ${dropMl}.` }) : null,
+  ]);
+
+  let cardEl;
+  const toggle = () => cardEl.classList.toggle('flipped');
+  cardEl = el('div', {
+    class: `flipcard${usable ? '' : ' locked'}`,
+    role: 'button',
+    tabindex: '0',
+    title: 'Нажмите — карточка перевернётся и покажет параметры предмета',
+    onclick: toggle,
+    onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } },
+  }, [el('div', { class: 'inner' }, [front, back])]);
+  return cardEl;
+}
+
+/** Строка Кузницы: выбор предмета, тира, шагов «+N» и цена следующего шага. */
+function forgeRow(plan, root, gear, cell) {
+  const st = gear[cell.id];
+  const info = forgeTierInfo(st.tier);
+  const rank = forgeRank(st.tier, st.level);
+  const step = st.level < info.maxLevel ? forgeStep(st.tier, st.level) : null;
+  const families = cellFamilies(plan, cell);
+
+  const familySelect = el('select', {
+    onchange: (e) => { st.family = e.target.value || null; render(root); },
+  }, [
+    el('option', { value: '', selected: st.family ? null : 'selected' }, ['— не выбран —']),
+    ...families.map((f) => el('option', { value: f.id, selected: f.id === st.family ? 'selected' : null }, [`${f.ru} (${f.name})`])),
+  ]);
+
+  const tierSelect = el('select', {
+    onchange: (e) => {
+      st.tier = Number(e.target.value);
+      st.level = Math.min(st.level, forgeTierInfo(st.tier).maxLevel);
+      render(root);
+    },
+  }, FORGE_TIERS.map((t) => el('option', { value: String(t.tier), selected: t.tier === st.tier ? 'selected' : null },
+    [`T${t.tier} ${t.ru} (${t.name})`])));
+
+  const maxLv = info.maxLevel;
+  const levelOptions = [];
+  for (let i = 0; i <= maxLv; i += 1) levelOptions.push(el('option', { value: String(i), selected: i === st.level ? 'selected' : null }, [`+${i}`]));
+  const levelSelect = el('select', { onchange: (e) => { st.level = Number(e.target.value); render(root); } }, levelOptions);
+
+  const awakenSelect = el('select', {
+    onchange: (e) => { st.awaken = Number(e.target.value); render(root); },
+  }, [0, 1, 2, 3, 4, 5].map((r) => el('option', { value: String(r), selected: r === st.awaken ? 'selected' : null },
+    [r === 0 ? 'Awaken 0' : `Awaken ${r}`])));
+
+  return [
+    el('div', {}, [el('b', { text: cell.ru }), el('div', { class: 'muted small', text: cell.en })]),
+    familySelect,
+    tierSelect,
+    levelSelect,
+    el('div', {}, [el('b', { text: `${rank.rank}/100` }), el('div', { class: 'muted small', text: `T${st.tier} +${st.level} из +${maxLv}` })]),
+    step
+      ? el('div', {}, [
+        el('b', { text: `${fmtNum(step.gold)} золота` }),
+        el('div', { class: 'muted small', text: `${step.fragments} × ${info.fragmentRu} · успех ${Math.round(step.success * 100)}%` }),
+      ])
+      : el('div', { class: 'muted small', text: 'тир прокачан полностью' }),
+    el('div', {}, [el('b', { text: `+${info.affixSlots}` }), el('div', { class: 'muted small', text: 'аффикс-позиций' })]),
+    awakenSelect,
+  ];
+}
+
+/** Шаг 4 целиком: экран персонажа как в игре + панель Кузницы. */
+function gearStep(plan, root) {
+  const rules = CLASS_GEAR_RULES[plan.classId] || CLASS_GEAR_RULES.warrior;
+  const gear = gearStateFor(plan);
+
+  const grid = el('div', { class: 'gear-screen' }, GEAR_CELLS.map((cell) =>
+    gearCellCard(plan, root, gear, cell, rules.cells.includes(cell.id))));
+
+  const lockedNotes = GEAR_CELLS
+    .filter((cell) => !rules.cells.includes(cell.id) && rules.locked && rules.locked[cell.id])
+    .map((cell) => el('li', { text: `${cell.ru} (${cell.en}) — ${rules.locked[cell.id]}` }));
+
+  const rankTotal = rules.cells.reduce((a, id) => a + forgeRank(gear[id].tier, gear[id].level).rank, 0);
+  const rankMax = rules.cells.length * 1; // ровно по 100 на слот
+  const withAwaken = rules.cells.filter((id) => gear[id].awaken > 0).length;
+
+  const forgeTableRows = rules.cells.map((id) => forgeRow(plan, root, gear, gearCellById(id)));
+
+  const scale = el('div', { class: 'scroll' }, [table(
+    ['Тир', 'Шагов «+N»', 'Золото до максимума', 'Фрагменты', 'Аффикс-позиций', 'Ранг слота'],
+    FORGE_TIERS.map((t) => {
+      const cum = forgeCumulative(t.tier, t.maxLevel);
+      return [
+        `T${t.tier} ${t.ru} (${t.name})`,
+        `+${t.maxLevel}`,
+        fmtNum(cum.gold),
+        `${fmtNum(cum.fragments)} × ${t.fragmentRu}`,
+        String(t.affixSlots),
+        `${forgeRank(t.tier, t.maxLevel).rank}/100`,
+      ];
+    }),
+  )]);
+
+  const slotRows = plan.gear.slots.map((s) => {
     const p = s.primary;
     const affixList = [...s.affixes.prefixes, ...s.affixes.suffixes].map((a) => el('span', { class: 'chip', text: biText(a.ru, a.name) }));
     const db = s.dropBonuses.length ? s.dropBonuses.map((d) => el('span', { class: 'chip gold', text: biText(d.ru, d.name) })) : [el('span', { class: 'muted', text: '—' })];
     return [
-      el('div', {}, [
-        el('b', { text: s.slotRu }),
-        el('div', { class: 'muted small', text: SLOT_EN[s.slot] || s.slot }),
-        s.note ? el('div', { class: 'muted small', text: s.note }) : null,
-      ]),
+      el('div', {}, [el('b', { text: s.slotRu }), el('div', { class: 'muted small', text: SLOT_EN[s.slot] || s.slot })]),
       p ? el('div', {}, [
         el('b', { text: p.ru }), el('span', { class: 'en', text: ` (${p.name})` }),
-        el('div', { class: 'muted small', text: `${p.hand === '2H' ? 'двуручное' : p.hand === '1H' ? 'одноручное' : 'оффхенд'} · открывается: ${p.unlock}` }),
+        el('div', { class: 'muted small', text: `${p.hand === '2H' ? 'двуручное' : p.hand === '1H' ? 'одноручное' : 'оффхенд'} · ${p.unlock}` }),
       ]) : el('span', { class: 'muted', text: '—' }),
       p ? el('div', {}, [
         el('b', { text: s.tierNameNow }),
         el('div', { class: 'muted small', text: `имплисит ${plan.itemTier.tierLabel}: ${s.implicitNow}` }),
-        el('div', { class: 'muted small', text: `${p.implicit}: ${p.implicitTiers.map((v, i) => `T${i + 1} ${v}`).join(' · ')}` }),
       ]) : el('span', { class: 'muted', text: '—' }),
       el('div', { class: 'chips' }, affixList.length ? affixList : '—'),
       el('div', { class: 'chips' }, db),
-      el('div', {}, [
-        el('b', { text: `${s.gem.family.ru} (${s.gem.family.name})` }),
-        el('div', { class: 'muted small', text: `${s.gem.baseValue} · цель: ${s.gem.rarityRu} (${s.gem.rarity})` }),
-      ]),
     ];
   });
 
-  const lockedNotes = plan.gear.slots.filter((s) => s.locked && s.locked.length).map((s) =>
-    el('li', { text: `${s.slotRu} (${SLOT_EN[s.slot]}): ${s.locked.map((f) => `${biText(f.ru, f.name)} — ${f.unlock}`).join(', ')}` }));
-
   return [
-    el('h3', { text: `Скелет персонажа — ${biText(plan.classRu, plan.className)}, ML ${plan.ml}` }),
-    skeleton,
-    el('p', { class: 'muted', text: 'Это те же 10 слотов, что в окне персонажа: основная рука, вторая рука, факел, нагрудник, шлем, перчатки, обувь, амулет, кольцо, пояс. Названия предметов — из Item Codex: русская подпись + игровое английское имя.' }),
-    el('h3', { text: 'Экипировка: что надевать в каждый слот' }),
-    el('div', { class: 'scroll' }, [table(
-      ['Слот', 'Семейство предметов', 'Имя и имплисит на вашем ML', 'Аффиксы (ищите эти)', 'Drop Bonus', 'Камень'],
-      rows,
-    )]),
-    el('p', { class: 'muted', text: `Имплиситы показаны для тира, который чаще всего падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru} — ${plan.itemTier.chance}%). Полная лестница T1→T6 указана рядом, чтобы видеть, куда расти.` }),
+    el('h3', { text: `Экран персонажа — ${biText(plan.classRu, plan.className)}, ML ${plan.ml}` }),
+    el('p', { class: 'muted', text: 'Ячейки стоят как в игровом окне экипировки. На карточке видно то же, что в игре: тир и «+N» Кузницы. Нажмите на карточку — она перевернётся и покажет параметры предмета (имплисит, аффиксы, камни, следующий шаг Кузницы).' }),
+    grid,
+    el('div', { class: 'gear-legend' }, [
+      el('span', { class: 'chip', text: 'T1…T6 — тир Кузницы' }),
+      el('span', { class: 'chip', text: '+N — шаги Кузницы внутри тира' }),
+      el('span', { class: 'chip gold', text: `суммарный ранг Кузницы: ${rankTotal} / ${rankMax * 100}` }),
+      withAwaken ? el('span', { class: 'chip', text: `просыпание: ${withAwaken} слот(ов)` }) : null,
+    ]),
     lockedNotes.length ? el('div', { class: 'infobox' }, [
-      el('b', { text: 'Откроется на большем ML' }),
+      el('b', { text: 'Почему часть ячеек закрыта' }),
       el('ul', { class: 'tight' }, lockedNotes),
     ]) : null,
+    el('div', { class: 'infobox' }, [
+      el('b', { text: 'Кузница поднимает слот выше тира предмета' }),
+      el('p', { text: 'Кузница (Forge) качает СЛОТ, а не отдельный предмет: у слота свой тир и свои шаги «+N». Поэтому в игре на карточке стоит, например, «T4 +19», даже если сам предмет выпал T2 — слот уже поднят Кузницей. Ранг слота (0…100) складывает шаги всех тиров: T1 +4, T2 +9, T3 +14, T4 +19, T5 +24, T6 +30. Ниже выберите предмет, тир и «+N» — планировщик покажет ранг слота и цену следующего шага Кузницы (золото, фрагменты, шанс успеха).' }),
+      el('p', { class: 'muted', text: 'Цифры стоимости — из официальных данных Item Codex (Кузница → Forge). К каждому шагу в игре ещё нужны материалы монстров: их список каждый уровень разный, его видно в Кузнице.' }),
+    ]),
+    el('h3', { text: 'Кузница: что стоит в каждом слоте' }),
+    el('div', { class: 'scroll' }, [table(
+      ['Ячейка', 'Предмет', 'Тир', '+N', 'Ранг слота', 'Следующий шаг', 'Аффиксы', 'Awaken'],
+      forgeTableRows,
+    )]),
+    el('p', { class: 'muted', text: AWAKEN_NOTE }),
+    el('h3', { text: 'Сколько стоит прокачать тир целиком' }),
+    scale,
+    el('h3', { text: 'Что искать в каждом слоте' }),
+    el('div', { class: 'scroll' }, [table(
+      ['Слот', 'Семейство предметов', 'Имя на вашем ML', 'Аффиксы (ищите эти)', 'Drop Bonus'],
+      slotRows,
+    )]),
+    el('p', { class: 'muted', text: `Имплиситы и дроп — для тира, который чаще всего падает на ML ${plan.ml} (${plan.itemTier.tierLabel} ${plan.itemTier.ru} — ${plan.itemTier.chance}%).` }),
     ...plan.profile.notes.map((n) => el('div', { class: 'infobox', text: n })),
   ];
 }
@@ -587,6 +826,40 @@ function shareCard(root, plan) {
   ]);
 }
 
+/* --------------------------- Сохранение в браузере --------------------------- */
+
+function loadoutRow(root, name) {
+  const data = getLoadout(name);
+  return el('div', { class: 'loadout' }, [
+    el('b', { text: name }),
+    el('span', { class: 'muted small', text: data ? 'сохранён' : 'пусто' }),
+    el('button', { class: 'btn tiny', text: 'Сохранить', onclick: () => { saveLoadout(name, snapshot()); render(root); } }),
+    el('button', { class: 'btn tiny', text: 'Загрузить', disabled: data ? null : 'disabled', onclick: () => { if (applySnapshot(getLoadout(name))) render(root); } }),
+    el('button', { class: 'btn tiny', text: 'Удалить', disabled: data ? null : 'disabled', onclick: () => { deleteLoadout(name); render(root); } }),
+  ]);
+}
+
+/** Карточка «данные не теряются»: автосохранение + три набора, как в игре. */
+function saveCard(root, plan) {
+  const names = listLoadouts();
+  const count = Object.keys(names).length;
+  return card('Сохранение: данные не теряются при перезагрузке', [
+    el('p', { class: 'muted', text: 'Всё, что вы ввели — класс, цель, уровни персонажа и Monster Level, очки навыков, экипировка и Кузница, — автоматически сохраняется в браузере. После Ctrl+R, перезапуска сервера или закрытия вкладки планировщик откроется на том же состоянии.' }),
+    el('div', { class: 'chips' }, [
+      el('span', { class: 'chip good', text: state.restored ? 'прошлая сессия восстановлена из браузера' : 'автосохранение включено' }),
+      el('span', { class: 'chip', text: savedAtText() }),
+      el('span', { class: 'chip', text: `класс: ${plan.classRu}` }),
+      el('span', { class: 'chip', text: `наборов сохранено: ${count}` }),
+    ]),
+    el('div', { class: 'loadoutbar' }, ['Набор 1', 'Набор 2', 'Набор 3'].map((n) => loadoutRow(root, n))),
+    el('div', { class: 'actions' }, [
+      el('button', { class: 'btn primary', text: 'Сохранить сейчас', onclick: () => { saveState(snapshot()); render(root); } }),
+      el('button', { class: 'btn', text: 'Сбросить всё', onclick: () => { clearState(); state.restored = false; location.reload(); } }),
+    ]),
+    el('p', { class: 'muted small', text: 'Данные лежат только в вашем браузере (localStorage), никуда не отправляются. Кнопка «Сбросить всё» очищает их полностью.' }),
+  ]);
+}
+
 /* ---------------------------------- Рендер ---------------------------------- */
 
 export function render(root) {
@@ -603,10 +876,14 @@ export function render(root) {
   root.appendChild(stepCard(1, 'Класс и цель', classStep(root, plan)));
   root.appendChild(stepCard(2, 'Уровни: персонаж и Monster Level', levelsStep(root, plan)));
   root.appendChild(stepCard(3, 'Куда вложить очки навыков', skillsStep(root, plan)));
-  root.appendChild(stepCard(4, 'Что надеть: слоты и предметы', gearStep(plan)));
+  root.appendChild(stepCard(4, 'Что надеть: слоты и предметы', gearStep(plan, root)));
   root.appendChild(stepCard(5, 'Какие камни вставить', gemsStep(plan)));
   root.appendChild(stepCard(6, 'Что делать дальше', nextStep(plan)));
   root.appendChild(shareCard(root, plan));
+  root.appendChild(saveCard(root, plan));
+
+  // Каждый рендер = свежий снимок в localStorage: ничего не теряется при перезагрузке.
+  saveState(snapshot());
 }
 
 export { state as plannerState };

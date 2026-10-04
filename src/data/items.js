@@ -429,3 +429,80 @@ export function familyUnlockMl(family) {
 export const familyById = (id) => GEAR_FAMILIES.find((f) => f.id === id);
 export const familiesForSlot = (slot) => GEAR_FAMILIES.filter((f) => f.slot === slot);
 export const familiesForClass = (cls) => GEAR_FAMILIES.filter((f) => f.cls === 'all' || f.cls === cls);
+
+/* ------------------------------------------------------------------------------------------------
+ * Экран персонажа (как в игре) и Кузница (Forge, Season 2)
+ * ------------------------------------------------------------------------------------------------
+ * В игре экипировка — это сетка ячеек, а прогресс качается Кузницей ПО СЛОТАМ:
+ * слот имеет свой тир и «+N» (шаги Кузницы), поэтому в карточке видно «T4 +19» даже тогда,
+ * когда сам выпавший предмет был ниже тиром. Ячейки ниже расположены как в игровом окне:
+ *   Факел · Амулет · Вторая рука
+ *   Оружие · Нагрудник · Оружие 2
+ *   Кольцо 1 · Кольцо 2 · Пояс
+ *   Шлем · Перчатки · Обувь
+ * Источники: официальные патч-ноты 1.3.1, вики (Forge, Items), Item Codex → Forge, forge.tracks_by_class.
+ */
+export const GEAR_CELLS = [
+  { id: 'torch', slot: 'torch', ru: 'Факел', en: 'Torch' },
+  { id: 'amulet', slot: 'amulet', ru: 'Амулет', en: 'Amulet' },
+  { id: 'offhand', slot: 'offhand', ru: 'Вторая рука', en: 'Off Hand' },
+  { id: 'mainhand', slot: 'mainhand', ru: 'Оружие', en: 'Weapon' },
+  { id: 'chest', slot: 'chest', ru: 'Нагрудник', en: 'Chest' },
+  { id: 'weapon2', slot: 'mainhand', ru: 'Оружие 2', en: 'Weapon 2' },
+  { id: 'ring1', slot: 'ring', ru: 'Кольцо 1', en: 'Ring 1' },
+  { id: 'ring2', slot: 'ring', ru: 'Кольцо 2', en: 'Ring 2' },
+  { id: 'belt', slot: 'belt', ru: 'Пояс', en: 'Belt' },
+  { id: 'head', slot: 'head', ru: 'Шлем', en: 'Head' },
+  { id: 'hands', slot: 'hands', ru: 'Перчатки', en: 'Hands' },
+  { id: 'feet', slot: 'feet', ru: 'Обувь', en: 'Feet' },
+];
+
+export const gearCellById = (id) => GEAR_CELLS.find((c) => c.id === id);
+
+/** Сколько камней-сокетов даёт ячейка (Torch — 4, оружие — 3, броня — 2, украшения — 1, щит — 0). */
+export const SLOT_GEM_COUNT = {
+  mainhand: 3, weapon2: 3, offhand: 0, torch: 4,
+  head: 2, chest: 2, hands: 2, feet: 2, belt: 2,
+  ring1: 1, ring2: 1, amulet: 1,
+};
+
+/**
+ * Какие ячейки носит класс и почему остальные закрыты.
+ * (forge.tracks_by_class: воин/лучник/маг — оружие + щит; разбойник — два оружия, без щита;
+ *  друид — только посох, он двуручный.)
+ */
+export const CLASS_GEAR_RULES = {
+  warrior: { cells: ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
+    locked: { weapon2: 'Второе оружие — только у Разбойника (Rogue).' } },
+  archer: { cells: ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
+    locked: { weapon2: 'Второе оружие — только у Разбойника (Rogue).' } },
+  mage: { cells: ['mainhand', 'offhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
+    locked: { weapon2: 'Второе оружие — только у Разбойника (Rogue).' } },
+  rogue: { cells: ['mainhand', 'weapon2', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
+    locked: { offhand: 'У Разбойника вместо щита — второе оружие (Weapon 2).' } },
+  druid: { cells: ['mainhand', 'torch', 'chest', 'head', 'hands', 'feet', 'belt', 'amulet', 'ring1', 'ring2'],
+    locked: {
+      offhand: 'Посох друида (Gnarled Stick) двуручный — обе руки заняты.',
+      weapon2: 'У Друида одно оружие — посох, он двуручный.',
+    } },
+};
+
+/** Имя предмета после Awaken (ранг 1), если название опубликовано в Item Codex. */
+export const FAMILY_AWAKEN = {
+  broken_sword: 'Royal Dragonblade',
+  greatsword: 'Crimson Greatsword',
+  wooden_rod: 'Archmage Crown Wand',
+  grand_staff: 'Archmage Grand Staff',
+  wooden_bow: 'Dragonbone Bow',
+  crossbow: 'Dragonbone Crossbow',
+  rusty_dagger: 'Royal Dagger',
+  claws: 'Nightcrown Claws',
+  gnarled_stick: 'Ancient Grove Stick',
+  wooden_shield: 'Grand Crest Shield',
+  old_book: 'Grand Crest Spellbook',
+  quiver: 'Grand Crest Quiver',
+  rags: 'Gilded Plate Armor',
+  leather_cap: 'Gilded Plate Helm',
+  worn_gloves: 'Gilded Plate Gauntlets',
+  sandals_of_starszy: 'Gilded Plate Boots',
+};

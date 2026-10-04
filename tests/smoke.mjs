@@ -91,6 +91,13 @@ Object.defineProperty(globalThis, 'navigator', { value: { clipboard: { writeText
 globalThis.prompt = () => null;
 globalThis.fetch = globalThis.fetch || (async () => { throw new Error('offline'); });
 globalThis.alert = () => {};
+// localStorage-шим: проверяем, что планировщик действительно сохраняет состояние в браузере.
+const lsData = new Map();
+globalThis.localStorage = {
+  getItem: (k) => (lsData.has(k) ? lsData.get(k) : null),
+  setItem: (k, v) => { lsData.set(k, String(v)); },
+  removeItem: (k) => { lsData.delete(k); },
+};
 if (!globalThis.btoa) globalThis.btoa = (s) => Buffer.from(s, 'binary').toString('base64');
 if (!globalThis.atob) globalThis.atob = (s) => Buffer.from(s, 'base64').toString('binary');
 
@@ -111,6 +118,9 @@ const classes = await import(src('data/classes.js'));
 const core = await import(src('core/planner.js'));
 const calc = await import(src('core/calc.js'));
 const items = await import(src('data/items.js'));
+const forge = await import(src('data/forge.js'));
+const art = await import(src('ui/itemArt.js'));
+const store = await import(src('ui/store.js'));
 
 /* ---------- Рендер ---------- */
 for (const [name, view] of Object.entries(views)) {
@@ -203,16 +213,18 @@ check('планировщик: на экране есть блоки распр�
     'Лучшие камни под цель',
     'Когда менять основной камень',
     'Другие камни в этом слоте',
-    'Скелет персонажа',
-    'Экипировка: что надевать в каждый слот',
+    'Экран персонажа',
+    'Кузница поднимает слот выше тира предмета',
+    'Что искать в каждом слоте',
+    'Сохранение: данные не теряются при перезагрузке',
     'Обмен сборкой',
     'Вторичный стат',
     'Имплисит',
   ];
   for (const needle of must) if (!text.includes(needle)) throw new Error(`нет блока/строки: «${needle}»`);
   const slots = views.planner.plannerState ? null : null;
-  // 10 слотов экипировки должны быть перечислены в таблице
-  for (const slot of ['Основная рука', 'Вторая рука', 'Факел', 'Нагрудник', 'Шлем', 'Перчатки', 'Обувь', 'Амулет', 'Кольцо', 'Пояс']) {
+  // ячейки экрана персонажа должны быть перечислены как в игре
+  for (const slot of ['Вторая рука', 'Факел', 'Нагрудник', 'Шлем', 'Перчатки', 'Обувь', 'Амулет', 'Кольцо', 'Пояс', 'Оружие 2']) {
     if (!text.includes(slot)) throw new Error(`в блоке экипировки нет слота «${slot}»`);
   }
 });
@@ -228,7 +240,7 @@ check('планировщик: рендерится для всех 5 класс
           const root = new El('main');
           views.planner.render(root);
           const text = textOf(root);
-          if (!text.includes('Скелет персонажа')) problems.push(`${cls.id}/${goal}/${lvl}: нет скелета экипировки`);
+          if (!text.includes('Экран персонажа')) problems.push(`${cls.id}/${goal}/${lvl}: нет экрана экипировки`);
           if (!text.includes('лучшие выбор') && !text.includes('лучший выбор')) problems.push(`${cls.id}/${goal}/${lvl}: нет рекомендации камня`);
         } catch (e) {
           problems.push(`${cls.id}/${goal}/${lvl}: ${e.message}`);
@@ -605,6 +617,126 @@ check('формула гема и компоунд петов', () => {
   if (calc.petCompoundEffective(30, 5, 'seasonal') !== 15) throw new Error('seasonal должен давать +10 к слабейшему');
   if (calc.petCompoundEffective(30, 5, 'permanent') !== 30) throw new Error('permanent +25');
   if (calc.masteryShards(10) !== 1650) throw new Error('стоимость Mastery');
+});
+
+/* ---------- Кузница, экран персонажа, картинки, сохранение ---------- */
+
+/** Найти узлы по классу (querySelectorAll в шиме умеет только id/теги). */
+function findByClass(node, cls, acc = []) {
+  for (const c of node.children || []) {
+    if (c.nodeType === 1 && String(c.className || '').split(/\s+/).includes(cls)) acc.push(c);
+    findByClass(c, cls, acc);
+  }
+  return acc;
+}
+
+check('Кузница: шаги, фрагменты и шансы совпадают с данными Item Codex', () => {
+  const eq = (a, b, what) => { if (Math.abs(a - b) > 1e-9) throw new Error(`${what}: ${a} != ${b}`); };
+  eq(forge.forgeStep(1, 0).gold, 290, 'T1 +1 золото');
+  eq(forge.forgeStep(1, 3).gold, 560, 'T1 +4 золото');
+  eq(forge.forgeCumulative(1, 4).gold, 1700, 'T1 всего золото');
+  eq(forge.forgeCumulative(1, 4).fragments, 10, 'T1 всего фрагменты');
+  eq(forge.forgeCumulative(2, 9).gold, 35100, 'T2 всего золото');
+  eq(forge.forgeStep(3, 13).gold, 51100, 'T3 +14 золото');
+  eq(forge.forgeCumulative(3, 14).gold, 428750, 'T3 всего золото');
+  eq(forge.forgeCumulative(3, 14).fragments, 84, 'T3 всего фрагменты');
+  eq(forge.forgeStep(4, 18).gold, 382000, 'T4 +19 золото');
+  eq(forge.forgeCumulative(4, 19).gold, 4180000, 'T4 всего золото');
+  eq(forge.forgeCumulative(4, 19).fragments, 190, 'T4 всего фрагменты');
+  eq(forge.forgeCumulative(5, 24).gold, 31800000, 'T5 всего золото');
+  eq(forge.forgeCumulative(5, 24).fragments, 456, 'T5 всего фрагменты');
+  eq(forge.forgeCumulative(6, 30).gold, 287100000, 'T6 всего золото');
+  eq(forge.forgeCumulative(6, 30).fragments, 1170, 'T6 всего фрагменты');
+  eq(forge.forgeStep(6, 0).fragments, 3, 'T6 +1 фрагменты');
+  eq(forge.forgeStep(3, 0).fail, 0.05, 'T3 +1 шанс провала');
+  eq(forge.forgeStep(5, 19).fail, 0.415, 'T5 +20 шанс провала');
+  eq(forge.forgeStep(6, 19).fail, 0.465, 'T6 +20 шанс провала');
+  eq(forge.forgeStep(6, 29).fail, 0.85, 'T6 +30 кап провала');
+  eq(forge.forgeStep(1, 0).fail, 0, 'T1 без провалов');
+  if (forge.forgeTierInfo(4).affixSlots !== 3) throw new Error('аффикс-слоты T4');
+});
+
+check('Кузница: ранг слота 0…100 объединяет все тиры', () => {
+  const eq = (a, b, what) => { if (a !== b) throw new Error(`${what}: ${a} != ${b}`); };
+  eq(forge.forgeRank(1, 4).rank, 4, 'ранг T1 +4');
+  eq(forge.forgeRank(2, 0).rank, 4, 'ранг T2 +0');
+  eq(forge.forgeRank(4, 19).rank, 46, 'ранг T4 +19');
+  eq(forge.forgeRank(5, 24).rank, 70, 'ранг T5 +24');
+  eq(forge.forgeRank(6, 30).rank, 100, 'ранг T6 +30');
+  const back = forge.rankToForge(46);
+  if (back.tier !== 4 || back.level !== 19) throw new Error('rankToForge(46)');
+  if (forge.FORGE_MAX_RANK !== 100) throw new Error('FORGE_MAX_RANK');
+});
+
+check('экран персонажа: 12 ячеек как в игре и правила классов', () => {
+  if (items.GEAR_CELLS.length !== 12) throw new Error('ячеек ' + items.GEAR_CELLS.length);
+  for (const need of ['torch', 'amulet', 'offhand', 'mainhand', 'chest', 'weapon2', 'ring1', 'ring2', 'belt', 'head', 'hands', 'feet']) {
+    if (!items.GEAR_CELLS.some((c) => c.id === need)) throw new Error('нет ячейки ' + need);
+  }
+  if (!items.CLASS_GEAR_RULES.druid.locked.offhand || !items.CLASS_GEAR_RULES.druid.locked.weapon2) throw new Error('у друида должны быть закрыты оффхенд и второе оружие');
+  if (!items.CLASS_GEAR_RULES.rogue.locked.offhand) throw new Error('у разбойника закрыт щит');
+  if (items.CLASS_GEAR_RULES.warrior.locked.weapon2 === undefined) throw new Error('у воина нет второго оружия');
+  if (items.SLOT_GEM_COUNT.torch !== 4 || items.SLOT_GEM_COUNT.mainhand !== 3 || items.SLOT_GEM_COUNT.ring1 !== 1) throw new Error('камни по слотам');
+  if (items.GEAR_CELLS[0].en !== 'Torch' || items.GEAR_CELLS[5].ru !== 'Оружие 2') throw new Error('подписи ячеек');
+});
+
+check('карточки предметов: картинка + переворот на статы', () => {
+  const root = new El('main');
+  views.planner.render(root);
+  const cards = findByClass(root, 'flipcard');
+  if (cards.length !== 12) throw new Error('карточек ' + cards.length);
+  const faces = findByClass(root, 'face');
+  if (faces.length !== 24) throw new Error('сторон карточек ' + faces.length);
+  const arts = findByClass(root, 'art');
+  if (arts.length !== 12) throw new Error('картинок ' + arts.length);
+  for (const a of arts) if (!String(a.innerHTML).includes('<svg')) throw new Error('иконка без svg');
+  cards[0].dispatch('click');
+  if (!cards[0].classList.contains('flipped')) throw new Error('карточка не переворачивается по клику');
+  cards[0].dispatch('click');
+  if (cards[0].classList.contains('flipped')) throw new Error('карточка не возвращается обратно');
+  const text = textOf(root);
+  for (const needle of ['Кузница поднимает слот выше тира предмета', 'Следующий шаг Кузницы', 'аффикс-позиций', 'Awaken']) {
+    if (!text.includes(needle)) throw new Error(`нет строки «${needle}»`);
+  }
+});
+
+check('картинки предметов: рисуются для всех 40 семейств и всех 6 тиров', () => {
+  if (items.GEAR_FAMILIES.length !== 40) throw new Error('семейств ' + items.GEAR_FAMILIES.length);
+  for (const f of items.GEAR_FAMILIES) {
+    if (!art.knownShape(f.id)) throw new Error('нет фигуры для ' + f.id);
+    for (let t = 1; t <= 6; t += 1) {
+      const svg = art.itemArt(f, t);
+      if (!svg.startsWith('<svg') || !svg.includes('</svg>')) throw new Error(`битая иконка ${f.id} T${t}`);
+    }
+  }
+  const lock = art.lockArt(4);
+  if (!lock.includes('<svg')) throw new Error('нет иконки закрытой ячейки');
+});
+
+check('сохранение в браузере: состояние пишется и восстанавливается', () => {
+  const st = views.planner.plannerState;
+  st.classId = 'rogue'; st.level = 77; st.ml = 123; st.goal = 'farm'; st.plusAll = 7; st.extraPoints = 3; st.manual = null; st.mode = 'auto';
+  const root = new El('main');
+  views.planner.render(root);
+  const raw = globalThis.localStorage.getItem('iac:helper:state:v1');
+  if (!raw) throw new Error('состояние не сохранено в localStorage');
+  const saved = JSON.parse(raw);
+  if (saved.state.classId !== 'rogue' || saved.state.ml !== 123 || saved.state.level !== 77) throw new Error('в сохранении не те значения');
+  if (!Array.isArray(Object.keys(saved.state.gear))) { /* gear должен быть объектом */ }
+  if (typeof saved.state.gear !== 'object' || saved.state.gear === null) throw new Error('экипировка не попала в сохранение');
+  if (!saved.state.gear.rogue || !saved.state.gear.rogue.mainhand) throw new Error('состояние слотов не сохраняется');
+  const at = store.saveLoadout('Набор 1', saved.state);
+  if (!at) throw new Error('набор не сохранился');
+  const back = store.getLoadout('Набор 1');
+  if (!back || back.classId !== 'rogue' || back.ml !== 123) throw new Error('набор не читается');
+  const again = store.loadState();
+  if (!again || again.ml !== 123 || again.classId !== 'rogue') throw new Error('loadState не вернул сохранённое');
+  const text = textOf(root);
+  if (!text.includes('Сохранение: данные не теряются при перезагрузке')) throw new Error('нет блока сохранения');
+  if (!text.includes('Набор 1') || !text.includes('Набор 2')) throw new Error('нет наборов');
+  // вернуть стенд в исходное состояние и почистить хранилище
+  st.classId = 'warrior'; st.level = 30; st.ml = 30; st.goal = 'progress'; st.plusAll = 0; st.extraPoints = 0; st.manual = null; st.mode = 'auto';
+  store.clearState();
 });
 
 console.log(failures ? `\n${failures} проверок провалено` : '\nВсе проверки пройдены ✓');
