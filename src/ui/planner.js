@@ -26,7 +26,7 @@ import { planBuild, planToText, encodePlan, decodePlan, nextPointLevel } from '.
 import { recommendBuild, ATTRIBUTE_EFFECTS, ATTRIBUTE_LABELS, JEWELRY_LINES, statText } from '../core/recommend.js';
 import { el, card, table, kpi, copyButton } from './dom.js';
 import { itemArt, lockArt, tierColors, talismanArt, bodySilhouette, coinIcon, shardIcon } from './itemArt.js';
-import { artState, loadArt, artNode, lockedArtNode, artDownload, downloadArtViaBrowser } from './art.js';
+import { artState, loadArt, artNode, lockedArtNode, artDownload, downloadArtViaBrowser, downloadArtToFolder } from './art.js';
 import {
   saveState, loadStateRecord, savedAt, clearState, listLoadouts, saveLoadout, getLoadout, deleteLoadout,
   bindAutosave, saveInfo, markTouched, hasStoredState, loadBackupRecord, isTouched,
@@ -772,66 +772,90 @@ function artPanel(root) {
       ? el('span', { class: 'chip good', text: 'игровые иконки берутся с CDN игры' })
       : el('span', { class: 'chip warn', text: 'пока нарисованные иконки' });
 
+  const progress = () => document.querySelector && document.querySelector('#art-progress');
+  const showProgress = (done, total) => {
+    const t = progress();
+    if (t) t.textContent = artDownload.active
+      ? `${artDownload.note} · скачано ${done} из ${total}`
+      : artDownload.note;
+  };
+  const doneRender = async () => { await loadArt(true); render(root); };
+  const canWrite = typeof globalThis.showDirectoryPicker === 'function';
+
   return el('div', { class: 'infobox' }, [
     el('b', { text: 'Картинки предметов' }),
     el('div', { class: 'chips' }, [chip, el('span', { class: 'chip', text: `файлов: ${st.files}` })]),
     el('p', { class: 'muted', text: st.mode === 'local'
       ? 'Иконки скачаны в папку assets/items и раздаются вместе с приложением — работают даже без интернета.'
-      : 'Показаны нарисованные иконки: игровые не загружены. Нажмите кнопку — сервер скачает официальные иконки предметов из Item Codex и положит их в проект. Если у сервера нет интернета, картинки автоматически скачает ваш браузер и передаст серверу.' }),
+      : 'Показаны нарисованные иконки: игровые не загружены. Выберите способ ниже — после загрузки иконки лежат в проекте (assets/items) и работают офлайн. Если способ не сработал, приложение скажет, какой шаг не удался и что нажать дальше.' }),
+
     el('div', { class: 'actions' }, [
       el('button', {
         class: 'btn primary',
-        text: st.loading ? 'Загрузка…' : 'Скачать игровые картинки',
-        disabled: st.loading ? 'disabled' : null,
+        text: artDownload.active ? 'Скачиваю…' : 'Скачать игровые картинки',
+        disabled: artDownload.active ? 'disabled' : null,
+        title: 'Сначала пробует сервер (нужен интернет у машины с сервером), при неудаче — ваш браузер',
         onclick: async (e) => {
-          e.target.textContent = 'Скачиваю…';
+          e.target.textContent = 'Пробую сервер…';
           let serverOk = false;
+          let serverHint = '';
           try {
             const res = await fetch('api/art/fetch', { method: 'POST' });
             const data = await res.json();
             serverOk = Boolean(data.ok);
+            serverHint = data && (data.hint || data.error) ? ` (${data.hint || data.error})` : '';
           } catch { serverOk = false; }
           if (!serverOk) {
-            // У сервера нет интернета (или источник заблокирован) — автоматически скачиваем
-            // через браузер пользователя: у него доступ обычно есть, сервер только сохраняет файлы.
-            e.target.textContent = 'Сервер без интернета → качаю через браузер…';
-            const out = await downloadArtViaBrowser((done, total) => {
-              const t = document.querySelector ? document.querySelector('#art-progress') : null;
-              if (t) t.textContent = `Скачано ${done} из ${total}`;
-            });
-            if (!out.ok) alert(`Не получилось скачать игровые картинки ни сервером, ни браузером.\n${out.error || artDownload.note || ''}\nПроверьте интернет и попробуйте ещё раз.`);
+            // У этой машины нет интернета (превью) или источник заблокирован: автоматически
+            // переходим на скачивание браузером — у него интернет есть даже в превью.
+            e.target.textContent = 'Сервер не смог, качаю через браузер…';
+            const out = await downloadArtViaBrowser(showProgress);
+            if (!out.ok) {
+              alert('Не получилось скачать игровые картинки ни сервером, ни браузером.\n\n'
+                + 'Сервер: не смог выйти в интернет' + serverHint + '\n'
+                + 'Браузер: ' + (out.error || artDownload.note) + '\n\n'
+                + 'Что сделать:\n'
+                + '• нажмите кнопку ещё раз через пару минут (CDN игры бывает капризничает);\n'
+                + (canWrite ? '• или «Скачать в папку проекта» — браузер запишет файлы сам;\n' : '')
+                + '• или запустите приложение у себя (start.bat) и повторите — на домашней машине работает серверный способ.');
+            }
           }
-          await loadArt(true);
-          render(root);
+          await doneRender();
         },
       }),
       el('button', {
         class: 'btn',
+        text: artDownload.active ? 'Скачиваю…' : 'Скачать через браузер на сервер',
+        disabled: artDownload.active ? 'disabled' : null,
+        title: 'Картинки качает ваш браузер и передаёт приложению — для случаев, когда у сервера нет интернета',
+        onclick: async () => {
+          const out = await downloadArtViaBrowser(showProgress);
+          if (!out.ok) alert('Не получилось скачать картинки: ' + (out.error || artDownload.note) + (canWrite ? '\nПопробуйте «Скачать в папку проекта» — там файлы пишет сам браузер.' : ''));
+          await doneRender();
+        },
+      }),
+      canWrite ? el('button', {
+        class: 'btn',
+        text: artDownload.active ? 'Скачиваю…' : 'Скачать в папку проекта (Chrome/Edge)',
+        disabled: artDownload.active ? 'disabled' : null,
+        title: 'Браузер сам запишет иконки в выбранную папку (укажите assets/items проекта) — без участия сервера, работает даже на статическом хостинге',
+        onclick: async () => {
+          const out = await downloadArtToFolder(showProgress);
+          if (!out.ok && !/отменён/.test(out.error || '')) alert('Не получилось: ' + out.error);
+          await doneRender();
+        },
+      }) : null,
+      el('button', {
+        class: 'btn ghost',
         text: 'Проверить ещё раз',
+        title: 'Перечитать assets/items и кэш иконок',
         onclick: async () => { await loadArt(true); render(root); },
       }),
     ]),
-    el('p', { class: 'muted small', text: 'Если у сервера нет интернета, нажмите эту кнопку — картинки скачает ваш браузер и передаст их серверу: после этого иконки будут храниться в проекте и работать без сети.' }),
-    el('div', { class: 'actions' }, [
-      el('button', {
-        class: 'btn primary',
-        text: artDownload.active ? 'Скачиваю…' : 'Скачать игровые картинки через браузер',
-        disabled: artDownload.active ? 'disabled' : null,
-        onclick: async (e) => {
-          e.target.textContent = 'Скачиваю через браузер…';
-          const out = await downloadArtViaBrowser((done, total) => {
-            const t = document.querySelector ? document.querySelector('#art-progress') : null;
-            if (t) t.textContent = `Скачано ${done} из ${total}`;
-          });
-          if (!out.ok) alert(`Не получилось скачать картинки: ${out.error || artDownload.note}`);
-          await loadArt(true);
-          render(root);
-        },
-      }),
-    ]),
     artDownload.note || artDownload.active
-      ? el('p', { class: 'muted small', id: 'art-progress', text: artDownload.note + (artDownload.total ? ` (${artDownload.done}/${artDownload.total})` : '') })
+      ? el('p', { class: 'muted small', id: 'art-progress', text: artDownload.note + (artDownload.active && artDownload.total ? ` (${artDownload.done}/${artDownload.total})` : '') })
       : null,
+    artDownload.detail ? el('p', { class: 'muted small', text: artDownload.detail }) : null,
   ]);
 }
 

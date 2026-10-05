@@ -70,7 +70,8 @@ function htmlWithVersionedEntry(html) {
   const b = buildId();
   return html
     .replace('src="src/app.js"', `src="v/${b}/src/app.js"`)
-    .replace('href="styles/app.css"', `href="v/${b}/styles/app.css"`);
+    .replace('href="styles/app.css"', `href="v/${b}/styles/app.css"`)
+    .replace('href="styles/sideb.css"', `href="v/${b}/styles/sideb.css"`);
 }
 
 const ART_DIR = path.join(ROOT, 'assets', 'items');

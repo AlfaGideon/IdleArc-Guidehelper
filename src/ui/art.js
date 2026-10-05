@@ -111,7 +111,7 @@ export function loadArt(force = false) {
     // 2. Кэш из localStorage (например, карта была получена из интернета раньше).
     const cached = readCache();
     if (cached) {
-      artState.mode = cached.mode === 'cdn' ? 'cdn' : 'cdn';
+      artState.mode = 'cdn';
       artState.index = cached.index;
       artState.files = cached.files || Object.keys(cached.index).length;
       artState.total = Object.keys(cached.index).length;
@@ -188,19 +188,53 @@ export const lockedArtNode = (tier = 1) => el('span', { class: 'art-svg', html: 
  * открытые CORS-прокси. Прогресс показывается в интерфейсе.
  */
 
-/** Прокси, отдающие содержимое с заголовком CORS (используются только как запасной путь). */
-const READ_PROXIES = [
-  (url) => url,
-  (url) => `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ''))}`,
-  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-];
+/**
+ * Открытые CORS-прокси (запасной путь, если браузер блокирует прямое чтение с CDN).
+ * Порядок важен: самые стабильные впереди. Для картинок и JSON набор разный —
+ * images.weserv.nl умеет только картинки.
+ */
+const DIRECT = (url) => url;
+const WESERV = (url) => `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ''))}`;
+const CORSPROXY = (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+const CODETABS = (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+const ALLORIGINS = (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
 
-export const artDownload = { active: false, done: 0, total: 0, saved: 0, note: '', error: null };
+const JSON_FETCHERS = [DIRECT, CORSPROXY, CODETABS, ALLORIGINS];
+const IMAGE_FETCHERS = [DIRECT, WESERV, CORSPROXY, CODETABS, ALLORIGINS];
 
-async function readAsBase64(name, timeoutMs = 20000) {
+export const artDownload = {
+  active: false, done: 0, total: 0, saved: 0, note: '', error: null,
+  detail: '',           // пояснения: через какой канал достали кодекс, сколько ретраев
+  failedNames: [],
+};
+
+async function fetchJsonAnywhere(urls, timeoutMs = 18000) {
+  let lastErr = 'нет ответа';
+  for (const url of urls) {
+    for (const wrap of JSON_FETCHERS) {
+      const target = wrap(url);
+      const via = target === url ? 'напрямую' : `через ${new URL(target).host}`;
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+      try {
+        const res = await fetch(target, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+        if (!res.ok) { lastErr = `${new URL(url).host}: HTTP ${res.status}`; continue; }
+        const data = await res.json();
+        return { data, via: `${new URL(url).host} ${via}` };
+      } catch (e) {
+        lastErr = `${new URL(url).host}: ${e && e.name === 'AbortError' ? 'таймаут' : 'недоступен'}`;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    }
+  }
+  throw new Error(`Item Codex недоступен из браузера (${lastErr})`);
+}
+
+/** Скачать один файл картинки; возвращает { b64, via } или null. */
+async function readAsBase64(name, timeoutMs = 15000) {
   for (const base of CDN_BASES) {
-    for (const wrap of READ_PROXIES) {
+    for (const wrap of IMAGE_FETCHERS) {
       const target = wrap(base + name);
       const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
@@ -211,13 +245,47 @@ async function readAsBase64(name, timeoutMs = 20000) {
         if (buf.length < 200 || buf.length > 400 * 1024) continue;
         let bin = '';
         for (let i = 0; i < buf.length; i += 1) bin += String.fromCharCode(buf[i]);
-        return globalThis.btoa(bin);
+        return { b64: globalThis.btoa(bin), via: target === base + name ? 'cdn' : new URL(target).host };
       } catch { /* пробуем следующий способ */ } finally {
         if (timer) clearTimeout(timer);
       }
     }
   }
   return null;
+}
+
+/**
+ * Параллельное скачивание списка картинок пулом воркеров: 250 файлов по одному —
+ * это минуты; пачкой по CONCURRENCY — в разы быстрее, а CDN такая нагрузка безразлична.
+ * Возвращает { files: {name: b64}, failed: [name] }.
+ */
+async function fetchAllImages(names, onProgress) {
+  const CONCURRENCY = 4;
+  const files = {};
+  let done = 0;
+  const queue = [...names];
+  const worker = async () => {
+    for (;;) {
+      const raw = queue.shift();
+      if (!raw) return;
+      const retried = raw.charCodeAt(0) === 0; // служебный префикс повторной попытки
+      const name = retried ? raw.slice(1) : raw;
+      const got = await readAsBase64(name);
+      if (got) files[name] = got.b64;
+      if (!retried) {
+        // Прогресс считаем по первым попыткам; фейл уходит в конец очереди на один ретрай
+        // (флаки-прокси обычно переживаются одним повтором).
+        done += 1;
+        artDownload.done = done;
+        onProgress(done, names.length, name);
+        if (!got) queue.push('\u0000' + name);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  // Имена с префиксом '\u0000' — это повторные попытки; те, что дошли до конца очереди, — честные фейлы.
+  const failed = names.filter((n) => !files[n]);
+  return { files, failed };
 }
 
 async function postFiles(files, meta, dryRun) {
@@ -229,70 +297,119 @@ async function postFiles(files, meta, dryRun) {
   return res.json();
 }
 
+/** Получить Item Codex + построить карту имён иконок (общий первый шаг обоих сценариев). */
+async function loadCodexAndNames() {
+  artDownload.note = 'Ищу Item Codex (список картинок)…';
+  const { data: codex, via } = await fetchJsonAnywhere(CODEX_URLS);
+  if (!codex || !codex.item_variants) throw new Error('Item Codex ответил, но без item_variants');
+  const index = indexFromCodex(codex);
+  const names = [...new Set(Object.values(index).flatMap((e) => [...Object.values(e.tiers || {}), ...Object.values(e.awakens || {})]))].sort();
+  artDownload.total = names.length;
+  artDownload.detail = `Item Codex получен: ${via}. Файлов: ${names.length}.`;
+  return { index, names };
+}
+
+function finishDownload(saved, failed, total, where) {
+  artDownload.saved = saved;
+  artDownload.failedNames = failed.slice(0, 30);
+  artDownload.active = false;
+  if (failed.length) {
+    artDownload.note = `${where}: сохранено ${saved} из ${total}, не удалось ${failed.length}. Нажмите кнопку ещё раз — повтор докачивает только недостающие.`;
+    artDownload.detail = 'Не скачались: ' + failed.slice(0, 10).join(', ') + (failed.length > 10 ? '…' : '')
+      + '. Если ошибок много — вероятно, CDN игры временно блокирует запросы: попробуйте через 5–10 минут или запустите приложение локально (start.bat) и нажмите «Скачать игровые картинки».';
+  } else {
+    artDownload.note = `${where}: все ${saved} иконок на месте. Работает офлайн.`;
+  }
+  return { ok: saved > 0, saved, failed: failed.length, total };
+}
+
+function failDownload(e) {
+  artDownload.active = false;
+  artDownload.error = e && e.message ? e.message : String(e);
+  artDownload.note = 'Не получилось: ' + artDownload.error;
+  return { ok: false, error: artDownload.error };
+}
+
 /**
- * Скачать игровые иконки через браузер и сохранить их на сервере.
- * onProgress(done, total) вызывается по ходу; возвращает итог.
+ * Сценарий 1: браузер скачивает иконки и отправляет их на сервер приложения
+ * (POST /api/art/upload → сервер кладёт файлы в assets/items). Работает в превью
+ * (где у сервера нет интернета) и локально.
  */
 export async function downloadArtViaBrowser(onProgress = () => {}) {
+  if (artDownload.active) return { ok: false, error: 'загрузка уже идёт' };
   artDownload.active = true; artDownload.done = 0; artDownload.saved = 0; artDownload.error = null;
-  artDownload.note = 'Ищу Item Codex…';
+  artDownload.detail = ''; artDownload.failedNames = [];
   try {
-    // 1. Item Codex: список имён картинок (напрямую или через прокси).
-    let codex = null;
-    for (const url of CODEX_URLS) {
-      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
-      try {
-        const res = await fetch(url, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
-        if (res.ok) { codex = await res.json(); break; }
-      } catch { /* пробуем прокси */ } finally {
-        if (timer) clearTimeout(timer);
-      }
-      for (const wrap of READ_PROXIES.slice(1)) {
-        try {
-          const res = await fetch(wrap(url), { cache: 'no-store' });
-          if (res.ok) { codex = await res.json(); break; }
-        } catch { /* следующий */ }
-      }
-      if (codex) break;
-    }
-    if (!codex || !codex.item_variants) throw new Error('не удалось открыть Item Codex');
-    const index = indexFromCodex(codex);
+    const { index, names } = await loadCodexAndNames();
+    const { files, failed } = await fetchAllImages(names, onProgress);
 
-    // 2. Имена файлов — уникальные, по тирам и просыпаниям.
-    const names = [...new Set(Object.values(index).flatMap((e) => [...Object.values(e.tiers || {}), ...Object.values(e.awakens || {})]))];
-    artDownload.total = names.length;
-    artDownload.note = `Скачиваю ${names.length} иконок…`;
-
-    // 3. Скачиваем пачками и отправляем на сервер.
-    const batch = {};
-    let batchCount = 0;
+    // Заливаем на сервер пачками по 12 (≈300 КБ), прогресс виден сразу.
+    artDownload.note = 'Передаю файлы на сервер приложения…';
+    const keys = Object.keys(files);
     let saved = 0;
-    const failed = [];
-    for (const name of names) {
-      artDownload.done += 1;
-      onProgress(artDownload.done, names.length);
-      const b64 = await readAsBase64(name);
-      if (b64) { batch[name] = b64; batchCount += 1; } else { failed.push(name); }
-      if (batchCount >= 12 || artDownload.done === names.length) {
-        if (batchCount) {
-          const out = await postFiles(batch, { index, total: names.length }, false);
-          saved += (out.saved || []).length;
-          for (const k of Object.keys(batch)) delete batch[k];
-          batchCount = 0;
-        }
+    for (let i = 0; i < keys.length; i += 12) {
+      const batch = {};
+      for (const k of keys.slice(i, i + 12)) batch[k] = files[k];
+      try {
+        const out = await postFiles(batch, { index, total: names.length }, false);
+        saved += (out.saved || []).length;
+      } catch (e) {
+        return failDownload(new Error(`сервер не принял файлы (${e && e.message ? e.message : e}) — попробуйте вариант «в папку проекта»`));
       }
     }
-    artDownload.saved = saved;
-    artDownload.note = failed.length
-      ? `Сохранено ${saved} иконок, не удалось ${failed.length}`
-      : `Сохранено ${saved} иконок`;
-    artDownload.active = false;
-    return { ok: saved > 0, saved, failed: failed.length, total: names.length };
+    return finishDownload(saved, failed, names.length, 'Сервер');
   } catch (e) {
-    artDownload.active = false;
-    artDownload.error = e.message;
-    artDownload.note = 'Не получилось: ' + e.message;
-    return { ok: false, error: e.message };
+    return failDownload(e);
+  }
+}
+
+/**
+ * Сценарий 2: браузер пишет иконки НАПРЯМУЮ в папку проекта (File System Access API,
+ * Chrome/Edge). Самый надёжный вариант: сервер вообще не участвует, работает даже на
+ * статическом хостинге. Пользователь один раз выбирает папку assets/items.
+ */
+export async function downloadArtToFolder(onProgress = () => {}) {
+  if (artDownload.active) return { ok: false, error: 'загрузка уже идёт' };
+  const picker = globalThis.showDirectoryPicker;
+  if (typeof picker !== 'function') {
+    return { ok: false, error: 'этот браузер не умеет запись в папку (нужен Chrome/Edge) — используйте «Скачать через браузер на сервер»' };
+  }
+  artDownload.active = true; artDownload.done = 0; artDownload.saved = 0; artDownload.error = null;
+  artDownload.detail = ''; artDownload.failedNames = [];
+  try {
+    artDownload.note = 'Выберите папку assets/items проекта…';
+    onProgress(0, 1);
+    const dir = await picker.call(globalThis, { mode: 'readwrite', startIn: 'documents' });
+    const { index, names } = await loadCodexAndNames();
+    const { files, failed } = await fetchAllImages(names, onProgress);
+
+    artDownload.note = 'Записываю файлы в папку…';
+    let saved = 0;
+    for (const [name, b64] of Object.entries(files)) {
+      const fh = await dir.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      const bin = globalThis.atob(b64);
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i += 1) buf[i] = bin.charCodeAt(i);
+      await w.write(buf);
+      await w.close();
+      saved += 1;
+    }
+    const ih = await dir.getFileHandle('index.json', { create: true });
+    const iw = await ih.createWritable();
+    await iw.write(JSON.stringify({
+      meta: {
+        source: 'idlearc.com (Item Codex → Appearance)',
+        fetchedAt: new Date().toISOString(),
+        files: saved, total: names.length,
+        via: 'запись из браузера напрямую в папку (File System Access API)',
+      },
+      index,
+    }, null, 1));
+    await iw.close();
+    return finishDownload(saved, failed, names.length, 'Папка проекта');
+  } catch (e) {
+    if (e && e.name === 'AbortError') { artDownload.active = false; artDownload.note = 'Выбор папки отменён — файлы не записывались.'; return { ok: false, error: artDownload.note }; }
+    return failDownload(e);
   }
 }

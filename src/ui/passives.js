@@ -11,6 +11,7 @@ import { el, card, table, chips, kpi } from './dom.js';
 import { CLASSES } from '../data/classes.js';
 import { GOALS } from '../data/builds.js';
 import { PASSIVE_RULES, PASSIVE_STATS, nodeValueLabel } from '../data/passives.js';
+import { PASSIVE_GUIDES, PASSIVE_GUIDE_ORDER, GOAL_SHORT } from '../data/passiveGuides.js';
 import { planPassives, levelForTier } from '../core/passiveTree.js';
 import { loadStateRecord } from './store.js';
 
@@ -21,11 +22,13 @@ const state = {
   goal: 'progress',
   level: 30,
   showAll: false, // показывать и закрытые тиры
+  mode: 'plan',   // 'plan' — мой план; 'guides' — гайды по классам
+  guideClass: 'warrior',
   restored: false,
 };
 
 function save() {
-  try { globalThis.localStorage && globalThis.localStorage.setItem(KEY, JSON.stringify({ classId: state.classId, goal: state.goal, level: state.level, showAll: state.showAll })); } catch { /* приватный режим */ }
+  try { globalThis.localStorage && globalThis.localStorage.setItem(KEY, JSON.stringify({ classId: state.classId, goal: state.goal, level: state.level, showAll: state.showAll, mode: state.mode, guideClass: state.guideClass })); } catch { /* приватный режим */ }
 }
 
 function restoreOnce() {
@@ -40,6 +43,8 @@ function restoreOnce() {
       if (snap.goal && GOALS.some((g) => g.id === snap.goal)) state.goal = snap.goal;
       if (Number.isFinite(snap.level)) state.level = Math.max(1, Math.round(snap.level));
       if (typeof snap.showAll === 'boolean') state.showAll = snap.showAll;
+      if (snap.mode === 'plan' || snap.mode === 'guides') state.mode = snap.mode;
+      if (snap.guideClass && CLASSES.some((c) => c.id === snap.guideClass)) state.guideClass = snap.guideClass;
       return;
     }
   } catch { /* читаем планировщик */ }
@@ -94,8 +99,20 @@ export function render(root) {
   const goal = GOALS.find((g) => g.id === state.goal) || GOALS[0];
   const plan = planPassives(state.classId, state.goal, state.level);
 
-  /* --- как это работает --- */
+  /* --- как это работает + переключатель режима --- */
   root.appendChild(card('Пассивное дерево (Passive Skill Tree)', [
+    el('div', { class: 'chips', style: 'margin-bottom:10px' }, [
+      el('button', {
+        class: `btn ${state.mode === 'plan' ? 'primary' : ''}`,
+        text: 'Мой план (класс · цель · уровень)',
+        onclick: () => { state.mode = 'plan'; save(); render(root); },
+      }),
+      el('button', {
+        class: `btn ${state.mode === 'guides' ? 'primary' : ''}`,
+        text: 'Гайды по классам — как качать дерево за каждого',
+        onclick: () => { state.mode = 'guides'; save(); render(root); },
+      }),
+    ]),
     el('p', { text: 'Дерево ОБЩЕЕ для всех классов и качается отдельными пассивными очками: 1 очко за каждый уровень персонажа (классовые очки — отдельная система). Дерево — 20 тиров по 10 рядов; в каждом ряду 2–3 узла на выбор.' }),
     el('ul', { class: 'tight' }, [
       el('li', { text: `Следующий тир открывается после ${PASSIVE_RULES.unlockThreshold} вложенных очков в предыдущем — поэтому базовая стратегия: «вложил 20 → иди глубже».` }),
@@ -105,7 +122,13 @@ export function render(root) {
     ]),
   ]));
 
-  /* --- управление --- */
+  if (state.mode === 'guides') { renderGuides(root); return; }
+  renderPlan(root, cls, goal, plan);
+}
+
+/* =========================== режим «Мой план» =========================== */
+
+function renderPlan(root, cls, goal, plan) {
   const classBtns = el('div', { class: 'chips' }, CLASSES.map((c) => el('button', {
     class: `btn ${c.id === state.classId ? 'primary' : ''}`,
     text: `${c.ru} (${c.name})`,
@@ -165,6 +188,19 @@ export function render(root) {
       ]),
     ]),
   ]));
+
+  /* --- суть класса в дереве (из гайдов по классам) --- */
+  const guide = PASSIVE_GUIDES[state.classId];
+  if (guide) {
+    root.appendChild(card(`Дерево за ${cls.ru} (${cls.name}): суть выбора`, [
+      el('ul', { class: 'tight' }, [
+        el('li', { text: `Атрибутный ряд. ${guide.attrText}` }),
+        el('li', { text: `Урон. ${guide.damage}` }),
+        el('li', { text: `Защита. ${guide.defense}` }),
+      ]),
+      el('p', { class: 'muted small', text: 'Полный гайд по классу (майлстоуны, маршрут по уровням, цели и типовые ошибки) — в режиме «Гайды по классам» сверху.' }),
+    ]));
+  }
 
   /* --- итоговые бонусы --- */
   const totalRows = Object.entries(plan.totals)
@@ -236,6 +272,90 @@ export function render(root) {
 }
 
 const round1 = (v) => Math.round(v * 10) / 10;
+
+/* ===================== режим «Гайды по классам» ===================== */
+
+function guideCard(classId) {
+  const cls = CLASSES.find((c) => c.id === classId);
+  const g = PASSIVE_GUIDES[classId];
+  if (!cls || !g) return null;
+  const attrMeta = PASSIVE_STATS[g.attr];
+  const levels = PASSIVE_GUIDE_ORDER.length; // якорь, чтобы smoke-рендер считал узлы предсказуемо
+  void levels;
+
+  return el('details', { class: 'passive-guide' }, [
+    el('summary', {}, [
+      el('b', { text: `${cls.ru} (${cls.name})` }),
+      el('span', { class: 'muted', text: ` · ${cls.role} · атрибут: ${attrMeta.ru} (${attrMeta.en}) · ветки: ${cls.branches.join(' / ')}` }),
+    ]),
+    el('div', { class: 'grid cols-2', style: 'margin-top:10px' }, [
+      el('div', { class: 'infobox' }, [
+        el('b', { text: 'Что брать в рядах' }),
+        el('ul', { class: 'tight' }, [
+          el('li', { text: `Атрибут: ${g.attrText}` }),
+          el('li', { text: `Урон: ${g.damage}` }),
+          el('li', { text: `Защита: ${g.defense}` }),
+        ]),
+      ]),
+      el('div', { class: 'infobox' }, [
+        el('b', { text: 'Приоритетные майлстоуны (★-ряды)' }),
+        el('ul', { class: 'tight' }, g.milestones.map((m) => el('li', { text: m }))),
+      ]),
+    ]),
+    el('h3', { text: 'Маршрут по уровням' }),
+    table(['Этап', 'Глубина', 'Что делать'], g.roadmap.map((r) => [r.range, r.tiers, r.text]), { numeric: [] }),
+    el('h3', { text: 'Поправки под цели' }),
+    table(['Цель', 'Как меняется прокачка'], Object.entries(g.goals).map(([goalId, text]) => [GOAL_SHORT[goalId] || goalId, text])),
+    el('div', { class: 'warnbox', style: 'margin-top:10px' }, [
+      el('b', { text: 'Типовые ошибки' }),
+      el('ul', { class: 'tight' }, g.mistakes.map((m) => el('li', { text: m }))),
+    ]),
+    el('div', { class: 'actions', style: 'margin-top:10px' }, [
+      el('button', {
+        class: 'btn primary',
+        text: `Открыть планировщик за ${cls.ru}`,
+        onclick: () => { state.mode = 'plan'; state.classId = classId; save(); render(rootRef); },
+      }),
+    ]),
+  ]);
+}
+
+// Корень последнего рендера — нужен кнопке «Открыть планировщик за …» внутри details.
+let rootRef = null;
+
+function renderGuides(root) {
+  rootRef = root;
+  root.appendChild(card('Как качать пассивное дерево за каждый класс', [
+    el('p', { class: 'muted', text: 'Дерево общее, но правильный выбор узлов — класс-специфичный: главный атрибут, профиль урона (свой / криты / пет) и профиль защиты у классов разные. Ниже — готовые рекомендации на все 5 классов: что брать в каждом типе рядов, какие майлстоуны приоритетны, маршрут по уровням и поправки под цель.' }),
+    el('div', { class: 'chips' }, PASSIVE_GUIDE_ORDER.map((id) => {
+      const c = CLASSES.find((x) => x.id === id);
+      return el('a', {
+        href: `#passive-guide-${id}`,
+        class: `btn ${state.guideClass === id ? 'primary' : ''}`,
+        text: `${c.ru} (${c.name})`,
+        onclick: (e) => { e.preventDefault(); state.guideClass = id; save(); render(root); setTimeout(() => { const d = root.querySelector(`#passive-guide-${id}`); if (d) { d.open = true; d.scrollIntoView({ block: 'start' }); } }, 0); },
+      });
+    })),
+  ]));
+
+  const wrap = el('div', { class: 'grid' },
+    PASSIVE_GUIDE_ORDER.map((id) => {
+      const c = guideCard(id);
+      if (c) { c.id = `passive-guide-${id}`; if (state.guideClass === id) c.open = true; }
+      return c;
+    }).filter(Boolean));
+  root.appendChild(wrap);
+
+  root.appendChild(card('Общие правила, которые работают для всех классов', [
+    el('ul', { class: 'tight' }, [
+      el('li', { text: 'В каждый тир — ровно 20 очков, потом сразу глубже: открытие следующего тира важнее добивания текущего (глубокие узлы сильнее в разы).' }),
+      el('li', { text: 'Майлстоун-ряд (10-й в тире) — один узел по 1 очку; выбирайте узел по цели: урон (Crit Damage / AD% / DD / DH), пет (Pet Damage), защита (Defense), фарм (Gold/Exp/Drop).' }),
+      el('li', { text: 'Атрибутный ряд — всегда главный атрибут класса; чужие атрибуты — только когда больше некуда складывать остаток.' }),
+      el('li', { text: 'Сброс бесплатный + пресеты: держите минимум два — «прогресс/боссы» и «фарм».' }),
+      el('li', { text: `Ориентир глубины: тир 5 — с ~${levelForTier(5)} уровня, тир 10 — с ~${levelForTier(10)}, тир 15 — с ~${levelForTier(15)}, тир 20 — с ~${levelForTier(20)} (20 очков на тир).` }),
+    ]),
+  ]));
+}
 
 /** Для тестов. */
 export const passivesState = state;

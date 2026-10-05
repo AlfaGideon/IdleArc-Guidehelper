@@ -7,17 +7,43 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>IdleArc Guide Helper — планировщик сборок</title>
-<meta name="build" content="2026-10-05.1" />
+<meta name="build" content="2026-10-05.2" />
 <meta name="description" content="Помощник по сборке персонажа в IdleArc (Season 2, патч 1.3.1): классовые навыки, статы, аффиксы, гемы, петы, талисманы." />
 <link rel="stylesheet" href="styles/app.css" />
+<link rel="stylesheet" href="styles/sideb.css" />
 </head>
-<body>
-<header class="top">
+<body class="side-a">
+<header class="top side-a-top">
   <div class="brand">
-    <div class="logo">IA</div>
+    <button id="side-toggle" class="logo-action" type="button"
+      title="Клик — переключить сторону: A «Guide Helper» ↔ B «Companion» (интерфейс как у IdleArc Companion)">
+      <svg viewBox="0 0 48 48" width="42" height="42" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="iaGold" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffe08a"/><stop offset=".55" stop-color="#f0b64b"/><stop offset="1" stop-color="#b5761f"/>
+          </linearGradient>
+          <linearGradient id="iaGem" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#9fd3ff"/><stop offset=".45" stop-color="#5ba7ff"/><stop offset="1" stop-color="#1d3f8e"/>
+          </linearGradient>
+          <radialGradient id="iaBg" cx=".5" cy=".3" r=".95">
+            <stop offset="0" stop-color="#2c3145"/><stop offset="1" stop-color="#151823"/>
+          </radialGradient>
+        </defs>
+        <rect x="1.7" y="1.7" width="44.6" height="44.6" rx="11" fill="url(#iaBg)" stroke="url(#iaGold)" stroke-width="2.2"/>
+        <path d="M9 34 A17 17 0 0 1 39 34" fill="none" stroke="url(#iaGold)" stroke-width="3.4" stroke-linecap="round"/>
+        <path d="M13.6 34 A12.6 12.6 0 0 1 34.4 34" fill="none" stroke="url(#iaGold)" stroke-width="1.8" opacity=".5" stroke-linecap="round"/>
+        <path d="M24 13.5 L30.6 21.8 L24 34.5 L17.4 21.8 Z" fill="url(#iaGem)" stroke="#ffde9e" stroke-width="1.1" stroke-linejoin="round"/>
+        <path d="M17.4 21.8 H30.6 M24 13.5 L21.2 21.8 L24 34.5 M24 13.5 L26.8 21.8 L24 34.5" stroke="#10131c" stroke-opacity=".3" fill="none" stroke-width=".8"/>
+        <circle cx="12" cy="21" r="1.4" fill="url(#iaGold)"/>
+        <circle cx="36" cy="21" r="1.4" fill="url(#iaGold)"/>
+        <circle cx="24" cy="9.4" r="1.2" fill="url(#iaGold)"/>
+      </svg>
+      <span class="side-badge" aria-hidden="true">A</span>
+    </button>
     <div>
       <h1>IdleArc Guide Helper</h1>
       <p class="sub">Планировщик сборок под класс, цель и уровень · <span id="meta-version">Season 2</span> · сборка <b id="meta-build">…</b></p>
+      <p class="sub side-hint">Клик по логотипу — сторона B: интерфейс как у IdleArc Companion</p>
     </div>
   </div>
   <nav class="tabs" id="tabs">
@@ -34,7 +60,10 @@
 
 <main id="view"></main>
 
-<footer class="foot">
+<!-- Сторона B: интерфейс в стиле IdleArc Companion (переключение — клик по логотипу). -->
+<div id="sideb-root" class="sideb" hidden></div>
+
+<footer class="foot side-a-foot">
   <p>Неофициальный фанатский инструмент. Данные: <a href="https://idlearc.com/patch-notes/1-3-1" target="_blank" rel="noopener">официальные патч-ноты 1.3.1</a>,
   <a href="https://idlearc.com/classes" target="_blank" rel="noopener">официальные классы</a> и
   <a href="https://idlearc.fandom.com/wiki/IdleArc_Wiki" target="_blank" rel="noopener">IdleArc Wiki</a>.
@@ -54,9 +83,10 @@
     box.hidden = false;
     box.innerHTML = '<b>Приложение не загрузилось</b><div>' + html + '</div>'
       + '<div class="boot-actions">HTML-сборка страницы: <code>' + build() + '</code> · ожидается сборка приложения '
-      + '<code>2026-10-05.1</code>'
+      + '<code>2026-10-05.2</code>'
       + ' <button class="btn primary" onclick="location.reload(true)">Перезагрузить</button></div>'
       + '<div class="muted small">Если кнопка не помогает — нажмите Ctrl+Shift+R (жёсткая перезагрузка): браузер мог сохранить старые файлы.</div>';
+  /* ожидаемая сборка приложения — обновляется вместе с DATA_META.build */
   }
   window.__boot = { ready: false, show: show };
 
