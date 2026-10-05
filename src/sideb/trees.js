@@ -10,7 +10,7 @@ import { CLASSES, CLASS_SKILL_RULES, classPointsForLevel } from '../data/classes
 import { GOALS } from '../data/builds.js';
 import { PASSIVE_ROWS, PASSIVE_STATS, PASSIVE_RULES, isMilestoneRow, nodeValueLabel } from '../data/passives.js';
 import { planPassives, levelForTier } from '../core/passiveTree.js';
-import { sidebState } from './sideb.js';
+import { sidebState, pageHead } from './sideb.js';
 
 const ST = () => sidebState.trees;
 const MAIN_ATTR_RU = { strength: 'Сила', dexterity: 'Ловкость', intelligence: 'Интеллект' };
@@ -135,10 +135,7 @@ function rerender(view) { render(view || rootEl); }
 export function render(view) {
   rootEl = view;
   const st = ST();
-  view.appendChild(el('div', { class: 'b-page-head' }, [
-    el('h1', { text: 'Skill Trees' }),
-    el('p', { class: 'b-page-sub', text: 'Class and Passive — классовые ветки (90 навыков, 5 классов) и общее пассивное дерево (200 рядов, 20 тиров).' }),
-  ]));
+  view.appendChild(pageHead('Skill Trees', 'Class and Passive — классовые ветки (90 навыков, 5 классов) и общее пассивное дерево (200 рядов, 20 тиров).'));
 
   view.appendChild(panel(null, [
     el('div', { class: 'b-chip-row' }, [

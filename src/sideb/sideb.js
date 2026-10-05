@@ -1,29 +1,30 @@
 /**
- * Сторона B — интерфейс в стиле IdleArc Companion
- * (https://idlearc-companion-web-production.up.railway.app/).
+ * Сторона B — структура и элементы интерфейса повторяют
+ * https://idlearc-companion-web-production.up.railway.app/ :
  *
- * Это видовая копия компаньона: тот же каркас (шапка с живым поиском «Search the
- * Companion», хиро «Your IdleArc toolkit, offline.», четыре карточки быстрого доступа —
- * Upgrade / Compare / Skill Trees / Codex) и те же инструменты, но поверх данных
- * Guide Helper (снапшот 1.3.1 Season 2). Переключение A↔B — кликом по логотипу
- * (app.js #side-toggle / кнопка в шапке стороны B).
+ *  • шапка: логотип + «IdleArc Companion» + большая поисковая строка
+ *    «⌕ Search the Companion — Items, materials, currencies & more…»;
+ *  • навигация — карточками, как на сайте: домашняя = хиро + «Quick access»,
+ *    внутренние страницы имеют обратную ссылку «‹ Home» (строка-навбара нет);
+ *  • инструменты те же, что у компаньона: Upgrade / Compare / Skill Trees / Codex,
+ *    плюс докрученная функциональность Guide Helper в том же карточном стиле.
  *
  * Маршруты хэша: #b/home · #b/upgrade · #b/compare · #b/trees · #b/codex.
+ * Переключение A↔B — кликом по логотипу (здесь — с бейджем «B»).
  */
 import { el } from '../ui/dom.js';
 import * as pages from './pages.js';
 import { buildSearchIndex } from './searchable.js';
 
 export const NAV = [
-  { id: 'upgrade', title: 'Upgrade', icon: '⇧' },
-  { id: 'compare', title: 'Compare', icon: '⇄' },
-  { id: 'trees', title: 'Skill Trees', icon: '✦' },
-  { id: 'codex', title: 'Codex', icon: '▤' },
+  { id: 'upgrade', title: 'Upgrade', icon: '⇧', desc: 'Exact costs' },
+  { id: 'compare', title: 'Compare', icon: '⇄', desc: 'Equipment side by side' },
+  { id: 'trees', title: 'Skill Trees', icon: '✦', desc: 'Class and Passive' },
+  { id: 'codex', title: 'Codex', icon: '▤', desc: 'Browse reference data' },
 ];
 
 let shellBuilt = false;
 let viewEl = null;
-let navEl = null;
 let searchInput = null;
 let resultsEl = null;
 let currentPage = 'home';
@@ -33,7 +34,7 @@ let searchIndex = null;
 export const sidebState = {
   // разделяемые состояния страниц (живут, пока открыта сторона B)
   searchQuery: '',
-  codex: { query: '', cat: 'items' },
+  codex: { query: '', cat: null },
   trees: { mode: 'class', classId: 'warrior', goal: 'progress', level: 60, tierOpen: 0 },
   compare: { slot: 'mainhand', a: null, b: null, tierA: 3, tierB: 3, plusA: 0, plusB: 0, goal: 'progress' },
   upgrade: { slot: 'mainhand', tier: 2, from: 0, to: 9, ml: 30 },
@@ -42,6 +43,20 @@ export const sidebState = {
 
 export function lastPage() {
   return currentPage === 'home' ? 'b/home' : `b/${currentPage}`;
+}
+
+/** Обратная ссылка «‹ Home», как на страницах компаньона. */
+export function backHome(label = 'Home') {
+  return el('a', { class: 'b-back', href: '#b/home' }, [el('span', { class: 'b-back-ic', text: '‹' }), el('span', { text: label })]);
+}
+
+/** Шапка страницы: назад + заголовок + подпись. */
+export function pageHead(title, sub) {
+  return el('div', { class: 'b-page-head' }, [
+    backHome(),
+    el('h2', { text: title }),
+    sub ? el('p', { class: 'b-page-sub', text: sub }) : null,
+  ]);
 }
 
 /* --------------------------------- поиск --------------------------------- */
@@ -106,7 +121,7 @@ function hideResults() {
 
 function bLogo() {
   return el('svg', {
-    viewBox: '0 0 48 48', width: '40', height: '40', 'aria-hidden': 'true', focusable: 'false',
+    viewBox: '0 0 48 48', width: '38', height: '38', 'aria-hidden': 'true', focusable: 'false',
     html: `
       <defs>
         <linearGradient id="ibGold" x1="0" y1="0" x2="1" y2="1">
@@ -141,19 +156,10 @@ function buildShell(root) {
     },
   }, [bLogo(), el('span', { class: 'b-side-badge', text: 'B', 'aria-hidden': 'true' })]);
 
-  navEl = el('nav', { class: 'b-nav' }, []);
-  for (const n of NAV) {
-    const a = el('a', { href: `#b/${n.id}`, class: 'b-nav-link', 'data-page': n.id }, [
-      el('span', { class: 'b-nav-ic', text: n.icon }),
-      el('span', { text: n.title }),
-    ]);
-    navEl.appendChild(a);
-  }
-
   searchInput = el('input', {
     class: 'b-search-input',
     type: 'search',
-    placeholder: 'Search the Companion — items, materials, currencies & more…',
+    placeholder: 'Search the Companion — Items, materials, currencies & more…',
     'aria-label': 'Поиск по компаньону',
     oninput: (e) => {
       sidebState.searchQuery = e.target.value;
@@ -175,7 +181,7 @@ function buildShell(root) {
         logoBtn,
         el('div', { class: 'b-word' }, [
           el('a', { href: '#b/home', class: 'b-title', text: 'IdleArc Companion' }),
-          el('span', { class: 'b-sub', text: 'сторона B Guide Helper · клик по логотипу — сторона A' }),
+          el('span', { class: 'b-sub', text: 'Unofficial · offline · side B of Guide Helper (логотип — сторона A)' }),
         ]),
       ]),
       el('div', { class: 'b-search' }, [
@@ -183,11 +189,10 @@ function buildShell(root) {
         searchInput,
         resultsEl,
       ]),
-      navEl,
     ]),
     viewEl = el('main', { class: 'b-view' }),
     el('footer', { class: 'b-foot' }, [
-      el('span', { text: 'Неофициальный фанатский инструмент · данные — снапшот IdleArc 1.3.1 (Season 2) · интерфейс повторяет IdleArc Companion (community).' }),
+      el('span', { text: 'Unofficial fan-made companion · данные — снапшот IdleArc 1.3.1 (Season 2) · интерфейс повторяет IdleArc Companion (community).' }),
       el('a', { href: '#planner', class: 'b-foot-link', text: '→ сторона A: планировщик сборок' }),
     ]),
   ]);
@@ -208,18 +213,10 @@ export function render(root, page = 'home') {
   if (!shellBuilt) buildShell(root);
   const key = pages.PAGES[page] ? page : 'home';
   currentPage = key;
-  syncNav(key);
   viewEl.innerHTML = '';
   pages.PAGES[key].render(viewEl);
-  document.title = `IdleArc Companion — ${key === 'home' ? 'Home' : (NAV.find((n) => n.id === key) || {}).title || 'Home'}`;
+  try { document.title = `IdleArc Companion — ${key === 'home' ? 'Home' : (NAV.find((n) => n.id === key) || {}).title || 'Home'}`; } catch { /* неважно */ }
 }
 
-function syncNav(page) {
-  if (!navEl) return;
-  for (const a of navEl.querySelectorAll('.b-nav-link')) {
-    a.classList.toggle('active', a.getAttribute('data-page') === page);
-  }
-}
-
-/** TEST-ONLY: сборка шелла без DOM браузера недоступна — side B рендерится только в браузере. */
+/** TEST-ONLY. */
 export const __internal = { runSearch };

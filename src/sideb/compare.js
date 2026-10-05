@@ -12,7 +12,7 @@ import { GOALS, statPriorityFor } from '../data/builds.js';
 import { CLASSES } from '../data/classes.js';
 import { artNode, loadArt } from '../ui/art.js';
 import { forgeTierInfo } from '../data/forge.js';
-import { sidebState } from './sideb.js';
+import { sidebState, pageHead } from './sideb.js';
 
 const ST = () => sidebState.compare;
 
@@ -120,10 +120,7 @@ export function render(view) {
   const fa = GEAR_FAMILIES.find((f) => f.id === st.a);
   const fb = GEAR_FAMILIES.find((f) => f.id === st.b);
 
-  view.appendChild(el('div', { class: 'b-page-head' }, [
-    el('h1', { text: 'Compare' }),
-    el('p', { class: 'b-page-sub', text: 'Equipment side by side — два предмета рядом: тиры, имплиситы, аффиксы и вердикт под вашу цель.' }),
-  ]));
+  view.appendChild(pageHead('Compare', 'Equipment side by side — два предмета рядом: тиры, имплиситы, аффиксы и вердикт под вашу цель.'));
 
   // Выбор слота — сеткой, как окно персонажа.
   view.appendChild(panel('Слот', [

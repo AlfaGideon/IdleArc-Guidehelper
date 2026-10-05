@@ -15,17 +15,17 @@ import {
 } from '../data/systems.js';
 import { BIOMES } from '../data/biomes.js';
 import { artNode, loadArt } from '../ui/art.js';
-import { sidebState } from './sideb.js';
+import { sidebState, pageHead } from './sideb.js';
 
 const CATS = [
-  { id: 'items', icon: '🗡', title: 'Items', ru: 'Предметы' },
-  { id: 'affixes', icon: '◐', title: 'Affixes', ru: 'Аффиксы' },
-  { id: 'drops', icon: '✚', title: 'Drop Bonuses', ru: 'Дроп-бонусы' },
-  { id: 'gems', icon: '◆', title: 'Gems', ru: 'Гемы' },
-  { id: 'pets', icon: '🐾', title: 'Pets & Talismans', ru: 'Петы и талисманы' },
-  { id: 'stats', icon: 'Σ', title: 'Stats & Formulas', ru: 'Статы и формулы' },
-  { id: 'progress', icon: '⇧', title: 'Progression', ru: 'Прогрессия и биомы' },
-  { id: 'guild', icon: '⚜', title: 'Guild & Season 2', ru: 'Гильдия и сезон' },
+  { id: 'items', icon: '🗡', title: 'Items', ru: 'Предметы', desc: '40 семейств: тиры, имплиситы, аффиксы' },
+  { id: 'affixes', icon: '◐', title: 'Affixes', ru: 'Аффиксы', desc: 'Префиксы и суффиксы с роллами и слотами' },
+  { id: 'drops', icon: '✚', title: 'Drop Bonuses', ru: 'Дроп-бонусы', desc: '21 бонус, шкалы T2 → T9' },
+  { id: 'gems', icon: '◆', title: 'Gems', ru: 'Гемы', desc: '4 семейства, 5 редкостей, сокеты' },
+  { id: 'pets', icon: '🐾', title: 'Pets & Talismans', ru: 'Петы и талисманы', desc: 'Хэтч, компоунд, талисманы, инскрипты' },
+  { id: 'stats', icon: 'Σ', title: 'Stats & Formulas', ru: 'Статы и формулы', desc: 'Статы, атрибуты, стойки, Mastery' },
+  { id: 'progress', icon: '⇧', title: 'Progression', ru: 'Прогрессия и биомы', desc: 'ML-анлоки, биомы, активности' },
+  { id: 'guild', icon: '⚜', title: 'Guild & Season 2', ru: 'Гильдия и сезон', desc: 'Гильд-дерево, руны, смена класса' },
 ];
 
 const ST = () => sidebState.codex;
@@ -204,6 +204,22 @@ const CAT_RENDER = {
   pets: petsCat, stats: statsCat, progress: progressCat, guild: guildCat,
 };
 
+function catCards(st, view) {
+  // Главная Кодекса — те же карточки-«›», что и на домашней компаньона.
+  return el('div', { class: 'b-quick' }, CATS.map((c) => el('button', {
+    class: 'b-quick-card',
+    type: 'button',
+    onclick: () => { st.cat = c.id; st.query = ''; render(view); },
+  }, [
+    el('span', { class: 'b-quick-ic', text: c.icon }),
+    el('span', { class: 'b-quick-main' }, [
+      el('b', { text: c.title }),
+      el('span', { class: 'b-quick-desc', text: c.desc }),
+    ]),
+    el('span', { class: 'b-quick-arrow', text: '›' }),
+  ])));
+}
+
 export function render(view) {
   const st = ST();
   loadArt();
@@ -215,35 +231,36 @@ export function render(view) {
     sidebState.pendingJump = null;
   }
 
-  view.appendChild(el('div', { class: 'b-page-head' }, [
-    el('h1', { text: 'Codex' }),
-    el('p', { class: 'b-page-sub', text: 'Browse reference data — весь справочник снапшота патча 1.3.1 (Season 2).' }),
-  ]));
+  if (!st.cat) {
+    view.appendChild(pageHead('Codex', 'Browse reference data — весь справочник снапшота патча 1.3.1 (Season 2).'));
+    view.appendChild(catCards(st, view));
+    return;
+  }
 
-  const menu = el('div', { class: 'b-codex-menu' }, CATS.map((c) => el('button', {
-    class: `b-codex-cat ${st.cat === c.id ? 'active' : ''}`,
-    onclick: () => { st.cat = c.id; render(view); },
-  }, [
-    el('span', { class: 'b-codex-ic', text: c.icon }),
-    el('span', { class: 'b-codex-label' }, [el('b', { text: c.title }), el('span', { class: 'b-note', text: c.ru })]),
-  ])));
+  const cat = CATS.find((c) => c.id === st.cat) || CATS[0];
+  view.appendChild(el('div', { class: 'b-page-head' }, [
+    el('a', { class: 'b-back', href: '#b/codex', onclick: () => { st.cat = null; } }, [
+      el('span', { class: 'b-back-ic', text: '‹' }), el('span', { text: 'Codex' }),
+    ]),
+    el('h2', { text: `${cat.title}` }),
+    el('p', { class: 'b-page-sub', text: `${cat.ru} — ${cat.desc}.` }),
+  ]));
 
   const content = el('div', { class: 'b-codex-content' });
   const search = el('input', {
     class: 'b-input b-codex-search', type: 'search',
-    placeholder: 'Фильтр по категории…',
+    placeholder: `Фильтр: ${cat.title}…`,
     value: st.query || '',
     oninput: (e) => { st.query = e.target.value; renderContent(content); },
   });
-  CAT_RENDER[st.cat](content, (st.query || '').trim());
+  (CAT_RENDER[st.cat] || itemsCat)(content, (st.query || '').trim());
   content.insertBefore(search, content.firstChild);
-
-  view.appendChild(el('div', { class: 'b-codex' }, [menu, content]));
+  view.appendChild(content);
 
   function renderContent(cnt) {
     const q = st.query || '';
     [...cnt.children].forEach((c) => { if (c !== search) c.remove(); });
-    CAT_RENDER[st.cat](cnt, q.trim());
+    (CAT_RENDER[st.cat] || itemsCat)(cnt, q.trim());
   }
 
   // Подсветка найденного из шапки.

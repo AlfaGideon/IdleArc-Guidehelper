@@ -12,7 +12,7 @@ import { bi, chip, fmt, panel, bTable, rarityChip } from './ui.js';
 import { GEAR_CELLS } from '../data/items.js';
 import { FORGE_TIERS, forgeTierInfo, forgeStep, forgeCumulative } from '../data/forge.js';
 import { FORGE_GATE, forgeGateForTier, promotionFromTier } from '../data/biomes.js';
-import { sidebState } from './sideb.js';
+import { sidebState, pageHead } from './sideb.js';
 
 const ST = () => sidebState.upgrade;
 
@@ -99,10 +99,7 @@ export function render(view) {
   const { rows, gold, frags, expGold } = stepRows(st.tier, st.from, st.to);
   const cum = forgeCumulative(st.tier, st.to);
 
-  view.appendChild(el('div', { class: 'b-page-head' }, [
-    el('h1', { text: 'Upgrade' }),
-    el('p', { class: 'b-page-sub', text: `Exact costs — точные цены Кузницы: ${cell ? bi(cell.ru, cell.en) : 'слот'}, тир T${st.tier} ${info.ru} (${info.name}), шаги +${st.from} → +${st.to}.` }),
-  ]));
+  view.appendChild(pageHead('Upgrade', `Exact costs — точные цены Кузницы шаг за шагом: ${cell ? bi(cell.ru, cell.en) : 'слот'}, тир T${st.tier} ${info.ru} (${info.name}), +${st.from} → +${st.to}.`));
 
   view.appendChild(panel(null, [controls(view)]));
 
