@@ -1,0 +1,5230 @@
+{
+  "config_version": "2026-09-29-003+chat+realms+tower+offsum+awaken+runewords+forge+affixcap+gems+charslots+retaliation+raids+raidchat+convergence+season_pass+spgift+pass-arc_pass_s2+posprog+dkinds",
+  "classes": [
+    {
+      "id": 1,
+      "name": "Warrior",
+      "branches": [
+        {
+          "id": 7,
+          "name": "Might",
+          "skills": [
+            {
+              "id": 7,
+              "name": "Culling strike",
+              "description": "You kill the enemy instantly once they reach a certain health percentage (1% Max HP per skill level)",
+              "image": "warrior/warrior_culling_strike.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/warrior/warrior_culling_strike.webp"
+            },
+            {
+              "id": 22,
+              "name": "Battle Recovery",
+              "description": "Increased defense (50 per skill level) and life on kill (8 HP per skill level)",
+              "image": "warrior/warrior_battle_recovery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/warrior/warrior_battle_recovery.webp"
+            },
+            {
+              "id": 23,
+              "name": "Executioner",
+              "description": "Increased culling threshold (1% per skill level, stacks with Culling Strike)",
+              "image": "warrior/warrior_executioner.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/warrior/warrior_executioner.webp"
+            },
+            {
+              "id": 46,
+              "name": "Iron Constitution",
+              "description": "Increased defense (2% per skill level)",
+              "image": "warrior/warrior_iron_constitution.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/warrior/warrior_iron_constitution.webp"
+            },
+            {
+              "id": 47,
+              "name": "Bloodthirst",
+              "description": "Increased life on hit (4 HP per skill level) and a 1% chance per skill level for a kill to count twice (up to 10%)",
+              "image": "warrior/warrior_bloodthirst.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/warrior/warrior_bloodthirst.webp"
+            },
+            {
+              "id": 48,
+              "name": "Counterstrike",
+              "description": "Blocked enemy swings retaliate for an extra 2% per skill level",
+              "image": "warrior/warrior_victory_rush.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/warrior/warrior_victory_rush.webp"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "name": "Strength",
+          "skills": [
+            {
+              "id": 8,
+              "name": "Mighty strikes",
+              "description": "Increase attack damage (5% per skill level)",
+              "image": "warrior/warrior_mighty_strikes.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/warrior/warrior_mighty_strikes.webp"
+            },
+            {
+              "id": 24,
+              "name": "Crushing Blows",
+              "description": "Increased critical damage (3% per skill level) and defense (2% per skill level)",
+              "image": "warrior/warrior_crushing_blows.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/warrior/warrior_crushing_blows.webp"
+            },
+            {
+              "id": 25,
+              "name": "Overwhelm",
+              "description": "Increased double damage chance (2% per skill level) and increased boss damage (5% per skill level)",
+              "image": "warrior/warrior_overwhelm.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/warrior/warrior_overwhelm.webp"
+            },
+            {
+              "id": 49,
+              "name": "Battle Focus",
+              "description": "Increased critical strike chance (2% per skill level)",
+              "image": "warrior/warrior_battle_focus.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/warrior/warrior_battle_focus.webp"
+            },
+            {
+              "id": 50,
+              "name": "Titan's Grip",
+              "description": "Increased attack damage (3% per skill level)",
+              "image": "warrior/warrior_titans_grip.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/warrior/warrior_titans_grip.webp"
+            },
+            {
+              "id": 51,
+              "name": "Titanic Blow",
+              "description": "Your attacks have a 4% chance per skill level to become a Titanic Blow, dealing triple damage",
+              "image": "warrior/warrior_titanic_blow.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/warrior/warrior_titanic_blow.webp"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "name": "Finesse",
+          "skills": [
+            {
+              "id": 9,
+              "name": "Berserk",
+              "description": "You have an extra 2% double hit chance per skill level",
+              "image": "warrior/warrior_berserk.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/warrior/warrior_berserk.webp"
+            },
+            {
+              "id": 26,
+              "name": "Keen Edge",
+              "description": "Increased critical damage (8% per skill level)",
+              "image": "warrior/warrior_swift_recovery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/warrior/warrior_swift_recovery.webp"
+            },
+            {
+              "id": 27,
+              "name": "Lethal Blow",
+              "description": "Increased double damage chance (2%) and ruby drop chance (2%) per skill level",
+              "image": "warrior/warrior_iron_will.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/warrior/warrior_iron_will.webp"
+            },
+            {
+              "id": 52,
+              "name": "Spoils of War",
+              "description": "Increased gold gain (5%), material drops (5%) and item drop chance (2%) per skill level",
+              "image": "warrior/warrior_spoils_of_war.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/warrior/warrior_spoils_of_war.webp"
+            },
+            {
+              "id": 53,
+              "name": "Deflection",
+              "description": "+2% block chance and +4% Retaliation per rank",
+              "image": "warrior/warrior_deflection.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/warrior/warrior_deflection.webp"
+            },
+            {
+              "id": 54,
+              "name": "Relentless Assault",
+              "description": "When you double hit (or more), you have a 10% chance per skill level to strike one extra time",
+              "image": "warrior/warrior_relentless_assault.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/warrior/warrior_relentless_assault.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Archer",
+      "branches": [
+        {
+          "id": 1,
+          "name": "Marksmanship",
+          "skills": [
+            {
+              "id": 3,
+              "name": "Archery",
+              "description": "Increased attack damage (5% per skill level)",
+              "image": "archer/archer_archery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/archer/archer_archery.webp"
+            },
+            {
+              "id": 10,
+              "name": "Precision",
+              "description": "Increased critical strike chance (4% per skill level)",
+              "image": "archer/archer_precision.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/archer/archer_precision.webp"
+            },
+            {
+              "id": 11,
+              "name": "Headshot",
+              "description": "Increased critical damage (10% per skill level)",
+              "image": "archer/archer_headshot.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/archer/archer_headshot.webp"
+            },
+            {
+              "id": 28,
+              "name": "Steady Aim",
+              "description": "Increased double damage chance (2% per skill level)",
+              "image": "archer/archer_steady_aim.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/archer/archer_steady_aim.webp"
+            },
+            {
+              "id": 29,
+              "name": "Double Nock",
+              "description": "Increased double hit chance (2% per skill level)",
+              "image": "archer/archer_double_nock.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/archer/archer_double_nock.webp"
+            },
+            {
+              "id": 30,
+              "name": "Perfect Shot",
+              "description": "Your critical strikes have a 4% chance per skill level to deal double critical damage",
+              "image": "archer/archer_perfect_shot.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/archer/archer_perfect_shot.webp"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "name": "Hunting",
+          "skills": [
+            {
+              "id": 2,
+              "name": "Spike trap",
+              "description": "At the start of a fight you deal instant damage to the enemy (1.5% of max HP per skill level)",
+              "image": "archer/archer_spike_trap.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/archer/archer_spike_trap.webp"
+            },
+            {
+              "id": 12,
+              "name": "Venomous Trap",
+              "description": "Increased attack damage (3% per skill level) and double damage chance (1% per skill level)",
+              "image": "archer/archer_venomous_trap.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/archer/archer_venomous_trap.webp"
+            },
+            {
+              "id": 13,
+              "name": "Hunter's Mark",
+              "description": "Deal bonus damage to enemies below 50% HP (3% per skill level) and increased boss damage (5% per skill level)",
+              "image": "archer/archer_hunters_mark.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/archer/archer_hunters_mark.webp"
+            },
+            {
+              "id": 31,
+              "name": "Barbed Arrows",
+              "description": "Increased life on hit (2 HP per skill level)",
+              "image": "archer/archer_barbed_arrows.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/archer/archer_barbed_arrows.webp"
+            },
+            {
+              "id": 32,
+              "name": "Trap Mastery",
+              "description": "Your traps deal extra damage to the enemy at the start of a fight (1% of max HP per skill level)",
+              "image": "archer/archer_trap_mastery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/archer/archer_trap_mastery.webp"
+            },
+            {
+              "id": 33,
+              "name": "Hunter's Instinct",
+              "description": "Your traps have a 1% chance per skill level to reduce a non-boss monster to 1 HP at the start of a fight",
+              "image": "archer/archer_hunters_instinct.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/archer/archer_hunters_instinct.webp"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "name": "Beastmaster",
+          "skills": [
+            {
+              "id": 1,
+              "name": "Strong pet bound",
+              "description": "You get 1 extra level in Pet Mastery per skill level",
+              "image": "archer/archer_pet_mastery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/archer/archer_pet_mastery.webp"
+            },
+            {
+              "id": 14,
+              "name": "Beast Bond",
+              "description": "Increased pet damage bonus (12% per skill level)",
+              "image": "archer/archer_beast_bond.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/archer/archer_beast_bond.webp"
+            },
+            {
+              "id": 15,
+              "name": "Pack Leader",
+              "description": "Increased pet damage (8% per skill level)",
+              "image": "archer/archer_pack_leader.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/archer/archer_pack_leader.webp"
+            },
+            {
+              "id": 34,
+              "name": "Egg Hunter",
+              "description": "Your pet sniffs out hidden nests — increased pet egg drop chance (1%) and item drop chance (2%) per skill level",
+              "image": "archer/archer_egg_hunter.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/archer/archer_egg_hunter.webp"
+            },
+            {
+              "id": 35,
+              "name": "Foraging Companion",
+              "description": "Your pet forages while you fight — increased gold gain (5%) and material drops (5%) per skill level",
+              "image": "archer/archer_foraging_companion.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/archer/archer_foraging_companion.webp"
+            },
+            {
+              "id": 36,
+              "name": "Alpha Strike",
+              "description": "Your pet has a 3% chance per skill level to strike twice",
+              "image": "archer/archer_alpha_strike.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/archer/archer_alpha_strike.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Mage",
+      "branches": [
+        {
+          "id": 4,
+          "name": "Arcane",
+          "skills": [
+            {
+              "id": 4,
+              "name": "Magic blast",
+              "description": "Each attack has a 50% chance to deal an extra 3% damage per skill level",
+              "image": "mage/mage_magic_blast.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/mage/mage_magic_blast.webp"
+            },
+            {
+              "id": 16,
+              "name": "Arcane Surge",
+              "description": "Increased double damage chance (2% per skill level)",
+              "image": "mage/mage_arcane_surge.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/mage/mage_arcane_surge.webp"
+            },
+            {
+              "id": 17,
+              "name": "Spell Mastery",
+              "description": "Increased attack damage (3% per skill level)",
+              "image": "mage/mage_spell_mastery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/mage/mage_spell_mastery.webp"
+            },
+            {
+              "id": 37,
+              "name": "Arcane Siphon",
+              "description": "Increased life on hit (2 HP per skill level) and double damage chance (1% per skill level)",
+              "image": "mage/mage_arcane_siphon.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/mage/mage_arcane_siphon.webp"
+            },
+            {
+              "id": 38,
+              "name": "Unstable Energy",
+              "description": "Increases Magic Blast's trigger chance (5% per skill level)",
+              "image": "mage/mage_unstable_energy.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [
+                {
+                  "id": 4,
+                  "name": "Magic blast"
+                }
+              ],
+              "tier": 2,
+              "asset": "class_skills/mage/mage_unstable_energy.webp"
+            },
+            {
+              "id": 39,
+              "name": "Arcane Cascade",
+              "description": "Your double damage strikes have an 8% chance per skill level to deal triple damage instead",
+              "image": "mage/mage_arcane_cascade.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/mage/mage_arcane_cascade.webp"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "name": "Destruction",
+          "skills": [
+            {
+              "id": 5,
+              "name": "Fire infusion",
+              "description": "Increase attack damage (5% per skill level)",
+              "image": "mage/mage_fire_infusion.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/mage/mage_fire_infusion.webp"
+            },
+            {
+              "id": 18,
+              "name": "Burning Soul",
+              "description": "Increased critical damage (8% per skill level)",
+              "image": "mage/mage_burning_soul.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/mage/mage_burning_soul.webp"
+            },
+            {
+              "id": 19,
+              "name": "Inferno",
+              "description": "Increased attack damage (2% per skill level)",
+              "image": "mage/mage_inferno.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/mage/mage_inferno.webp"
+            },
+            {
+              "id": 40,
+              "name": "Combustion",
+              "description": "Increased double damage chance (2% per skill level)",
+              "image": "mage/mage_combustion.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/mage/mage_combustion.webp"
+            },
+            {
+              "id": 41,
+              "name": "Melting Point",
+              "description": "Increased critical strike chance (2% per skill level)",
+              "image": "mage/mage_melting_point.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/mage/mage_melting_point.webp"
+            },
+            {
+              "id": 42,
+              "name": "Pyroclasm",
+              "description": "Your critical strikes explode, dealing 5% more damage per skill level",
+              "image": "mage/mage_pyroclasm.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/mage/mage_pyroclasm.webp"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "name": "Chaos",
+          "skills": [
+            {
+              "id": 6,
+              "name": "Wild magic",
+              "description": "You have an extra 2% critical chance and 1% critical damage per skill level",
+              "image": "mage/mage_wild_magic.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/mage/mage_wild_magic.webp"
+            },
+            {
+              "id": 20,
+              "name": "Chaos Bolt",
+              "description": "Increased critical damage (10% per skill level)",
+              "image": "mage/mage_chaos_bolt.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/mage/mage_chaos_bolt.webp"
+            },
+            {
+              "id": 21,
+              "name": "Reality Warp",
+              "description": "Increased double hit chance (2% per skill level) and increased boss damage (5% per skill level)",
+              "image": "mage/mage_reality_warp.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/mage/mage_reality_warp.webp"
+            },
+            {
+              "id": 43,
+              "name": "Fortune's Favor",
+              "description": "Increased gold gain (5%) and material drops (5%) per skill level",
+              "image": "mage/mage_fortunes_favor.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/mage/mage_fortunes_favor.webp"
+            },
+            {
+              "id": 44,
+              "name": "Soul Harvest",
+              "description": "Increased life on kill (4 HP per skill level), ruby drop chance (3% per skill level) and rune drop chance (1% per skill level)",
+              "image": "mage/mage_soul_harvest.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/mage/mage_soul_harvest.webp"
+            },
+            {
+              "id": 45,
+              "name": "Chaos Incarnate",
+              "description": "Increased critical strike, double hit and double damage chance (2% each per skill level)",
+              "image": "mage/mage_chaos_incarnate.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/mage/mage_chaos_incarnate.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Rogue",
+      "branches": [
+        {
+          "id": 10,
+          "name": "Assassin",
+          "skills": [
+            {
+              "id": 55,
+              "name": "Precision Strikes",
+              "description": "Increased critical strike chance (3% per skill level)",
+              "image": "rogue/rogue_precision_strikes.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/rogue/rogue_precision_strikes.webp"
+            },
+            {
+              "id": 56,
+              "name": "Sharpened Blades",
+              "description": "Increased critical damage (5% per skill level)",
+              "image": "rogue/rogue_sharpened_blades.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/rogue/rogue_sharpened_blades.webp"
+            },
+            {
+              "id": 57,
+              "name": "First Strike",
+              "description": "Deal bonus damage to enemies above 50% HP (4% per skill level)",
+              "image": "rogue/rogue_first_strike.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/rogue/rogue_first_strike.webp"
+            },
+            {
+              "id": 58,
+              "name": "Contract Killer",
+              "description": "Increased boss damage (5% per skill level)",
+              "image": "rogue/rogue_contract_killer.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/rogue/rogue_contract_killer.webp"
+            },
+            {
+              "id": 59,
+              "name": "Deadly Ambush",
+              "description": "Increased double damage chance (4% per skill level)",
+              "image": "rogue/rogue_deadly_ambush.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/rogue/rogue_deadly_ambush.webp"
+            },
+            {
+              "id": 60,
+              "name": "Coup de Grace",
+              "description": "You kill the enemy instantly once they reach a certain health percentage (1% Max HP per skill level)",
+              "image": "rogue/rogue_coup_de_grace.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/rogue/rogue_coup_de_grace.webp"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "name": "Shadowwalker",
+          "skills": [
+            {
+              "id": 61,
+              "name": "Swift Blades",
+              "description": "Increased double hit chance (3% per skill level)",
+              "image": "rogue/rogue_swift_blades.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/rogue/rogue_swift_blades.webp"
+            },
+            {
+              "id": 62,
+              "name": "Umbral Blades",
+              "description": "Increased attack damage (5% per skill level)",
+              "image": "rogue/rogue_umbral_blades.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/rogue/rogue_umbral_blades.webp"
+            },
+            {
+              "id": 63,
+              "name": "Shadow Echo",
+              "description": "Your attacks have a 5% chance per skill level to trigger a Shadow Echo, repeating the attack for 40% of its total damage",
+              "image": "rogue/rogue_shadow_echo.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/rogue/rogue_shadow_echo.webp"
+            },
+            {
+              "id": 64,
+              "name": "Phantom Strike",
+              "description": "Your double hit attacks deal 3% more damage per skill level",
+              "image": "rogue/rogue_phantom_strike.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/rogue/rogue_phantom_strike.webp"
+            },
+            {
+              "id": 65,
+              "name": "Echo Mastery",
+              "description": "Increases Shadow Echo trigger chance (2% per skill level) and Shadow Echo damage (2% per skill level)",
+              "image": "rogue/rogue_echo_mastery.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/rogue/rogue_echo_mastery.webp"
+            },
+            {
+              "id": 66,
+              "name": "Umbral Cascade",
+              "description": "Your Shadow Echo has a 4% chance per skill level to echo a second time",
+              "image": "rogue/rogue_umbral_cascade.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 10,
+              "prerequisites": [
+                {
+                  "id": 63,
+                  "name": "Shadow Echo"
+                }
+              ],
+              "tier": 3,
+              "asset": "class_skills/rogue/rogue_umbral_cascade.webp"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "name": "Thief",
+          "skills": [
+            {
+              "id": 67,
+              "name": "Scavenger",
+              "description": "Increased gold gain (2%) and material drops (2%) per skill level",
+              "image": "rogue/rogue_scavenger.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/rogue/rogue_scavenger.webp"
+            },
+            {
+              "id": 68,
+              "name": "Pickpocket",
+              "description": "Increased gold gain (4% per skill level)",
+              "image": "rogue/rogue_pickpocket.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/rogue/rogue_pickpocket.webp"
+            },
+            {
+              "id": 69,
+              "name": "Lucky Hands",
+              "description": "Chance to duplicate a crafting material drop (2% per skill level, up to 15%)",
+              "image": "rogue/rogue_lucky_hands.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/rogue/rogue_lucky_hands.webp"
+            },
+            {
+              "id": 70,
+              "name": "Treasure Hunter",
+              "description": "Increased item drop chance (2% per skill level)",
+              "image": "rogue/rogue_treasure_hunter.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/rogue/rogue_treasure_hunter.webp"
+            },
+            {
+              "id": 71,
+              "name": "Black Market",
+              "description": "Dropped gear has a chance to roll a higher tier (2% Lucky Tier per skill level)",
+              "image": "rogue/rogue_black_market.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/rogue/rogue_black_market.webp"
+            },
+            {
+              "id": 72,
+              "name": "Master Thief",
+              "description": "Increased gold gain (2%), material drops (3%) and item drop chance (1%) per skill level",
+              "image": "rogue/rogue_master_thief.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/rogue/rogue_master_thief.webp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Druid",
+      "branches": [
+        {
+          "id": 13,
+          "name": "Lodge",
+          "skills": [
+            {
+              "id": 73,
+              "name": "Gnaw",
+              "description": "Increased pet damage (8% per skill level)",
+              "image": "druid/druid_gnaw.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/druid/druid_gnaw.webp"
+            },
+            {
+              "id": 74,
+              "name": "Dam Builder",
+              "description": "Increased pet damage (15 per skill level)",
+              "image": "druid/druid_dam_builder.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/druid/druid_dam_builder.webp"
+            },
+            {
+              "id": 75,
+              "name": "Tail Slap",
+              "description": "Your pet has a 3% chance per skill level to strike twice",
+              "image": "druid/druid_tail_slap.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/druid/druid_tail_slap.webp"
+            },
+            {
+              "id": 76,
+              "name": "Lodgekeeper",
+              "description": "You get 1 extra level in Pet Mastery per skill level",
+              "image": "druid/druid_lodgekeeper.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/druid/druid_lodgekeeper.webp"
+            },
+            {
+              "id": 77,
+              "name": "Thick Pelt",
+              "description": "Increased max health (5% per skill level)",
+              "image": "druid/druid_thick_pelt.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/druid/druid_thick_pelt.webp"
+            },
+            {
+              "id": 78,
+              "name": "Timberfall",
+              "description": "Increased boss damage (5% per skill level)",
+              "image": "druid/druid_timberfall.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/druid/druid_timberfall.webp"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "name": "Tunnels",
+          "skills": [
+            {
+              "id": 79,
+              "name": "Digger",
+              "description": "Increased material drops (2%) and item drop chance (1%) per skill level",
+              "image": "druid/druid_digger.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/druid/druid_digger.webp"
+            },
+            {
+              "id": 80,
+              "name": "Keen Snout",
+              "description": "Your pet sniffs out hidden nests — increased pet egg drop chance (1%) and material drops (1%) per skill level",
+              "image": "druid/druid_keen_snout.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/druid/druid_keen_snout.webp"
+            },
+            {
+              "id": 81,
+              "name": "Hoard",
+              "description": "Increased gold gain (5% per skill level)",
+              "image": "druid/druid_hoard.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/druid/druid_hoard.webp"
+            },
+            {
+              "id": 82,
+              "name": "Earthbind",
+              "description": "Increased critical strike chance (3% per skill level)",
+              "image": "druid/druid_earthbind.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/druid/druid_earthbind.webp"
+            },
+            {
+              "id": 83,
+              "name": "Undermine",
+              "description": "You kill the enemy instantly once they reach a certain health percentage (2% Max HP per skill level)",
+              "image": "druid/druid_undermine.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/druid/druid_undermine.webp"
+            },
+            {
+              "id": 84,
+              "name": "Deep Roots",
+              "description": "Increased pet experience gain (1%) and rune drop chance (1%) per skill level",
+              "image": "druid/druid_deep_roots.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/druid/druid_deep_roots.webp"
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "name": "Symbiosis",
+          "skills": [
+            {
+              "id": 85,
+              "name": "Kinship",
+              "description": "Converts 3% of your flat attack damage into pet damage per skill level",
+              "image": "druid/druid_kinship.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 10,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/druid/druid_kinship.webp"
+            },
+            {
+              "id": 86,
+              "name": "Shared Instinct",
+              "description": "Increased critical damage (10% per skill level)",
+              "image": "druid/druid_shared_instinct.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 0,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 1,
+              "asset": "class_skills/druid/druid_shared_instinct.webp"
+            },
+            {
+              "id": 87,
+              "name": "Feral Bond",
+              "description": "Converts 4% of your flat attack damage into pet damage per skill level",
+              "image": "druid/druid_feral_bond.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/druid/druid_feral_bond.webp"
+            },
+            {
+              "id": 88,
+              "name": "Twin Heart",
+              "description": "Increased life on hit (2 HP per skill level)",
+              "image": "druid/druid_twin_heart.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 5,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 2,
+              "asset": "class_skills/druid/druid_twin_heart.webp"
+            },
+            {
+              "id": 89,
+              "name": "Wild Attunement",
+              "description": "Amplifies your pet's elemental weakness bonus (3% per skill level)",
+              "image": "druid/druid_wild_attunement.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/druid/druid_wild_attunement.webp"
+            },
+            {
+              "id": 90,
+              "name": "One Soul",
+              "description": "Increased pet damage (5% per skill level)",
+              "image": "druid/druid_one_soul.webp",
+              "level_requirement": 1,
+              "points_required_to_unlock": 10,
+              "max_rank": 5,
+              "prerequisites": [],
+              "tier": 3,
+              "asset": "class_skills/druid/druid_one_soul.webp"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "caps": [
+    {
+      "key": "boss_damage_bonus",
+      "cap": 100,
+      "unit": "percent",
+      "label_key": "skillCapLabelBossDamage",
+      "display_skill_ids": [
+        21,
+        25,
+        13,
+        58,
+        78
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 21,
+          "per_rank": 5
+        },
+        {
+          "skill_id": 25,
+          "per_rank": 5
+        },
+        {
+          "skill_id": 13,
+          "per_rank": 5
+        },
+        {
+          "skill_id": 58,
+          "per_rank": 5
+        },
+        {
+          "skill_id": 78,
+          "per_rank": 5
+        }
+      ]
+    },
+    {
+      "key": "execute_threshold",
+      "cap": 35,
+      "unit": "percent",
+      "label_key": "skillCapLabelExecuteThreshold",
+      "display_skill_ids": [
+        7,
+        23,
+        60,
+        83
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 7,
+          "per_rank": 1
+        },
+        {
+          "skill_id": 23,
+          "per_rank": 1
+        },
+        {
+          "skill_id": 60,
+          "per_rank": 1
+        },
+        {
+          "skill_id": 83,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "counterstrike_block_bonus",
+      "cap": 25,
+      "unit": "percent",
+      "label_key": "skillCapLabelCounterstrike",
+      "display_skill_ids": [
+        48
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 48,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "titanic_blow_chance",
+      "cap": 80,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        51
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 51,
+          "per_rank": 4
+        }
+      ]
+    },
+    {
+      "key": "relentless_assault_chance",
+      "cap": 100,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        54
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 54,
+          "per_rank": 10
+        }
+      ]
+    },
+    {
+      "key": "bloodthirst_extra_kill",
+      "cap": 10,
+      "unit": "percent",
+      "label_key": "skillCapLabelExtraKillChance",
+      "display_skill_ids": [
+        47
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 47,
+          "per_rank": 1
+        }
+      ]
+    },
+    {
+      "key": "deflection_block",
+      "cap": 25,
+      "unit": "percent",
+      "label_key": "skillCapLabelBlockChance",
+      "display_skill_ids": [
+        53
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 53,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "deflection_retaliation",
+      "cap": 40,
+      "unit": "percent",
+      "label_key": "skillCapLabelRetaliation",
+      "display_skill_ids": [
+        53
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 53,
+          "per_rank": 4
+        }
+      ]
+    },
+    {
+      "key": "perfect_shot_chance",
+      "cap": 60,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        30
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 30,
+          "per_rank": 4
+        }
+      ]
+    },
+    {
+      "key": "trap_damage",
+      "cap": 35,
+      "unit": "percent",
+      "label_key": "skillCapLabelTrapDamage",
+      "display_skill_ids": [
+        2,
+        32
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 2,
+          "per_rank": 1.5
+        },
+        {
+          "skill_id": 32,
+          "per_rank": 1
+        }
+      ]
+    },
+    {
+      "key": "hunters_instinct_chance",
+      "cap": 15,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        33
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 33,
+          "per_rank": 1
+        }
+      ]
+    },
+    {
+      "key": "alpha_strike_chance",
+      "cap": 60,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        36,
+        75
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 36,
+          "per_rank": 3
+        },
+        {
+          "skill_id": 75,
+          "per_rank": 3
+        }
+      ]
+    },
+    {
+      "key": "magic_blast_chance",
+      "cap": 100,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        4,
+        38
+      ],
+      "base": 50,
+      "gate_skill_id": 4,
+      "contributions": [
+        {
+          "skill_id": 38,
+          "per_rank": 5
+        }
+      ]
+    },
+    {
+      "key": "arcane_cascade_chance",
+      "cap": 100,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        39
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 39,
+          "per_rank": 8
+        }
+      ]
+    },
+    {
+      "key": "pyroclasm_damage",
+      "cap": 100,
+      "unit": "percent",
+      "label_key": "skillCapLabelBonusDamage",
+      "display_skill_ids": [
+        42
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 42,
+          "per_rank": 5
+        }
+      ]
+    },
+    {
+      "key": "shadow_echo_chance",
+      "cap": 100,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        63,
+        65
+      ],
+      "base": 0,
+      "gate_skill_id": 63,
+      "contributions": [
+        {
+          "skill_id": 63,
+          "per_rank": 5
+        },
+        {
+          "skill_id": 65,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "shadow_echo_damage",
+      "cap": 80,
+      "unit": "percent",
+      "label_key": "skillCapLabelEchoDamage",
+      "display_skill_ids": [
+        63,
+        65
+      ],
+      "base": 40,
+      "gate_skill_id": 63,
+      "contributions": [
+        {
+          "skill_id": 65,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "umbral_cascade_chance",
+      "cap": 75,
+      "unit": "percent",
+      "label_key": "skillCapLabelTriggerChance",
+      "display_skill_ids": [
+        66
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 66,
+          "per_rank": 4
+        }
+      ]
+    },
+    {
+      "key": "lucky_hands_duplicate",
+      "cap": 15,
+      "unit": "percent",
+      "label_key": "skillCapLabelDuplicateChance",
+      "display_skill_ids": [
+        69
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 69,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "lucky_tier",
+      "cap": 20,
+      "unit": "percent",
+      "label_key": "skillCapLabelLuckyTierChance",
+      "display_skill_ids": [
+        71
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 71,
+          "per_rank": 2
+        }
+      ]
+    },
+    {
+      "key": "attack_pet_conversion",
+      "cap": 75,
+      "unit": "percent",
+      "label_key": "skillCapLabelAttackConversion",
+      "display_skill_ids": [
+        85,
+        87
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 85,
+          "per_rank": 3
+        },
+        {
+          "skill_id": 87,
+          "per_rank": 4
+        }
+      ]
+    },
+    {
+      "key": "wild_attunement_amp",
+      "cap": 25,
+      "unit": "percent",
+      "label_key": "skillCapLabelWeaknessAmp",
+      "display_skill_ids": [
+        89
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 89,
+          "per_rank": 3
+        }
+      ]
+    },
+    {
+      "key": "pet_egg_drop",
+      "cap": 15,
+      "unit": "percent",
+      "label_key": "skillCapLabelPetEggChance",
+      "display_skill_ids": [
+        80,
+        34
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 80,
+          "per_rank": 1
+        },
+        {
+          "skill_id": 34,
+          "per_rank": 1
+        }
+      ]
+    },
+    {
+      "key": "deep_roots_pet_xp",
+      "cap": 15,
+      "unit": "percent",
+      "label_key": "skillCapLabelPetXpGain",
+      "display_skill_ids": [
+        84
+      ],
+      "base": 0,
+      "gate_skill_id": null,
+      "contributions": [
+        {
+          "skill_id": 84,
+          "per_rank": 1
+        }
+      ]
+    }
+  ],
+  "passive": {
+    "tiers": [
+      {
+        "start_row": 0,
+        "end_row": 9,
+        "unlock_threshold": 0
+      },
+      {
+        "start_row": 10,
+        "end_row": 19,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 20,
+        "end_row": 29,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 30,
+        "end_row": 39,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 40,
+        "end_row": 49,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 50,
+        "end_row": 59,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 60,
+        "end_row": 69,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 70,
+        "end_row": 79,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 80,
+        "end_row": 89,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 90,
+        "end_row": 99,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 100,
+        "end_row": 109,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 110,
+        "end_row": 119,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 120,
+        "end_row": 129,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 130,
+        "end_row": 139,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 140,
+        "end_row": 149,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 150,
+        "end_row": 159,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 160,
+        "end_row": 169,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 170,
+        "end_row": 179,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 180,
+        "end_row": 189,
+        "unlock_threshold": 20
+      },
+      {
+        "start_row": 190,
+        "end_row": 199,
+        "unlock_threshold": 20
+      }
+    ],
+    "rows": [
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 1,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.3,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.2,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 8,
+            "max_points": 3
+          },
+          {
+            "stat": "defense",
+            "per_point": 6,
+            "max_points": 3
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 0.9,
+            "max_points": 1
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 0.5,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 1.8,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 1.7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.2,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.2,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 0.7,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 0.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 3,
+            "max_points": 2
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 0.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_hit_chance",
+            "per_point": 3.8,
+            "max_points": 1
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 4.7,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 13.6,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 1,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 7,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.3,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 11,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 7,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 1.1,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 1.5,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 2,
+            "max_points": 2
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 2.9,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 2.3,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.4,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 0.9,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 0.9,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 1.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_damage_chance",
+            "per_point": 2.5,
+            "max_points": 1
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 3.2,
+            "max_points": 1
+          },
+          {
+            "stat": "gold_gain",
+            "per_point": 13.5,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 9,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 7,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.4,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "defense",
+            "per_point": 8,
+            "max_points": 3
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 1.3,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 1.5,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 2.8,
+            "max_points": 2
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 2.8,
+            "max_points": 2
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.5,
+            "max_points": 1
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 0.9,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 0.9,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 2,
+            "max_points": 2
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 6,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 1.9,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 4,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 30,
+            "max_points": 1
+          },
+          {
+            "stat": "item_drop_chance",
+            "per_point": 6.3,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 13,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 13,
+            "max_points": 3
+          },
+          {
+            "stat": "defense",
+            "per_point": 20,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 1.5,
+            "max_points": 1
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 1.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 3,
+            "max_points": 2
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 3,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 2.9,
+            "max_points": 2
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.5,
+            "max_points": 1
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.4,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 0.9,
+            "max_points": 1
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 0.9,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 6,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 9.8,
+            "max_points": 1
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 14,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 13.6,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 3,
+            "max_points": 2
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 3,
+            "max_points": 2
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 3,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 17,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 12,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.4,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 15,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 24,
+            "max_points": 3
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 1.7,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 2,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.5,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.5,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 0.9,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 2,
+            "max_points": 2
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 6,
+            "max_points": 2
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 14,
+            "max_points": 1
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 6.3,
+            "max_points": 1
+          },
+          {
+            "stat": "item_drop_chance",
+            "per_point": 6.4,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 24,
+            "max_points": 5
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 17,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.7,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 21,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 30,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 1.8,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 2.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 3.3,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 3.2,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 3.1,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 1.2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 2,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 6,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_hit_chance",
+            "per_point": 3.9,
+            "max_points": 1
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 3.7,
+            "max_points": 1
+          },
+          {
+            "stat": "gold_gain",
+            "per_point": 13.5,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 32,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 23,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.7,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.5,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 25,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 36,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 2.2,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 2.9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 3.9,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 3.9,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 4.6,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1.1,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 1.5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 2,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 6,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 10.3,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 30,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 14,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 44,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 31,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.5,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 25,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 44,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 3,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 2.9,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 4.9,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.7,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.7,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1.3,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 1.5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 3,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 9,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_hit_chance",
+            "per_point": 6.1,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_hit",
+            "per_point": 10,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 19.1,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 59,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 41,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.5,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 25,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 54,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 3,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 3,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.7,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.7,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1.5,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 1.5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 9,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_hit_chance",
+            "per_point": 6.4,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_hit",
+            "per_point": 10,
+            "max_points": 1
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 7,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 80,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 56,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.5,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 25,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 66,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 3,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.7,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.7,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1.5,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 1.5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 3,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 9,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 12,
+            "max_points": 1
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 6.3,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 19.2,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 104,
+            "max_points": 5
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 73,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 29,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 80,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 3.3,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 3.5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 4.7,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4.7,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 5.6,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1.8,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 1.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 3,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 9,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2.4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 170,
+            "max_points": 1
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 9,
+            "max_points": 1
+          },
+          {
+            "stat": "gold_gain",
+            "per_point": 24.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 136,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 95,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 29,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 98,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 3.7,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 3.9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 4.9,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4.7,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 5.7,
+            "max_points": 4
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 1.9,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 7.4,
+            "max_points": 1
+          },
+          {
+            "stat": "defense",
+            "per_point": 200,
+            "max_points": 1
+          },
+          {
+            "stat": "gold_gain",
+            "per_point": 24.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 177,
+            "max_points": 5
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 124,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 34,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 120,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 3.9,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4.9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 6.7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2.9,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 7.4,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 30,
+            "max_points": 1
+          },
+          {
+            "stat": "item_drop_chance",
+            "per_point": 8.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 230,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 161,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 34,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 146,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 4.9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 6.8,
+            "max_points": 4
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2.9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 11,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_hit",
+            "per_point": 19,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 28.3,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 299,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 210,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 34,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 178,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 7,
+            "max_points": 4
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 2.9,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 12,
+            "max_points": 1
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 57,
+            "max_points": 1
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 8.9,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 390,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 273,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 35,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 218,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 3,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 12.8,
+            "max_points": 1
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 27,
+            "max_points": 1
+          },
+          {
+            "stat": "item_drop_chance",
+            "per_point": 8.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 507,
+            "max_points": 5
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 355,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 35,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 265,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_damage_chance",
+            "per_point": 6.3,
+            "max_points": 1
+          },
+          {
+            "stat": "defense",
+            "per_point": 530,
+            "max_points": 1
+          },
+          {
+            "stat": "item_drop_chance",
+            "per_point": 8.8,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 661,
+            "max_points": 5
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 463,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 35,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 324,
+            "max_points": 4
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 3,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 36.4,
+            "max_points": 1
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 19,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 28.3,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 860,
+            "max_points": 4
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 602,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 3
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 35,
+            "max_points": 5
+          },
+          {
+            "stat": "defense",
+            "per_point": 395,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 3
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 5,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 7,
+            "max_points": 3
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 4
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 3
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 3,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 12.8,
+            "max_points": 1
+          },
+          {
+            "stat": "defense",
+            "per_point": 790,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 29.2,
+            "max_points": 1
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "strength",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "dexterity",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "intelligence",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_flat",
+            "per_point": 1120,
+            "max_points": 5
+          },
+          {
+            "stat": "pet_damage_flat",
+            "per_point": 784,
+            "max_points": 5
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_chance",
+            "per_point": 1,
+            "max_points": 2
+          },
+          {
+            "stat": "dodge_chance",
+            "per_point": 0.6,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "max_hp_flat",
+            "per_point": 35,
+            "max_points": 4
+          },
+          {
+            "stat": "defense",
+            "per_point": 482,
+            "max_points": 5
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 4,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "attack_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          },
+          {
+            "stat": "pet_damage_percent",
+            "per_point": 4,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "gold_gain",
+            "per_point": 5,
+            "max_points": 4
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 5,
+            "max_points": 4
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "crit_damage",
+            "per_point": 7,
+            "max_points": 4
+          },
+          {
+            "stat": "double_hit_chance",
+            "per_point": 0.8,
+            "max_points": 3
+          },
+          {
+            "stat": "double_damage_chance",
+            "per_point": 0.8,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "item_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          },
+          {
+            "stat": "material_drop_chance",
+            "per_point": 2,
+            "max_points": 3
+          }
+        ]
+      },
+      {
+        "nodes": [
+          {
+            "stat": "life_on_hit",
+            "per_point": 4,
+            "max_points": 3
+          },
+          {
+            "stat": "life_on_kill",
+            "per_point": 12,
+            "max_points": 4
+          },
+          {
+            "stat": "max_hp_percent",
+            "per_point": 3,
+            "max_points": 2
+          }
+        ]
+      },
+      {
+        "milestone": true,
+        "nodes": [
+          {
+            "stat": "double_damage_chance",
+            "per_point": 9.3,
+            "max_points": 1
+          },
+          {
+            "stat": "defense_percent",
+            "per_point": 23,
+            "max_points": 1
+          },
+          {
+            "stat": "exp_gain",
+            "per_point": 30.4,
+            "max_points": 1
+          }
+        ]
+      }
+    ],
+    "stat_display": {
+      "attack_damage_flat": {
+        "name": "Attack Damage",
+        "format": "+{value}",
+        "icon": "sword"
+      },
+      "attack_damage_percent": {
+        "name": "Attack Damage",
+        "format": "+{value}%",
+        "icon": "sword"
+      },
+      "pet_damage_flat": {
+        "name": "Pet Damage",
+        "format": "+{value}",
+        "icon": "paw"
+      },
+      "pet_damage_percent": {
+        "name": "Pet Damage",
+        "format": "+{value}%",
+        "icon": "paw"
+      },
+      "gold_gain": {
+        "name": "Gold Gain",
+        "format": "+{value}%",
+        "icon": "coins"
+      },
+      "exp_gain": {
+        "name": "Exp Gain",
+        "format": "+{value}%",
+        "icon": "star"
+      },
+      "double_hit_chance": {
+        "name": "Double Hit",
+        "format": "+{value}%",
+        "icon": "zap"
+      },
+      "double_damage_chance": {
+        "name": "Double Damage",
+        "format": "+{value}%",
+        "icon": "flame"
+      },
+      "crit_chance": {
+        "name": "Crit Chance",
+        "format": "+{value}%",
+        "icon": "crosshair"
+      },
+      "crit_damage": {
+        "name": "Crit Damage",
+        "format": "+{value}%",
+        "icon": "crosshair"
+      },
+      "strength": {
+        "name": "Strength",
+        "format": "+{value}",
+        "icon": "dumbbell"
+      },
+      "dexterity": {
+        "name": "Dexterity",
+        "format": "+{value}",
+        "icon": "wind"
+      },
+      "intelligence": {
+        "name": "Intelligence",
+        "format": "+{value}",
+        "icon": "brain"
+      },
+      "defense": {
+        "name": "Defense",
+        "format": "+{value}",
+        "icon": "shield"
+      },
+      "defense_percent": {
+        "name": "Defense",
+        "format": "+{value}%",
+        "icon": "shield"
+      },
+      "life_on_hit": {
+        "name": "Life on Hit",
+        "format": "+{value}",
+        "icon": "heart"
+      },
+      "life_on_kill": {
+        "name": "Life on Kill",
+        "format": "+{value}",
+        "icon": "heart"
+      },
+      "item_drop_chance": {
+        "name": "Item Drop Chance",
+        "format": "+{value}%",
+        "icon": "package"
+      },
+      "material_drop_chance": {
+        "name": "Material Drop Chance",
+        "format": "+{value}%",
+        "icon": "gem"
+      },
+      "max_hp_flat": {
+        "name": "Max HP",
+        "format": "+{value}",
+        "icon": "heart_plus"
+      },
+      "max_hp_percent": {
+        "name": "Max HP",
+        "format": "+{value}%",
+        "icon": "heart_plus"
+      },
+      "dodge_chance": {
+        "name": "Dodge Chance",
+        "format": "+{value}%",
+        "icon": "wind"
+      },
+      "thorns_effectiveness": {
+        "name": "Thorns Effectiveness",
+        "format": "+{value}%",
+        "icon": "shield"
+      }
+    }
+  }
+}
