@@ -1,23 +1,31 @@
 @echo off
 rem ============================================================================
-rem  IdleArc Guide Helper - запуск на Windows.
+rem  IdleArc - запуск на Windows.
 rem
-rem  Двойной клик по этому файлу: поднимается локальный сервер, и приложение
-rem  открывается в браузере. Пока окно открыто - приложение работает;
+rem  Двойной клик по этому файлу: поднимается ХАБ "две стороны" (Guide Helper
+rem  и Companion в одной оболочке, порт 8080), и приложение открывается
+rem  в браузере. Пока окно открыто - приложение работает;
 rem  Ctrl+C или закрытие окна - остановка сервера.
 rem
-rem  Необязательный аргумент - номер порта, например:  start.bat 8080
+rem  Варианты запуска:
+rem    start.bat        - хаб "две стороны" (порт 8080, если свободен)
+rem    start.bat 8090   - хаб на своём порту
+rem    start.bat arc    - только классический Guide Helper (порт 5173)
 rem
 rem  Важно: команды в этом файле только латиницей (cmd иначе может исказить
-rem  текст). Русский текст допустим лишь внутри echo - он идёт на экран.
+rem  текст). Русский текст допустим лишь внутри echo/rem - он идёт на экран.
 rem ============================================================================
 chcp 65001 >nul
-title IdleArc Guide Helper - local server
+title IdleArc Hub - local server
 pushd "%~dp0" >nul
 
 echo.
-echo  IdleArc Guide Helper - локальный запуск
+echo  IdleArc - локальный запуск
 echo  -----------------------------------------------
+echo  По умолчанию запускается ХАБ (две стороны: Guide Helper + Companion)
+echo  на порту 8080.
+echo  Варианты:  start.bat 8090  - хаб на своём порту
+echo             start.bat arc   - только Guide Helper (порт 5173)
 echo.
 
 rem --- 1. Ищем Node.js: сначала в PATH, потом в стандартной папке установки ---
@@ -36,11 +44,17 @@ rem которая на "node -v" ничего не отвечает.
 "%NODE_EXE%" -v >nul 2>nul
 if errorlevel 1 goto :no_node
 
-rem --- 2. Запуск: scripts\serve.mjs сам выберет свободный порт и откроет браузер ---
+rem --- 2. Аргумент: слово arc - только Guide Helper; число - свой порт ---
+set "MODE_ARG="
 set "PORT_ARG="
-if not "%~1"=="" set "PORT_ARG=--port %~1"
+if /i "%~1"=="arc" (
+  set "MODE_ARG=--arc"
+) else if not "%~1"=="" (
+  set "PORT_ARG=--port %~1"
+)
 
-"%NODE_EXE%" "scripts\serve.mjs" %PORT_ARG%
+rem --- 3. Запуск: scripts\serve.mjs сам выберет свободный порт и откроет браузер ---
+"%NODE_EXE%" "scripts\serve.mjs" %MODE_ARG% %PORT_ARG%
 set "CODE=%ERRORLEVEL%"
 
 if "%CODE%"=="0" goto :ok

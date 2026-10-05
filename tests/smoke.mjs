@@ -971,9 +971,19 @@ check('локальный запуск на ПК: start.bat (Windows) и scripts
   }
 
   // Лаунчер: сам выбирает свободный порт, ждёт готовности и открывает браузер.
+  // По умолчанию поднимает хаб «две стороны» (hub-server.js, 8080); --arc возвращает
+  // классический запуск server.js (5173) — оба режима проверяются здесь.
   const serve = fs.readFileSync(path.join(ROOT, 'scripts', 'serve.mjs'), 'utf8');
-  for (const needle of ['/api/build', '--no-open', '--lan', 'MIN_NODE_MAJOR', 'isPortFree', 'openBrowser', 'server.js']) {
+  for (const needle of ['/api/build', '--no-open', '--lan', '--arc', 'MIN_NODE_MAJOR', 'isPortFree', 'openBrowser', 'server.js', 'hub-server.js', 'DEFAULT_HUB_PORT']) {
     if (!serve.includes(needle)) throw new Error('serve.mjs: нет ' + needle);
+  }
+
+  // Сервер хаба: отдаёт метку сборки с флагом hub (лаунчер отличает его от
+  // одиночного server.js), проксирует /arc/* и /api/* на сторону A и умеет
+  // пережить уже запущенный на 5173 старый сервер (переиспользование вместо копии).
+  const hub = fs.readFileSync(path.join(ROOT, 'hub', 'hub-server.js'), 'utf8');
+  for (const needle of ['/api/build', 'hub: true', 'ARC_PORT', '/arc/', '/api/', 'startArcChild', 'HOST']) {
+    if (!hub.includes(needle)) throw new Error('hub-server.js: нет ' + needle);
   }
   // Иначе bat-файл после клонирования получит LF и перестанет запускаться на Windows.
   const attrs = fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8');

@@ -1,21 +1,26 @@
 #!/usr/bin/env node
 /**
- * Локальный запуск IdleArc Guide Helper — этим файлом пользуется start.bat на Windows
+ * Локальный запуск IdleArc — этим файлом пользуется start.bat на Windows
  * (на Linux/macOS тоже работает: node scripts/serve.mjs).
+ *
+ * По умолчанию запускается ХАБ (hub/hub-server.js, порт 8080) — «двухсторонняя»
+ * оболочка: сторона A — Guide Helper (/arc/), сторона B — Companion (/companion/).
+ * Режим --arc запускает только классический Guide Helper (server.js, порт 5173).
  *
  * Что делает по шагам:
  *  1) проверяет версию Node.js (нужна 18+);
- *  2) выбирает порт: 5173, а если он занят — следующий свободный;
- *  3) если на порту уже работает это приложение — второй сервер не поднимается,
- *     просто открывается браузер (двойной клик по start.bat больше не создаёт копию);
- *  4) поднимает server.js и дожидается реальной готовности (опрос /api/build),
- *     поэтому браузер открывается на уже работающее приложение, а не на «не удаётся
- *     подключиться»;
+ *  2) выбирает порт (8080 для хаба / 5173 для --arc), занят — следующий свободный;
+ *  3) если на порту уже работает этот же режим — второй сервер не поднимается,
+ *     просто открывается браузер (двойной клик по start.bat не создаёт копию);
+ *  4) поднимает сервер и дожидается реальной готовности (опрос /api/build),
+ *     поэтому браузер открывается на уже работающее приложение;
  *  5) печатает адрес и открывает приложение в браузере по умолчанию;
  *  6) остановка — Ctrl+C в этом же окне (или просто закрыть окно).
  *
- * Запуск:  node scripts/serve.mjs [порт] [--port N] [--no-open] [--lan]
- *   [порт], --port N — порт (по умолчанию 5173; не занят — берётся он)
+ * Запуск:  node scripts/serve.mjs [--arc] [порт] [--port N] [--no-open] [--lan]
+ *   --arc           только Guide Helper без хаба (server.js, по умолчанию 5173)
+ *   [порт], --port N — порт (по умолчанию 8080, в режиме --arc — 5173;
+ *                      не занят — берётся он)
  *   --no-open        — не открывать браузер
  *   --lan            — разрешить доступ по локальной сети (0.0.0.0);
  *                      по умолчанию сервер слушает только 127.0.0.1 (без запроса файрвола)
@@ -30,7 +35,8 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_PORT = 5173;
+const DEFAULT_PORT = 5173;      // режим --arc (классический server.js)
+const DEFAULT_HUB_PORT = 8080;  // режим по умолчанию (хаб «две стороны»)
 const PORT_TRIES = 25; // сколько портов подряд проверять, если порт занят
 const READY_TIMEOUT_MS = 20000; // сколько ждать, пока сервер начнёт отвечать
 const MIN_NODE_MAJOR = 18;
@@ -41,12 +47,14 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Разбор аргументов командной строки. */
 function readArgs(list) {
-  const out = { port: 0, open: true, lan: false, help: false };
+  const out = { port: 0, open: true, lan: false, help: false, hub: true };
   for (let i = 0; i < list.length; i += 1) {
     const a = list[i];
     if (a === '--no-open') out.open = false;
     else if (a === '--open') out.open = true;
     else if (a === '--lan') out.lan = true;
+    else if (a === '--arc') out.hub = false;
+    else if (a === '--hub') out.hub = true;
     else if (a === '--help' || a === '-h') out.help = true;
     else if (a === '--port' || a === '-p') { out.port = Number(list[i + 1]) || 0; i += 1; }
     else if (a.startsWith('--port=')) out.port = Number(a.slice('--port='.length)) || 0;
@@ -56,10 +64,11 @@ function readArgs(list) {
 }
 
 /**
- * Спрашивает у порта /api/build. Возвращает { build } только если на порту
- * действительно это приложение (у любого чужого сервера ответа не будет).
+ * Спрашивает у порта /api/build. Возвращает { build }, только если на порту работает
+ * именно нужный режим: хаб помечает ответ флагом hub:true, классический server.js — нет.
+ * Так лаунчер не спутает хаб со старым окном start.bat на соседнем порту.
  */
-function probe(port, timeoutMs = 1500) {
+function probe(port, wantHub, timeoutMs = 1500) {
   return new Promise((resolve) => {
     const req = http.get({ host: '127.0.0.1', port, path: '/api/build', timeout: timeoutMs }, (res) => {
       if (res.statusCode !== 200) { res.resume(); resolve(null); return; }
@@ -69,7 +78,9 @@ function probe(port, timeoutMs = 1500) {
       res.on('end', () => {
         try {
           const data = JSON.parse(body);
-          resolve(data && data.build ? { build: String(data.build) } : null);
+          if (!data || !data.build) return resolve(null);
+          if ((data.hub === true) !== wantHub) return resolve(null);
+          resolve({ build: String(data.build) });
         } catch { resolve(null); }
       });
     });
@@ -88,12 +99,12 @@ function isPortFree(port, host) {
   });
 }
 
-/** Ищет порт для запуска: чужой сервер пропускаем, свой — используем как есть. */
-async function choosePort(startPort, host) {
+/** Ищет порт для запуска: чужой сервер пропускаем, свой (в этом же режиме) — используем как есть. */
+async function choosePort(startPort, host, wantHub) {
   for (let i = 0; i < PORT_TRIES; i += 1) {
     const port = startPort + i;
     if (port > 65535) break;
-    const existing = await probe(port);
+    const existing = await probe(port, wantHub);
     if (existing) return { port, existing };
     if (await isPortFree(port, host)) return { port, existing: null };
   }
@@ -101,10 +112,10 @@ async function choosePort(startPort, host) {
 }
 
 /** Ждёт, пока сервер начнёт отвечать на /api/build. */
-async function waitForReady(port) {
+async function waitForReady(port, wantHub) {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const info = await probe(port);
+    const info = await probe(port, wantHub);
     if (info) return info;
     await delay(250);
   }
@@ -127,11 +138,14 @@ function openBrowser(url) {
 }
 
 function printHelp() {
-  say('Локальный запуск IdleArc Guide Helper.');
+  say('Локальный запуск IdleArc.');
   say('');
-  say('  node scripts/serve.mjs [порт] [--port N] [--no-open] [--lan]');
+  say('  node scripts/serve.mjs [--arc] [порт] [--port N] [--no-open] [--lan]');
   say('');
-  say('  порт      порт для сервера (по умолчанию 5173, занят — берётся следующий свободный)');
+  say('  (по умолчанию запускается ХАБ: Guide Helper + Companion в одной оболочке)');
+  say('');
+  say('  --arc     запустить только Guide Helper без хаба (server.js, порт по умолчанию 5173)');
+  say('  порт      порт для сервера (по умолчанию 8080; занят — берётся следующий свободный)');
   say('  --no-open не открывать браузер');
   say('  --lan     разрешить доступ по локальной сети, по умолчанию только этот компьютер');
   say('');
@@ -150,21 +164,25 @@ async function main() {
     return 2;
   }
 
-  const host = args.lan ? '0.0.0.0' : '127.0.0.1';
-  const startPort = args.port || Number(process.env.PORT) || DEFAULT_PORT;
+  const wantHub = args.hub;
+  const target = wantHub ? path.join(ROOT, 'hub', 'hub-server.js') : path.join(ROOT, 'server.js');
+  const modeName = wantHub ? 'хаб' : 'приложение';
 
-  const choice = await choosePort(startPort, host);
+  const host = args.lan ? '0.0.0.0' : '127.0.0.1';
+  const startPort = args.port || Number(process.env.PORT) || (wantHub ? DEFAULT_HUB_PORT : DEFAULT_PORT);
+
+  const choice = await choosePort(startPort, host, wantHub);
   if (!choice) {
     warn(`  [!] Не нашлось свободного порта в диапазоне ${startPort}–${startPort + PORT_TRIES - 1}.`);
-    warn('      Закройте программы, занявшие эти порты, или укажите другой: start.bat 8080');
+    warn('      Закройте программы, занявшие эти порты, или укажите другой: start.bat 8090');
     return 3;
   }
 
   const url = `http://127.0.0.1:${choice.port}/`;
 
-  // На порту уже работает это приложение — второй сервер не нужен.
+  // На порту уже работает этот же режим — второй сервер не нужен.
   if (choice.existing) {
-    say(`  Приложение уже запущено: ${url}  (сборка ${choice.existing.build})`);
+    say(`  Уже запущено: ${url}  (сборка ${choice.existing.build}, ${modeName})`);
     say('  Второй сервер не нужен — просто открываю браузер.');
     if (args.open) openBrowser(url);
     return 0;
@@ -178,15 +196,15 @@ async function main() {
   process.env.PORT = String(choice.port);
   process.env.HOST = host;
 
-  say(`  Запускаю сервер на ${url} …`);
+  say(`  Запускаю ${modeName} на ${url} …`);
   try {
-    await import(pathToFileURL(path.join(ROOT, 'server.js')).href);
+    await import(pathToFileURL(target).href);
   } catch (e) {
     warn(`  [!] Не удалось запустить сервер: ${e.message}`);
     return 4;
   }
 
-  const info = await waitForReady(choice.port);
+  const info = await waitForReady(choice.port, wantHub);
   if (!info) {
     warn(`  [!] Сервер не ответил за ${Math.round(READY_TIMEOUT_MS / 1000)} с.`);
     warn('      Запустите ещё раз; если повторяется — напишите, что видно в этом окне.');
@@ -194,8 +212,12 @@ async function main() {
   }
 
   say('');
-  say(`  Готово. Приложение открыто по адресу: ${url}`);
+  say(`  Готово. Открыто по адресу: ${url}`);
   say(`  Сборка: ${info.build}${args.lan ? ' · доступ по локальной сети включён' : ''}`);
+  if (wantHub) {
+    say('  Стороны хаба: Guide Helper — /arc/, Companion — /companion/ (клик по логотипу их переворачивает).');
+    say('  Нужен только классический Guide Helper — запустите: start.bat arc');
+  }
   say('  Остановить сервер: Ctrl+C в этом окне (или просто закройте окно).');
   say('');
 
