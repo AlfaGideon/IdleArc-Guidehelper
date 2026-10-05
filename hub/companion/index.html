@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080b12" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="IdleArc Companion: offline-first reference, planning, and build tools for IdleArc." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>IdleArc Companion</title>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <button class="brand" id="brandFlip" aria-label="Switch side">
+        <img src="./icons/logo.png" alt="" class="brand-icon" width="38" height="38" />
+        <span class="brand-copy"><strong>IdleArc</strong><small>Companion</small></span>
+      </button>
+      <nav id="sideNav" class="side-nav"></nav>
+      <div class="sidebar-foot">
+        <button id="installButton" class="ghost-btn install-btn" hidden>Install app</button>
+        <span id="offlineBadge" class="status-pill">Checking…</span>
+        <small>Community-made • Season 2 snapshot</small>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar">
+        <div class="app-header-brand">
+          <img class="app-monogram-img" src="./icons/logo.png" alt="" width="34" height="34" style="border-radius:9px" />
+          <div class="app-header-copy">
+            <strong>IdleArc Companion</strong>
+            <small id="appMeta">offline • web • Season 2</small>
+          </div>
+        </div>
+        <div class="page-context">
+          <div id="eyebrow" class="eyebrow">IdleArc Companion</div>
+          <h1 id="pageTitle">Home</h1>
+        </div>
+        <div class="topbar-actions">
+          <span class="lang-switch" id="langSwitch"><button data-lang="ru">RU</button><button data-lang="en">EN</button></span>
+          <span class="season-chip">S2</span>
+          <button id="globalSearchButton" class="icon-btn" title="Search" aria-label="Search"><span aria-hidden="true">⌕</span></button>
+          <button id="installButtonTop" class="ghost-btn compact" hidden>Install</button>
+        </div>
+      </header>
+      <section id="content" class="content" aria-live="polite"></section>
+    </main>
+
+    <nav id="bottomNav" class="bottom-nav" aria-label="Mobile navigation"></nav>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+  <script src="./app.js" defer></script>
+  <script defer>
+    window.addEventListener('load', () => {
+      const sw = document.getElementById('langSwitch');
+      const paint = () => sw.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.lang === window.IA_GET_LANG()));
+      sw.addEventListener('click', e => { const b = e.target.closest('[data-lang]'); if (!b) return; window.IA_SET_LANG(b.dataset.lang); paint(); });
+      paint();
+    });
+  </script>
+</body>
+</html>

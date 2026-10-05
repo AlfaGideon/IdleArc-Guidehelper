@@ -1,0 +1,387 @@
+{
+ "meta": {
+  "source": "idlearc.com (Item Codex → Appearance)",
+  "fetchedAt": "2026-10-05T01:36:08.383Z",
+  "files": 202,
+  "total": 202,
+  "failed": 0
+ },
+ "index": {
+  "Broken Sword": {
+   "tiers": {
+    "1": "broken-sword.webp",
+    "2": "iron-sword.webp",
+    "3": "steel-broadsword.webp",
+    "4": "silver-saber.webp",
+    "5": "runed-warblade.webp",
+    "6": "frostfang-blade.webp"
+   },
+   "awakens": {
+    "1": "royal-dragonblade.webp"
+   }
+  },
+  "Greatsword": {
+   "tiers": {
+    "1": "broken-iron-greatsword.webp",
+    "2": "steel-greatsword.webp",
+    "3": "emerald-greatsword.webp",
+    "4": "crescent-greatsword.webp",
+    "5": "golden-greatsword.webp",
+    "6": "arcane-steel-greatsword.webp"
+   },
+   "awakens": {
+    "1": "crimson-greatsword.webp"
+   }
+  },
+  "Crossbow": {
+   "tiers": {
+    "1": "worn-crossbow.webp",
+    "2": "oak-crossbow.webp",
+    "3": "reinforced-crossbow.webp",
+    "4": "bonewood-crossbow.webp",
+    "5": "shadowsteel-crossbow.webp",
+    "6": "silver-war-crossbow.webp"
+   },
+   "awakens": {
+    "1": "dragonbone-crossbow.webp"
+   }
+  },
+  "Grand Staff": {
+   "tiers": {
+    "1": "broken-grand-staff.webp",
+    "2": "greenwood-grand-staff.webp",
+    "3": "amber-grand-staff.webp",
+    "4": "shadow-grand-staff.webp",
+    "5": "frost-grand-staff.webp",
+    "6": "ember-grand-staff.webp"
+   },
+   "awakens": {
+    "1": "archmage-grand-staff.webp"
+   }
+  },
+  "Twinblade": {
+   "tiers": {
+    "1": "worn-twinblade.webp",
+    "2": "iron-twinblade.webp",
+    "3": "steel-twinblade.webp",
+    "4": "silver-twinblade.webp",
+    "5": "runed-twinblade.webp",
+    "6": "frostfang-twinblade.webp"
+   },
+   "awakens": {
+    "1": "royal-dragon-twinblade.webp"
+   }
+  },
+  "Claws": {
+   "tiers": {
+    "1": "broken-claws.webp",
+    "2": "steel-claws.webp",
+    "3": "venomfang-claws.webp",
+    "4": "duskrazor-claws.webp",
+    "5": "frostbite-claws.webp",
+    "6": "bloodshard-claws.webp"
+   },
+   "awakens": {
+    "1": "nightcrown-claws.webp"
+   }
+  },
+  "Gnarled Stick": {
+   "tiers": {
+    "1": "gnarled-stick.webp",
+    "2": "ironbark-stick.webp",
+    "3": "mosswood-stick.webp",
+    "4": "silverbark-stick.webp",
+    "5": "runed-stick.webp",
+    "6": "wildheart-stick.webp"
+   },
+   "awakens": {
+    "1": "ancient-grove-stick.webp"
+   }
+  },
+  "Wooden Bow": {
+   "tiers": {
+    "1": "wooden-short-bow.webp",
+    "2": "wooden-bow.webp",
+    "3": "reinforced-hunting-bow.webp",
+    "4": "bonewood-recurve-bow.webp",
+    "5": "shadowsteel-bow.webp",
+    "6": "silver-war-bow.webp"
+   },
+   "awakens": {
+    "1": "dragonbone-bow.webp"
+   }
+  },
+  "Wooden Rod": {
+   "tiers": {
+    "1": "broken-wooden-wand.webp",
+    "2": "wooden-wand.webp",
+    "3": "apprentice-orb-wand.webp",
+    "4": "bronze-focus-wand.webp",
+    "5": "amethyst-crystal-wand.webp",
+    "6": "royal-sun-wand.webp"
+   },
+   "awakens": {
+    "1": "archmage-crown-wand.webp"
+   }
+  },
+  "Rusty Dagger": {
+   "tiers": {
+    "1": "broken-dagger.webp",
+    "2": "iron-dagger.webp",
+    "3": "shadowfang-dagger.webp",
+    "4": "verdant-dagger.webp",
+    "5": "sapphire-dagger.webp",
+    "6": "amethyst-dagger.webp"
+   },
+   "awakens": {
+    "1": "royal-dagger.webp"
+   }
+  },
+  "Rags": {
+   "tiers": {
+    "1": "rags.webp",
+    "2": "leather-armor.webp",
+    "3": "dark-leather-armor.webp",
+    "4": "wildhide-armor.webp",
+    "5": "chainmail-armor.webp",
+    "6": "steel-plate-armor.webp"
+   },
+   "awakens": {
+    "1": "gilded-plate-armor.webp"
+   }
+  },
+  "Leather Cap": {
+   "tiers": {
+    "1": "ragged-leather-cap.webp",
+    "2": "leather-cap.webp",
+    "3": "dark-leather-hood.webp",
+    "4": "wildhide-hood.webp",
+    "5": "chainmail-helm.webp",
+    "6": "steel-plate-helm.webp"
+   },
+   "awakens": {
+    "1": "gilded-plate-helm.webp"
+   }
+  },
+  "Worn Gloves": {
+   "tiers": {
+    "1": "worn-ragged-gloves.webp",
+    "2": "leather-gloves.webp",
+    "3": "dark-leather-gloves.webp",
+    "4": "wildhide-gloves.webp",
+    "5": "chainmail-gloves.webp",
+    "6": "steel-plate-gloves.webp"
+   },
+   "awakens": {
+    "1": "gilded-plate-gloves.webp"
+   }
+  },
+  "Sandals of Starszy": {
+   "tiers": {
+    "2": "leather-boots.webp",
+    "3": "dark-leather-boots.webp",
+    "4": "wildhide-boots.webp",
+    "5": "chainmail-boots.webp",
+    "6": "steel-plate-boots.webp"
+   },
+   "awakens": {
+    "1": "gilded-plate-boots.webp"
+   }
+  },
+  "Wooden Shield": {
+   "tiers": {
+    "1": "broken-shield.webp",
+    "2": "wooden-buckler.webp",
+    "3": "iron-banded-shield.webp",
+    "4": "studded-guard-shield.webp",
+    "5": "steel-crest-shield.webp",
+    "6": "gilded-shield.webp"
+   },
+   "awakens": {
+    "1": "grand-crest-shield.webp"
+   }
+  },
+  "Quiver": {
+   "tiers": {
+    "1": "old-quiver.webp",
+    "2": "leather-quiver.webp",
+    "3": "hardened-quiver.webp",
+    "4": "ironclad-quiver.webp",
+    "5": "darksteel-quiver.webp",
+    "6": "gilded-quiver.webp"
+   },
+   "awakens": {
+    "1": "grand-crest-quiver.webp"
+   }
+  },
+  "Old Book": {
+   "tiers": {
+    "1": "ragged-spellbook.webp",
+    "2": "leather-spellbook.webp",
+    "3": "reinforced-spellbook.webp",
+    "4": "studded-spellbook.webp",
+    "5": "gilded-spellbook.webp",
+    "6": "noble-spellbook.webp"
+   },
+   "awakens": {
+    "1": "grand-crest-spellbook.webp"
+   }
+  },
+  "Torch": {
+   "tiers": {
+    "1": "torch.webp",
+    "2": "torch-2.webp",
+    "3": "torch-3.webp",
+    "4": "torch-4.webp",
+    "5": "torch-5.webp",
+    "6": "torch-6.webp"
+   },
+   "awakens": {
+    "1": "torch-7.webp"
+   }
+  },
+  "Scholar's Amulet": {
+   "tiers": {
+    "1": "scholar-amulet.webp",
+    "2": "scholar-amulet-2.webp",
+    "3": "scholar-amulet-3.webp",
+    "4": "scholar-amulet-4.webp",
+    "5": "scholar-amulet-5.webp",
+    "6": "scholar-amulet-6.webp"
+   },
+   "awakens": {
+    "1": "scholar-amulet-7.webp"
+   }
+  },
+  "Scholar's Ring": {
+   "tiers": {
+    "1": "scholar-ring.webp",
+    "2": "scholar-ring-2.webp",
+    "3": "scholar-ring-3.webp",
+    "4": "scholar-ring-4.webp",
+    "5": "scholar-ring-5.webp",
+    "6": "scholar-ring-6.webp"
+   },
+   "awakens": {
+    "1": "scholar-ring-7.webp"
+   }
+  },
+  "Warrior's Ring": {
+   "tiers": {
+    "1": "warrior-ring.webp",
+    "2": "warrior-ring-2.webp",
+    "3": "warrior-ring-3.webp",
+    "4": "warrior-ring-4.webp",
+    "5": "warrior-ring-5.webp",
+    "6": "warrior-ring-6.webp"
+   },
+   "awakens": {
+    "1": "warrior-ring-7.webp"
+   }
+  },
+  "Warrior's Amulet": {
+   "tiers": {
+    "1": "warrior-amulet.webp",
+    "2": "warrior-amulet-2.webp",
+    "3": "warrior-amulet-3.webp",
+    "4": "warrior-amulet-4.webp",
+    "5": "warrior-amulet-5.webp",
+    "6": "warrior-amulet-6.webp"
+   },
+   "awakens": {
+    "1": "warrior-amulet-7.webp"
+   }
+  },
+  "Ranger's Ring": {
+   "tiers": {
+    "1": "ranger-ring.webp",
+    "2": "ranger-ring-2.webp",
+    "3": "ranger-ring-3.webp",
+    "4": "ranger-ring-4.webp",
+    "5": "ranger-ring-5.webp",
+    "6": "ranger-ring-6.webp"
+   },
+   "awakens": {
+    "1": "ranger-ring-7.webp"
+   }
+  },
+  "Ranger's Amulet": {
+   "tiers": {
+    "1": "ranger-amulet.webp",
+    "2": "ranger-amulet-2.webp",
+    "3": "ranger-amulet-3.webp",
+    "4": "ranger-amulet-4.webp",
+    "5": "ranger-amulet-5.webp",
+    "6": "ranger-amulet-6.webp"
+   },
+   "awakens": {
+    "1": "ranger-amulet-7.webp"
+   }
+  },
+  "Adventurer's Ring": {
+   "tiers": {
+    "1": "adventurer-ring.webp",
+    "2": "adventurer-ring-2.webp",
+    "3": "adventurer-ring-3.webp",
+    "4": "adventurer-ring-4.webp",
+    "5": "adventurer-ring-5.webp",
+    "6": "adventurer-ring-6.webp"
+   },
+   "awakens": {
+    "1": "adventurer-ring-7.webp"
+   }
+  },
+  "Adventurer's Amulet": {
+   "tiers": {
+    "1": "adventurer-amulet.webp",
+    "2": "adventurer-amulet-2.webp",
+    "3": "adventurer-amulet-3.webp",
+    "4": "adventurer-amulet-4.webp",
+    "5": "adventurer-amulet-5.webp",
+    "6": "adventurer-amulet-6.webp"
+   },
+   "awakens": {
+    "1": "adventurer-amulet-7.webp"
+   }
+  },
+  "Warrior's Belt": {
+   "tiers": {
+    "1": "warrior-belt.webp",
+    "2": "warrior-belt-2.webp",
+    "3": "warrior-belt-3.webp",
+    "4": "warrior-belt-4.webp",
+    "5": "warrior-belt-5.webp",
+    "6": "warrior-belt-6.webp"
+   },
+   "awakens": {
+    "1": "warrior-belt-7.webp"
+   }
+  },
+  "Ranger's Belt": {
+   "tiers": {
+    "1": "ranger-belt.webp",
+    "2": "ranger-belt-2.webp",
+    "3": "ranger-belt-3.webp",
+    "4": "ranger-belt-4.webp",
+    "5": "ranger-belt-5.webp",
+    "6": "ranger-belt-6.webp"
+   },
+   "awakens": {
+    "1": "ranger-belt-7.webp"
+   }
+  },
+  "Scholar's Belt": {
+   "tiers": {
+    "1": "scholar-belt.webp",
+    "2": "scholar-belt-2.webp",
+    "3": "scholar-belt-3.webp",
+    "4": "scholar-belt-4.webp",
+    "5": "scholar-belt-5.webp",
+    "6": "scholar-belt-6.webp"
+   },
+   "awakens": {
+    "1": "scholar-belt-7.webp"
+   }
+  }
+ }
+}
