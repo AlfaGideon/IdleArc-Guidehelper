@@ -112,3 +112,16 @@ API планировщика: `planBuild({ classId, level, ml, goal, … })`, г
 2. Сверьте страницы вики: `Item_Codex`, `Item_Codex/Affixes`, `Item_Codex/Drop_Bonuses`, `Gems`, `Pets`, `Talismans`, `Stats`, `Monster Level`, `Convergence`, `Guild Skill Tree`.
 3. Обновите соответствующие объекты в `src/data/*.js` (у каждого файла в шапке указан список источников) и дату в `DATA_META.verified`.
 4. Прогоните `node tests/smoke.mjs` и `PORT=5173 node server.js`.
+
+## Пассивное дерево (добавлено 2026-10-05)
+
+- Правила: дерево общее для всех классов; 1 пассивное очко за уровень персонажа; сброс бесплатный; есть пресеты. Источник — IdleArc Wiki: «New Player Guide», «Skills (Tab)».
+- Структура и значения узлов: `skill_tree_data.json` приложения IdleArc Companion (config_version 2026-09-29-003, verified 2026-10-02) — секция `passive`: 20 тиров × 10 рядов (200 рядов), `unlock_threshold: 20` (очков в тире для открытия следующего), каждый 10-й ряд — майлстоун (узлы по 1 очку).
+- Перекрёстная проверка: значения тира 17 совпали с независимым справочником fytchx/IdleArc-Skill-Calculator (`data/passive-tree.js`, reference-1) — Strength/Dexterity/Intelligence +5×4, Attack Damage +507×5, Pet Damage +355×4, Crit +1%×2, Dodge +0.6%×2.
+- Не подтверждено (помечено в интерфейсе): правило открытия рядов ВНУТРИ тира; «майлстоун = выбор одного узла из трёх».
+
+## Источники картинок предметов (обновлено 2026-10-05)
+
+- Пути иконок в Item Codex: `static/images/items/<имя>.webp` на хосте компаньона (`idlearc-companion-web-production.up.railway.app`) — основной источник; `idlearc.com/static/images/items/` отвечает 403/404 и оставлен запасным.
+- Серверная загрузка: добавлены браузерные заголовки (Cloudflare отвечает 403 на «голый» Node-fetch), `dns.setDefaultResultOrder('ipv4first')` (лечит «fetch failed» на Windows без IPv6-маршрута), повторные попытки и текст причины ошибки из `error.cause`.
+- Если у сервера нет интернета (например, превью в песочнице) — кнопка автоматически переключается на скачивание браузером пользователя с передачей файлов на `POST /api/art/upload`.

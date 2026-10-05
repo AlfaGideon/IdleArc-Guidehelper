@@ -19,7 +19,13 @@ const CODEX_URLS = [
   'https://idlearc-companion-web-production.up.railway.app/data/item_codex_data.json',
   'https://idlearc.com/data/item_codex_data.json',
 ];
-const CDN_BASE = 'https://idlearc.com/static/images/items/';
+// Источники картинок: Item Codex указывает пути static/images/items/<имя>.webp на хосте
+// компаньона — он первый; idlearc.com — запасной (на нём бывает 403/404).
+const CDN_BASES = [
+  'https://idlearc-companion-web-production.up.railway.app/static/images/items/',
+  'https://idlearc.com/static/images/items/',
+];
+const CDN_BASE = CDN_BASES[0];
 const LOCAL_BASE = 'assets/items/';
 
 const basename = (p) => String(p).split('/').pop();
@@ -192,21 +198,23 @@ const READ_PROXIES = [
 
 export const artDownload = { active: false, done: 0, total: 0, saved: 0, note: '', error: null };
 
-async function readAsBase64(url, timeoutMs = 20000) {
-  for (const wrap of READ_PROXIES) {
-    const target = wrap(url);
-    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
-    try {
-      const res = await fetch(target, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
-      if (!res.ok) continue;
-      const buf = new Uint8Array(await res.arrayBuffer());
-      if (buf.length < 200 || buf.length > 400 * 1024) continue;
-      let bin = '';
-      for (let i = 0; i < buf.length; i += 1) bin += String.fromCharCode(buf[i]);
-      return globalThis.btoa(bin);
-    } catch { /* пробуем следующий способ */ } finally {
-      if (timer) clearTimeout(timer);
+async function readAsBase64(name, timeoutMs = 20000) {
+  for (const base of CDN_BASES) {
+    for (const wrap of READ_PROXIES) {
+      const target = wrap(base + name);
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+      try {
+        const res = await fetch(target, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+        if (!res.ok) continue;
+        const buf = new Uint8Array(await res.arrayBuffer());
+        if (buf.length < 200 || buf.length > 400 * 1024) continue;
+        let bin = '';
+        for (let i = 0; i < buf.length; i += 1) bin += String.fromCharCode(buf[i]);
+        return globalThis.btoa(bin);
+      } catch { /* пробуем следующий способ */ } finally {
+        if (timer) clearTimeout(timer);
+      }
     }
   }
   return null;
@@ -264,7 +272,7 @@ export async function downloadArtViaBrowser(onProgress = () => {}) {
     for (const name of names) {
       artDownload.done += 1;
       onProgress(artDownload.done, names.length);
-      const b64 = await readAsBase64(`${CDN_BASE}${name}`);
+      const b64 = await readAsBase64(name);
       if (b64) { batch[name] = b64; batchCount += 1; } else { failed.push(name); }
       if (batchCount >= 12 || artDownload.done === names.length) {
         if (batchCount) {

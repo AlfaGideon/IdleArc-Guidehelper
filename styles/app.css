@@ -324,3 +324,14 @@ ol.todo b { color: var(--accent); }
 .buylist { display: grid; gap: 4px; margin: 8px 0; }
 .buylist .row { display: flex; gap: 8px; align-items: center; border-bottom: 1px dashed var(--line); padding: 5px 0; flex-wrap: wrap; }
 .buylist .row b { color: var(--text); }
+
+/* --- вкладка «Пассивное дерево» --- */
+.passive-tier { margin-top: 10px; }
+.passive-tier.dim { opacity: .55; }
+.passive-row { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.passive-row:last-child { border-bottom: none; }
+.passive-row .chips { margin: 0; }
+.passive-row-no { display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; margin-top: 2px; border-radius: 50%;
+  background: rgba(0,0,0,.28); font-size: 11px; color: var(--muted); flex: none; }
+.passive-row-no.milestone { background: rgba(240,200,80,.18); color: #f0c850; }

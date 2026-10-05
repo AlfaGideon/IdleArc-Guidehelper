@@ -149,6 +149,7 @@ const check = (name, fn) => {
 
 const views = {
   planner: await import(src('ui/planner.js')),
+  passives: await import(src('ui/passives.js')),
   calc: await import(src('ui/calculators.js')),
   codex: await import(src('ui/codex.js')),
   nuances: await import(src('ui/nuances.js')),
@@ -935,7 +936,7 @@ check('картинки предметов: игровые, если досту�
   const img = artUi.artNode(fam, 5, 0);
   if (img.tagName !== 'IMG' || img.attrs.src !== 'assets/items/runed-stick.webp') throw new Error('картинка не подставилась');
   st.mode = 'cdn';
-  if (artUi.artSrc('Gnarled Stick', 5, 0) !== 'https://idlearc.com/static/images/items/runed-stick.webp') throw new Error('адрес CDN');
+  if (artUi.artSrc('Gnarled Stick', 5, 0) !== 'https://idlearc-companion-web-production.up.railway.app/static/images/items/runed-stick.webp') throw new Error('адрес CDN');
   st.mode = 'none'; st.index = null;
 });
 
@@ -1485,6 +1486,70 @@ check('интерфейс: на снаряжении и в Кузнице вид
   if (!t6 || !textOf(t6).includes('ML 90')) throw new Error('вариант T6 не помечен гейтом ML 90');
 
   st.classId = 'warrior'; st.goal = 'progress'; st.level = 30; st.ml = 30; st.gear = {}; st.page = 'class';
+});
+
+/* ---------- Пассивное дерево ---------- */
+const passivesData = await import(src('data/passives.js'));
+const passivesCore = await import(src('core/passiveTree.js'));
+
+check('пассивка: данные дерева корректны (200 рядов, 20 тиров, майлстоун каждый 10-й)', () => {
+  const rows = passivesData.PASSIVE_ROWS;
+  if (rows.length !== 200) throw new Error(`рядов ${rows.length}, ожидалось 200`);
+  rows.forEach((row, i) => {
+    if (!Array.isArray(row) || row.length < 2 || row.length > 3) throw new Error(`ряд ${i}: ${row.length} узлов`);
+    for (const node of row) {
+      const [code, per, max] = node;
+      if (!passivesData.PASSIVE_STATS[code]) throw new Error(`ряд ${i}: неизвестный стат ${code}`);
+      if (!(per > 0) || !(max >= 1 && max <= 10)) throw new Error(`ряд ${i}: битые значения ${per}/${max}`);
+      if (passivesData.isMilestoneRow(i) && max !== 1) throw new Error(`майлстоун ${i}: max ${max} ≠ 1`);
+    }
+  });
+  // сверка с независимым Skill Calculator сообщества (тир 17)
+  const t17 = rows.slice(160, 163);
+  const expect = JSON.stringify([[['str', 5, 4], ['dex', 5, 4], ['int', 5, 4]], [['adf', 507, 5], ['pdf', 355, 4]], [['cc', 1, 2], ['dg', 0.6, 2]]]);
+  if (JSON.stringify(t17) !== expect) throw new Error('значения тира 17 не совпадают с референсом');
+});
+
+check('пассивка: план идёт вглубь (20 очков на тир) и зависит от цели', () => {
+  const boss = passivesCore.planPassives('mage', 'boss', 300);
+  const farm = passivesCore.planPassives('mage', 'farm', 300);
+  if (boss.spent !== 300 || farm.spent !== 300) throw new Error('не все очки распределены');
+  if (boss.deepestTier < 14) throw new Error(`boss: глубина ${boss.deepestTier} < 14`);
+  for (let t = 0; t < boss.deepestTier - 1; t += 1) {
+    if (boss.tiers[t].spent < 20) throw new Error(`boss: в тире ${t + 1} только ${boss.tiers[t].spent} очков, а тир ${t + 2} уже открыт`);
+  }
+  const sumFor = (plan, codes) => plan.tiers.flatMap((t) => t.rows).flatMap((r) => r.nodes)
+    .filter((n) => codes.includes(n.code)).reduce((s, n) => s + n.points, 0);
+  if (!(sumFor(farm, ['gg', 'xg', 'id', 'md']) > sumFor(boss, ['gg', 'xg', 'id', 'md']))) throw new Error('фарм-план не фармовее босс-плана');
+  if (!(sumFor(boss, ['cc', 'cd', 'dd', 'dh']) > sumFor(farm, ['cc', 'cd', 'dd', 'dh']))) throw new Error('босс-план не злее фарм-плана');
+  // пет-класс вкладывается в урон пета не меньше, чем в урон атаки; не-пет класс на боссах пет-узлы не берёт
+  const pets = passivesCore.planPassives('druid', 'pets', 120);
+  const wboss = passivesCore.planPassives('warrior', 'boss', 120);
+  if (!(sumFor(pets, ['pdf', 'pdp']) >= sumFor(pets, ['adf', 'adp']))) throw new Error('пет-план не выбирает Pet Damage');
+  if (!(sumFor(pets, ['pdf', 'pdp']) > sumFor(wboss, ['pdf', 'pdp']))) throw new Error('пет-узлы не зависят от класса/цели');
+  // майлстоун — не больше 1 очка на ряд
+  for (const plan of [boss, farm, pets]) {
+    for (const tier of plan.tiers) {
+      const m = tier.rows[9];
+      const spent = m.nodes.reduce((s, n) => s + n.points, 0);
+      if (spent > 1) throw new Error(`в майлстоуне тира ${tier.tier} вложено ${spent} очков`);
+    }
+  }
+  // главный атрибут: маг берёт интеллект, а не силу
+  if (!(sumFor(boss, ['int']) >= sumFor(boss, ['str']))) throw new Error('маг качает не свой атрибут');
+});
+
+check('интерфейс: вкладка пассивки показывает план, стратегию и итоги', () => {
+  const st = views.passives.passivesState;
+  st.classId = 'warrior'; st.goal = 'retaliation'; st.level = 200; st.restored = true;
+  const root = new El('main');
+  views.passives.render(root);
+  const text = textOf(root);
+  for (const needle of ['Пассивное дерево (Passive Skill Tree)', '1 очко за каждый уровень', 'Стратегия под вашу цель',
+    'Что даст дерево суммарно', 'Куда класть очки: тир за тиром', 'Тир 1', 'тир 2 открыт (20/20)', 'Защита (Defense)']) {
+    if (!text.includes(needle)) throw new Error(`нет «${needle}»`);
+  }
+  if (!text.includes('пассивных очков: 200')) throw new Error('не посчитаны очки за уровень');
 });
 
 await Promise.all(pending);

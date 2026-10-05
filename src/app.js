@@ -3,11 +3,12 @@ if (typeof window !== 'undefined' && window.__boot) window.__boot.graph = true;
 
 import { DATA_META } from './data/systems.js';
 import * as planner from './ui/planner.js';
+import * as passives from './ui/passives.js';
 import * as calculators from './ui/calculators.js';
 import * as codex from './ui/codex.js';
 import * as nuances from './ui/nuances.js';
 
-const views = { planner, calc: calculators, codex, nuances };
+const views = { planner, passives, calc: calculators, codex, nuances };
 const root = document.getElementById('view');
 const tabs = document.getElementById('tabs');
 

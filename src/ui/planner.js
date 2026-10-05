@@ -777,7 +777,7 @@ function artPanel(root) {
     el('div', { class: 'chips' }, [chip, el('span', { class: 'chip', text: `файлов: ${st.files}` })]),
     el('p', { class: 'muted', text: st.mode === 'local'
       ? 'Иконки скачаны в папку assets/items и раздаются вместе с приложением — работают даже без интернета.'
-      : 'Показаны нарисованные иконки: игровые не загружены. Нажмите кнопку — сервер скачает официальные иконки предметов из Item Codex и положит их в проект.' }),
+      : 'Показаны нарисованные иконки: игровые не загружены. Нажмите кнопку — сервер скачает официальные иконки предметов из Item Codex и положит их в проект. Если у сервера нет интернета, картинки автоматически скачает ваш браузер и передаст серверу.' }),
     el('div', { class: 'actions' }, [
       el('button', {
         class: 'btn primary',
@@ -785,12 +785,21 @@ function artPanel(root) {
         disabled: st.loading ? 'disabled' : null,
         onclick: async (e) => {
           e.target.textContent = 'Скачиваю…';
+          let serverOk = false;
           try {
             const res = await fetch('api/art/fetch', { method: 'POST' });
             const data = await res.json();
-            if (!data.ok) alert(`Не получилось скачать игровые картинки.\n${data.error || ''}\n${data.hint || ''}`);
-          } catch (err) {
-            alert(`Не получилось скачать игровые картинки: ${err.message}`);
+            serverOk = Boolean(data.ok);
+          } catch { serverOk = false; }
+          if (!serverOk) {
+            // У сервера нет интернета (или источник заблокирован) — автоматически скачиваем
+            // через браузер пользователя: у него доступ обычно есть, сервер только сохраняет файлы.
+            e.target.textContent = 'Сервер без интернета → качаю через браузер…';
+            const out = await downloadArtViaBrowser((done, total) => {
+              const t = document.querySelector ? document.querySelector('#art-progress') : null;
+              if (t) t.textContent = `Скачано ${done} из ${total}`;
+            });
+            if (!out.ok) alert(`Не получилось скачать игровые картинки ни сервером, ни браузером.\n${out.error || artDownload.note || ''}\nПроверьте интернет и попробуйте ещё раз.`);
           }
           await loadArt(true);
           render(root);
