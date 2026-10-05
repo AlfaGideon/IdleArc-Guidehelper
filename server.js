@@ -100,7 +100,7 @@ async function artFetch(res) {
     json(res, 200, { ok: result.files > 0, ...result, failedNames: result.failedNames.slice(0, 20) });
   } catch (e) {
     console.log(`[art] ошибка загрузки: ${e.message}`);
-    json(res, 502, { ok: false, error: e.message, hint: 'Похоже, у этой машины нет доступа в интернет. Запустите приложение у себя локально и нажмите кнопку ещё раз.' });
+    json(res, 502, { ok: false, error: e.message, hint: 'Сервер не смог выйти в интернет (например, в превью внешние адреса закрыты или провайдер блокирует источник). Сейчас картинки попробует скачать ваш браузер — у него доступ обычно есть.' });
   }
 }
 
