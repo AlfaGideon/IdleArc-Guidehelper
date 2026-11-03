@@ -15,7 +15,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      # GitHub hosted Ubuntu images include an Android SDK; avoid commandline-tools downloads.
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
