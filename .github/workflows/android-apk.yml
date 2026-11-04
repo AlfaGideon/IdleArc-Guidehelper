@@ -69,6 +69,13 @@ jobs:
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64" && test -n "$ANDROID_KEYSTORE_PASSWORD" && test -n "$ANDROID_KEY_ALIAS" && test -n "$ANDROID_KEY_PASSWORD" || { echo 'Set four Android signing secrets first'; exit 1; }
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/idlearc-release.jks"
+          # PKCS12 generated for this app uses identical ASCII store/key passwords.
+          if [ "$ANDROID_KEYSTORE_PASSWORD" != "$ANDROID_KEY_PASSWORD" ] ||
+             ! keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/idlearc-release.jks" \
+               -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo 'Signing secrets mismatch: use the SAME four values from one key set, with ASCII passwords and no extra spaces.'
+            exit 1
+          fi
       - name: Build signed APK
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/idlearc-release.jks
