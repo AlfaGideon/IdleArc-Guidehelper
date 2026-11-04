@@ -80,6 +80,14 @@ public final class MainActivity extends Activity {
         titles.addView(label("НЕОФИЦИАЛЬНЫЙ КОМПАНЬОН", 10, MUTED, false));
         status = label("Подключение…", 11, BLUE, false);
         header.addView(status);
+        Button update = new Button(this);
+        update.setText("↻ APK");
+        update.setTextSize(11);
+        update.setContentDescription("Проверить обновление на GitHub");
+        LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(dp(80), dp(48));
+        updateParams.leftMargin = dp(8);
+        header.addView(update, updateParams);
+        update.setOnClickListener(v -> UpdateManager.check(this, update));
 
         stage = new FrameLayout(this);
         root.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));

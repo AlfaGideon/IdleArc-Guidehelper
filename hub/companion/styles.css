@@ -914,3 +914,4 @@ body {
 .lang-switch button { border:0; background:transparent; color:inherit; font-size:.7rem; padding:4px 8px; border-radius:8px; cursor:pointer; opacity:.6; }
 .lang-switch button.active { background:rgba(124,196,255,.2); opacity:1; }
 .brand-icon { border-radius:10px; }
+.milestone-note { display:block; text-align:center; color:#ffd27a; font-size:.69rem; margin:4px 0 2px; }

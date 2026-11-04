@@ -36,7 +36,7 @@
       stepsDone:'Текущее распределение уже совпадает с планом.',
       latticeKicker:'Интерактивная решётка', latticeTitle:'Дерево по тирам',
       latticeNote:'Звёздочка — узел из рекомендованного плана. Замок — этаж ещё закрыт.',
-      tierN:'Тир {n}', rowN:'Этаж {n}', rowsRange:'этажи {a}–{b}', milestone:'milestone',
+      tierN:'Тир {n}', rowN:'Этаж {n}', rowsRange:'этажи {a}–{b}', milestone:'milestone', milestoneOne:'Каждый 10-й этаж: только один из трёх узлов (1 очко).',
       tierNeed:'Нужно {need} очк. в тире {prev} (сейчас {have})', startTier:'Стартовый тир',
       allocatedHere:'здесь вложено {n} очк.',
       recommended:'Рекомендовано планом',
@@ -64,7 +64,7 @@
       stepsDone:'Your allocation already matches the plan.',
       latticeKicker:'Interactive lattice', latticeTitle:'Tree by tier',
       latticeNote:'A star marks a node from the recommended plan. A lock means the floor is not open yet.',
-      tierN:'Tier {n}', rowN:'Floor {n}', rowsRange:'floors {a}–{b}', milestone:'milestone',
+      tierN:'Tier {n}', rowN:'Floor {n}', rowsRange:'floors {a}–{b}', milestone:'milestone', milestoneOne:'Every 10th floor: choose only one of three nodes (1 point).',
       tierNeed:'Needs {need} pts in tier {prev} (currently {have})', startTier:'Starting tier',
       allocatedHere:'{n} points allocated here',
       recommended:'Recommended by the plan',
@@ -173,7 +173,7 @@
     const b = {...d, ...(input || {})};
     b.included = Array.isArray(b.included) ? b.included : d.included;
     b.classAlloc = b.classAlloc || {};
-    b.passiveAlloc = b.passiveAlloc || {};
+    b.passiveAlloc = window.IA_PASSIVE_RULES.normalize(state.data.skills.passive.rows, b.passiveAlloc || {});
     b.gear = b.gear || {};
     b.primaryStats = Array.isArray(b.primaryStats) ? b.primaryStats : [];
     b.offensivePriority = Array.isArray(b.offensivePriority) ? b.offensivePriority : [];
@@ -663,7 +663,8 @@
     </article>`;
   }
 
-  function passiveKey(rowIndex,nodeIndex,node) { return `${rowIndex}:${nodeIndex}:${node.stat}`; }
+  const passiveRules = window.IA_PASSIVE_RULES;
+  function passiveKey(rowIndex,nodeIndex,node) { return passiveRules.key(rowIndex,nodeIndex,node); }
   function passiveTierSpent(tierIndex) {
     const tier=state.data.skills.passive.tiers[tierIndex]; if(!tier)return 0;
     let total=0;
@@ -688,11 +689,12 @@
         const key=passiveKey(ri,ni,node), rank=Number(state.build.passiveAlloc[key]||0);
         const want=Number((planAlloc||{})[key]||0);
         const label=passiveStatLabel(node.stat);
-        return `<button class="passive-node ${rank?'active':''} ${rowOpen?'':'locked'} ${want>rank?'suggested':''}" data-passive-inc="${esc(key)}" title="${esc(label)} ${esc(passiveNodeValue(node))}">
+        const blocked = row.milestone && !rank && passiveRowSpent(ri) >= 1;
+        return `<button class="passive-node ${rank?'active':''} ${rowOpen && !blocked?'':'locked'} ${want>rank && !blocked?'suggested':''}" ${blocked?'disabled':''} data-passive-inc="${esc(key)}" title="${esc(label)} ${esc(passiveNodeValue(node))}">
           <span class="passive-node-core"><strong>${esc(label)}</strong><small>${esc(passiveNodeValue(node))} / ${t('point')}</small><b>${rank}/${node.max_points}</b></span>
-          ${want>rank?`<span class="node-flag" title="${t('recommended')}">★${want}</span>`:''}
+          ${want>rank && !blocked?`<span class="node-flag" title="${t('recommended')}">★${want}</span>`:''}
           ${rank?`<span class="passive-minus" data-passive-dec="${esc(key)}">−</span>`:''}</button>`;
-      }).join('')}</div></div>`);
+      }).join('')}</div>${row.milestone ? `<small class="milestone-note">${t('milestoneOne')}</small>` : ''}</div>`);
     }
     const head = `<div class="passive-tier-head"><div><h3>${t('tierN',{n:tierIndex+1})} ${unlocked?'':'🔒'}</h3>
       <p>${tier.unlock_threshold?t('tierNeed',{need:tier.unlock_threshold,prev:tierIndex,have:passiveTierSpentIn(tierIndex-1)}):t('startTier')} • ${t('allocatedHere',{n:passiveTierSpentIn(tierIndex)})}</p></div>
@@ -735,7 +737,7 @@
   }
   function adjustPassive(key,delta) {
     const [ri,ni]=key.split(':').map(Number), node=state.data.skills.passive.rows[ri]?.nodes?.[ni]; if(!node)return;
-    const reason=passiveBlockReason(ri,delta);
+    const reason=passiveBlockReason(ri,delta,ni);
     if(reason){ toast(reason); return; }
     const cur=Number(state.build.passiveAlloc[key]||0), next=Math.max(0,Math.min(Number(node.max_points),cur+delta));
     if(next===cur) return;
@@ -870,8 +872,10 @@
   function passiveSpentTotal(alloc) {
     return Object.values(alloc || state.build.passiveAlloc).reduce((n, v) => n + Number(v || 0), 0);
   }
-  function passiveBlockReason(rowIndex, delta) {
+  function passiveBlockReason(rowIndex, delta, nodeIndex) {
     if (delta > 0) {
+      if (!passiveRules.canAdd(passiveRows(), state.build.passiveAlloc, rowIndex, nodeIndex))
+        return t('milestoneOne');
       const tier = passiveTierOfRow(rowIndex);
       if (!passiveTierUnlocked(tier)) {
         const need = Number(passiveTiersCfg()[tier]?.unlock_threshold || 0);
@@ -939,7 +943,8 @@
 
     const put = (cand, pts) => {
       const cur = Number(alloc[cand.key] || 0);
-      const add = Math.min(pts, Number(cand.node.max_points) - cur);
+      const add = Math.min(pts, Number(cand.node.max_points) - cur,
+        passiveRules.isMilestone(rows[cand.ri], cand.ri) ? 1 - passiveRules.rowSpent(rows, alloc, cand.ri) : Infinity);
       if (add <= 0) return 0;
       alloc[cand.key] = cur + add;
       order.push({ ...cand, points: add });
@@ -1139,7 +1144,7 @@
     const apply = $('#applyPassivePlan');
     if (apply) apply.addEventListener('click', () => {
       const plan = passivePlan(state.passiveClassId, state.passiveProfile || 'balanced', Number(state.passiveBudget || 120));
-      state.build.passiveAlloc = plan.alloc;
+      state.build.passiveAlloc = passiveRules.normalize(passiveRows(), plan.alloc);
       state.build.classId = state.passiveClassId;
       saveDraft(); toast(t('applied', { n: plan.spent })); renderPreservingView();
     });
@@ -1385,7 +1390,7 @@
     $('#shareBuild').addEventListener('click',async()=>{const code=await encodeIAC(shareState()),text=`${buildSummary()}\n\n${code}`;if(navigator.share){try{await navigator.share({title:`IdleArc build: ${state.build.name}`,text});}catch{}}else{await navigator.clipboard.writeText(text);toast('Build summary copied.');}});
     $('#importBuild').addEventListener('click',()=>{openModal(`<div class="modal-head"><div><h2>Import build</h2><p class="panel-sub">Paste an Android or web IAC1 build code.</p></div><button class="modal-close" data-modal-close>×</button></div><textarea id="importCode" class="textarea code-box" placeholder="IAC1:…"></textarea><button id="doImport" class="primary-btn" style="margin-top:10px">Import</button>`);$('[data-modal-close]').addEventListener('click',closeModal);$('#doImport').addEventListener('click',async()=>{try{const obj=await decodeIAC($('#importCode').value);state.build=normalizeImportedBuild(obj);state.skillClassId=state.build.classId;saveDraft();closeModal();toast('Build imported.');render();}catch(err){toast(err.message||'Could not import build.');}});});
   }
-  function normalizeImportedBuild(obj){const b=defaultBuild();b.name=obj.name||b.name;b.included=Array.isArray(obj.included)?obj.included:b.included;b.level=obj.level??null;b.classId=Number(obj.classId||1);b.primaryStats=obj.primaryStats||[];b.classAlloc=obj.classAlloc||{};b.passiveAlloc=obj.passiveAlloc||{};b.gear={};Object.entries(obj.gear||{}).forEach(([slot,g])=>b.gear[slot]={item:g.item||g.itemName||'',progression:g.progression||'Base',alternative:g.alternative||g.alternativeItemName||'',affixes:(g.affixes||g.affixIds||[]).map(Number),gems:g.gems||[]});b.talismans=obj.talismans||[];b.dropBonuses=obj.dropBonuses||obj.dropBonusIds||[];b.offensivePriority=obj.offense||obj.offensivePriority||[];b.defensivePriority=obj.defense||obj.defensivePriority||[];b.stance=obj.stance||'';b.runes=(obj.runes||[]).map(r=>({id:r.id||`r${Math.random()}`,type:r.type||'',shape:r.shape||'1×1',secondary:r.secondary||r.secondaryStat||'',word:r.word||r.runeWord||'',col:Number(r.col||0),row:Number(r.row||0)}));b.pets=(obj.pets||[]).map(p=>({petId:p.petId??null,bonus:p.bonus||''})).slice(0,4);while(b.pets.length<4)b.pets.push({petId:null,bonus:''});return b;}
+  function normalizeImportedBuild(obj){const b=defaultBuild();b.name=obj.name||b.name;b.included=Array.isArray(obj.included)?obj.included:b.included;b.level=obj.level??null;b.classId=Number(obj.classId||1);b.primaryStats=obj.primaryStats||[];b.classAlloc=obj.classAlloc||{};b.passiveAlloc=passiveRules.normalize(passiveRows(), obj.passiveAlloc||{});b.gear={};Object.entries(obj.gear||{}).forEach(([slot,g])=>b.gear[slot]={item:g.item||g.itemName||'',progression:g.progression||'Base',alternative:g.alternative||g.alternativeItemName||'',affixes:(g.affixes||g.affixIds||[]).map(Number),gems:g.gems||[]});b.talismans=obj.talismans||[];b.dropBonuses=obj.dropBonuses||obj.dropBonusIds||[];b.offensivePriority=obj.offense||obj.offensivePriority||[];b.defensivePriority=obj.defense||obj.defensivePriority||[];b.stance=obj.stance||'';b.runes=(obj.runes||[]).map(r=>({id:r.id||`r${Math.random()}`,type:r.type||'',shape:r.shape||'1×1',secondary:r.secondary||r.secondaryStat||'',word:r.word||r.runeWord||'',col:Number(r.col||0),row:Number(r.row||0)}));b.pets=(obj.pets||[]).map(p=>({petId:p.petId??null,bonus:p.bonus||''})).slice(0,4);while(b.pets.length<4)b.pets.push({petId:null,bonus:''});return b;}
 
   function renderSavedBuilds(){const map=getSavedBuilds(),entries=Object.entries(map);return entries.length?`<div class="card-list">${entries.map(([name,b])=>`<div class="list-card saved-build"><div class="list-main"><div class="list-title">${esc(name)}</div><div class="list-meta">${esc(CLASS_NAMES[b.classId]||'Unknown class')}${b.level?` • Level ${b.level}`:''} • ${(b.runes||[]).length} runes • ${(b.pets||[]).filter(p=>p.petId).length} pets</div></div><div><button class="mini-btn" data-load-saved="${esc(name)}">Load</button> <button class="mini-btn" data-delete-saved="${esc(name)}">Delete</button></div></div>`).join('')}</div>`:empty('No saved builds yet. Build Studio auto-saves your draft, and named saves will appear here.');}
   function bindSaved(){$$('[data-load-saved]').forEach(b=>b.addEventListener('click',()=>{const map=getSavedBuilds();state.build=normalizeBuild(clone(map[b.dataset.loadSaved]));state.skillClassId=state.build.classId;saveDraft();state.buildTab='overview';go('build');toast(`Loaded “${b.dataset.loadSaved}”.`);}));$$('[data-delete-saved]').forEach(b=>b.addEventListener('click',()=>{const map=getSavedBuilds();delete map[b.dataset.deleteSaved];setSavedBuilds(map);render();}));}
