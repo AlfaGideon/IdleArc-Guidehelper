@@ -11,7 +11,7 @@ permissions:
   checks: write
 jobs:
   debug-apk:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[publish signed apk]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +76,7 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          gradle --no-daemon -p android :app:assembleRelease --console=plain 2>&1 | tee release-build.log
+          gradle --no-daemon -p android :app:assembleRelease --console=plain --stacktrace 2>&1 | tee release-build.log
           exit ${PIPESTATUS[0]}
       - name: Report safe release failure
         if: failure()
@@ -84,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Do not expose the full build log (it may contain secret values).
-          grep -E '^FAILURE:|^\* What went wrong:|^Execution failed|^> |^Caused by:' release-build.log | grep -v '^> Task' | tail -30 > safe-failure.log || true
+          grep -E '^FAILURE:|^\* What went wrong:|^Execution failed|^> |^Caused by:|^\s+at com.android.*Key|^\s+at java.security.*Key' release-build.log | grep -v '^> Task' | tail -30 > safe-failure.log || true
           gh api repos/$GITHUB_REPOSITORY/check-runs -X POST \
             -f name='Android release diagnostics' -f head_sha="$GITHUB_SHA" \
             -f status=completed -f conclusion=failure \
