@@ -19,7 +19,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - run: gradle --no-daemon -p android :app:assembleDebug
+      - run: |
+          gradle --no-daemon -p android :app:assembleDebug 2>&1 | tee build.log
+          exit ${PIPESTATUS[0]}
+      - if: failure()
+        run: |
+          echo '### Build failure' >> "$GITHUB_STEP_SUMMARY"
+          echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
+          tail -90 build.log >> "$GITHUB_STEP_SUMMARY"
+          echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: IdleArc-Guide-debug-apk
