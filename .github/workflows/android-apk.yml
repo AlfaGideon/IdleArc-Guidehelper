@@ -84,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Do not expose the full build log (it may contain secret values).
-          grep -E '^FAILURE:|^\* What went wrong:|^Execution failed|^> |^Caused by:' release-build.log | head -18 > safe-failure.log || true
+          grep -E '^FAILURE:|^\* What went wrong:|^Execution failed|^> |^Caused by:' release-build.log | grep -v '^> Task' | tail -30 > safe-failure.log || true
           gh api repos/$GITHUB_REPOSITORY/check-runs -X POST \
             -f name='Android release diagnostics' -f head_sha="$GITHUB_SHA" \
             -f status=completed -f conclusion=failure \
