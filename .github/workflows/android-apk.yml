@@ -49,6 +49,7 @@ jobs:
     if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[publish signed apk]'))) && github.ref == 'refs/heads/arena/338bb9c1-idlearc-guidehelper'
     permissions:
       contents: write
+      checks: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +75,20 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: gradle --no-daemon -p android :app:assembleRelease
+        run: |
+          gradle --no-daemon -p android :app:assembleRelease --console=plain 2>&1 | tee release-build.log
+          exit ${PIPESTATUS[0]}
+      - name: Report safe release failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Do not expose the full build log (it may contain secret values).
+          grep -E '^FAILURE:|^\* What went wrong:|^Execution failed|^> |^Caused by:' release-build.log | head -18 > safe-failure.log || true
+          gh api repos/$GITHUB_REPOSITORY/check-runs -X POST \
+            -f name='Android release diagnostics' -f head_sha="$GITHUB_SHA" \
+            -f status=completed -f conclusion=failure \
+            -f output[title]='Signed release failure' -f output[summary]="$(cat safe-failure.log)"
       - name: Publish to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
