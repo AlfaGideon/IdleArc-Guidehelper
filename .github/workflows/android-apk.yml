@@ -6,6 +6,9 @@ on:
       - 'android/**'
       - 'hub/companion/**'
       - '.github/workflows/android-apk.yml'
+permissions:
+  contents: read
+  checks: write
 jobs:
   debug-apk:
     runs-on: ubuntu-latest
@@ -25,9 +28,17 @@ jobs:
       - if: failure()
         run: |
           echo '### Build failure' >> "$GITHUB_STEP_SUMMARY"
-          echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
           tail -90 build.log >> "$GITHUB_STEP_SUMMARY"
-          echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/$GITHUB_REPOSITORY/check-runs -X POST \
+            -f name='Android build diagnostics' -f head_sha="$GITHUB_SHA" \
+            -f status=completed -f conclusion=failure \
+            -f output[title]='Build failure' -f output[summary]="$(tail -90 build.log)"
       - uses: actions/upload-artifact@v4
         with:
           name: IdleArc-Guide-debug-apk
