@@ -1,6 +1,7 @@
 package com.idlearc.guidehelper;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -30,7 +31,9 @@ public final class MainActivity extends Activity {
     private static final int TEXT = Color.rgb(231, 237, 248), MUTED = Color.rgb(152, 171, 194);
     private static final int BLUE = Color.rgb(111, 194, 255);
     private final Handler handler = new Handler();
-    private WebView game, guide;
+    private WebView game, guide, popup;
+    private FrameLayout popupLayer;
+    private boolean googleNoticeVisible;
     private FrameLayout stage;
     private LinearLayout analysis, stats, tabs;
     private TextView status;
@@ -81,23 +84,17 @@ public final class MainActivity extends Activity {
         stage = new FrameLayout(this);
         root.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));
         game = web();
-        game.setWebViewClient(new WebViewClient() {
-            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
-                if (!req.isForMainFrame()) return false;
-                if (isGame(req.getUrl())) return false;
-                openExternal(req.getUrl());
+        game.setWebViewClient(gameClient(false));
+        game.getSettings().setSupportMultipleWindows(true);
+        game.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);
+        game.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onCreateWindow(WebView view, boolean dialog, boolean userGesture, android.os.Message resultMsg) {
+                if (!userGesture || popup != null) return false;
+                openPopup(resultMsg);
                 return true;
             }
-            @Override public void onPageFinished(WebView view, String url) {
-                loaded = isGame(Uri.parse(url));
-                status.setText(loaded ? "ИГРА ОНЛАЙН" : "ВНЕ ИГРЫ");
-                if (loaded) sample();
-            }
-            @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
-                if (request.isForMainFrame()) status.setText("НЕТ СОЕДИНЕНИЯ");
-            }
+            @Override public void onCloseWindow(WebView window) { closePopup(); }
         });
-        game.setWebChromeClient(new WebChromeClient());
         stage.addView(game);
 
         guide = web();
@@ -115,6 +112,9 @@ public final class MainActivity extends Activity {
             }
         });
         stage.addView(guide);
+        popupLayer = new FrameLayout(this);
+        stage.addView(popupLayer, new FrameLayout.LayoutParams(-1, -1));
+        popupLayer.setVisibility(View.GONE);
         analysis = new LinearLayout(this);
         analysis.setOrientation(LinearLayout.VERTICAL);
         stage.addView(analysis, new FrameLayout.LayoutParams(-1, -1));
@@ -127,6 +127,92 @@ public final class MainActivity extends Activity {
         guide.loadUrl(AssetPage.HOME);
         select(0);
         handler.postDelayed(ticker, 5000);
+    }
+
+    private WebViewClient gameClient(boolean isPopup) {
+        return new WebViewClient() {
+            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+                if (!req.isForMainFrame()) return false;
+                Uri url = req.getUrl();
+                if (isGoogleSignIn(url)) { showGoogleNotice(); return true; }
+                // OAuth providers (except Google) can stay inside this APK. No silent browser launch.
+                if ("https".equals(url.getScheme()) && url.getPort() == -1) return false;
+                if ("http".equals(url.getScheme()) && url.getPort() == -1) {
+                    status.setText("НЕЗАЩИЩЁННАЯ ССЫЛКА");
+                    return true;
+                }
+                openExternal(url);
+                return true;
+            }
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                // A popup's first URL may bypass shouldOverrideUrlLoading.
+                if (isGoogleSignIn(Uri.parse(url))) { view.stopLoading(); showGoogleNotice(); }
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                String host = Uri.parse(url).getHost();
+                if (isPopup) {
+                    status.setText(host == null ? "ОКНО ВХОДА" : host);
+                    return;
+                }
+                loaded = isGame(Uri.parse(url));
+                status.setText(loaded ? "ИГРА ОНЛАЙН" : host == null ? "ВНЕ ИГРЫ" : host);
+                if (loaded) sample();
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
+                if (request.isForMainFrame()) status.setText("НЕТ СОЕДИНЕНИЯ");
+            }
+        };
+    }
+
+    private boolean isGoogleSignIn(Uri url) {
+        String host = url.getHost();
+        return host != null && (host.equalsIgnoreCase("accounts.google.com")
+                || host.equalsIgnoreCase("myaccount.google.com"));
+    }
+
+    private void showGoogleNotice() {
+        if (googleNoticeVisible || isFinishing()) return;
+        googleNoticeVisible = true;
+        new AlertDialog.Builder(this)
+                .setTitle("Вход через Google")
+                .setMessage("Google запрещает авторизацию OAuth во встроенном WebView. " +
+                        "Без поддержки со стороны IdleArc нельзя безопасно завершить вход через Google " +
+                        "и передать сессию обратно в приложение. Можно войти другим способом на сайте " +
+                        "прямо здесь. Открытие Google в браузере также не перенесёт сессию в приложение автоматически.")
+                .setPositiveButton("Понятно", (d, w) -> closePopup())
+                .setOnDismissListener(d -> googleNoticeVisible = false)
+                .show();
+    }
+
+    private void openPopup(android.os.Message resultMsg) {
+        popupLayer.removeAllViews();
+        popupLayer.setBackgroundColor(BG);
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        popupLayer.addView(column, new FrameLayout.LayoutParams(-1, -1));
+        Button close = new Button(this);
+        close.setText("Закрыть окно входа  ×");
+        close.setOnClickListener(v -> closePopup());
+        column.addView(close, new LinearLayout.LayoutParams(-1, dp(50)));
+        popup = web();
+        popup.setWebViewClient(gameClient(true));
+        column.addView(popup, new LinearLayout.LayoutParams(-1, 0, 1));
+        popupLayer.setVisibility(View.VISIBLE);
+        popupLayer.bringToFront();
+        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+        transport.setWebView(popup);
+        resultMsg.sendToTarget();
+    }
+
+    private void closePopup() {
+        if (popup == null) return;
+        popup.stopLoading();
+        popupLayer.removeAllViews();
+        popup.destroy();
+        popup = null;
+        popupLayer.setVisibility(View.GONE);
+        Uri current = Uri.parse(game.getUrl() == null ? "" : game.getUrl());
+        status.setText(isGame(current) ? "ИГРА ОНЛАЙН" : current.getHost() == null ? "ВНЕ ИГРЫ" : current.getHost());
     }
 
     private void buildAnalysis() {
@@ -194,6 +280,7 @@ public final class MainActivity extends Activity {
         game.setVisibility(target == 0 ? View.VISIBLE : View.GONE);
         guide.setVisibility(target == 1 ? View.VISIBLE : View.GONE);
         analysis.setVisibility(target == 2 ? View.VISIBLE : View.GONE);
+        if (popupLayer.getVisibility() == View.VISIBLE) popupLayer.bringToFront();
         tabs.removeAllViews();
         String[] names = {"◈  Игра", "▤  Справочник", "▥  Анализ"};
         for (int i = 0; i < names.length; i++) {
@@ -238,13 +325,17 @@ public final class MainActivity extends Activity {
     }
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
     @Override public void onBackPressed() {
-        if (page == 0 && game.canGoBack()) game.goBack();
+        if (popup != null) {
+            if (popup.canGoBack()) popup.goBack(); else closePopup();
+        }
+        else if (page == 0 && game.canGoBack()) game.goBack();
         else if (page == 1 && guide.canGoBack()) guide.goBack();
         else if (page != 0) select(0);
         else super.onBackPressed();
     }
     @Override protected void onDestroy() {
         handler.removeCallbacks(ticker);
+        closePopup();
         stage.removeView(game); stage.removeView(guide);
         game.destroy(); guide.destroy();
         super.onDestroy();
