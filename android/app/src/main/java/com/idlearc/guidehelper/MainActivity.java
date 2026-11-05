@@ -8,7 +8,6 @@ import android.graphics.Typeface;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.view.MotionEvent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,7 +43,8 @@ public final class MainActivity extends Activity {
     private boolean googleNoticeVisible;
     private FrameLayout stage;
     private LinearLayout analysis, stats, tabs, logsPage, logRows;
-    private TextView logSummary;
+    private TextView logSummary, detailStatus;
+    private boolean detailedCaptureEnabled;
     private Button pauseLogs;
     private final SessionLog sessionLog = new SessionLog();
     private final Runnable logRenderer = this::renderLogs;
@@ -116,11 +116,6 @@ public final class MainActivity extends Activity {
         game.setWebViewClient(gameClient(false));
         game.getSettings().setSupportMultipleWindows(true);
         game.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);
-        game.setOnTouchListener((v, event) -> {
-            if (event.getActionMasked() == MotionEvent.ACTION_UP)
-                sessionLog.event("Действие", "Касание в игре (без текста и координат)");
-            return false;
-        });
         game.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onCreateWindow(WebView view, boolean dialog, boolean userGesture, android.os.Message resultMsg) {
                 if (!userGesture || popup != null) return false;
@@ -129,6 +124,10 @@ public final class MainActivity extends Activity {
             }
             @Override public void onCloseWindow(WebView window) { closePopup(); }
         });
+        detailedCaptureEnabled = DetailedCapture.install(game, getAssets(), sessionLog);
+        sessionLog.event("Система", detailedCaptureEnabled
+                ? "Детальные события кнопок и сети активны для idlearc.com"
+                : "WebView не поддерживает детальные события · обновите Android System WebView");
         stage.addView(game);
 
         guide = web();
@@ -259,11 +258,6 @@ public final class MainActivity extends Activity {
         close.setOnClickListener(v -> closePopup());
         column.addView(close, new LinearLayout.LayoutParams(-1, dp(50)));
         popup = web();
-        popup.setOnTouchListener((v, event) -> {
-            if (event.getActionMasked() == MotionEvent.ACTION_UP)
-                sessionLog.event("Действие", "Касание в окне входа (без текста и координат)");
-            return false;
-        });
         sessionLog.event("Система", "Окно входа открыто");
         popup.setWebViewClient(gameClient(true));
         column.addView(popup, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -323,9 +317,13 @@ public final class MainActivity extends Activity {
         logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
         logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
         logsPage.addView(label("Логи соединений", 24, TEXT, true));
-        TextView note = label("Только текущий запуск APK. Видны касания без содержимого, переходы, домены запросов и ошибки. Пароли, текст форм, cookie, тела запросов и параметры URL не записываются. Это не полный сетевой трафик игры.", 12, MUTED, false);
+        TextView note = label("Действия на idlearc.com: имя нажатой кнопки/ссылки и fetch/XHR/WS — метод, безопасный маршрут, HTTP-статус. Формы входа и чужие домены исключены. Тела запросов, токены и пароли не записываются. Это НЕ перехват всех пакетов и не журнал сервера.", 12, MUTED, false);
         note.setPadding(0, dp(8), 0, dp(8));
         logsPage.addView(note);
+        detailStatus = label(detailedCaptureEnabled ? "ДЕТАЛЬНЫЙ РЕЖИМ · только сайт игры"
+                : "ДЕТАЛЬНЫЙ РЕЖИМ НЕДОСТУПЕН · обновите Android System WebView", 12,
+                detailedCaptureEnabled ? BLUE : Color.rgb(255, 195, 125), true);
+        logsPage.addView(detailStatus);
         logSummary = label("", 13, BLUE, true);
         logsPage.addView(logSummary);
 
@@ -368,7 +366,8 @@ public final class MainActivity extends Activity {
     private void renderLogs() {
         if (logRows == null || logSummary == null) return;
         List<SessionLog.Entry> entries = sessionLog.snapshot();
-        logSummary.setText("Запросов: " + sessionLog.requests() + "  ·  записей: " + entries.size()
+        logSummary.setText("Ресурсов: " + sessionLog.requests() + "  ·  сетевых операций: "
+                + sessionLog.operations() + "  ·  записей: " + entries.size()
                 + (sessionLog.isPaused() ? "  ·  ПАУЗА" : ""));
         pauseLogs.setText(sessionLog.isPaused() ? "Продолжить" : "Пауза");
         logRows.removeAllViews();
