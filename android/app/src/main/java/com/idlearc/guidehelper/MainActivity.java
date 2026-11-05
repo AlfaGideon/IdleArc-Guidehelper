@@ -105,7 +105,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(dp(80), dp(48));
         updateParams.leftMargin = dp(8);
         header.addView(update, updateParams);
-        update.setOnClickListener(v -> UpdateManager.check(this, update, detail -> {}));
+        update.setOnClickListener(v -> UpdateManager.check(this, update));
 
         stage = new FrameLayout(this);
         root.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -296,7 +296,7 @@ public final class MainActivity extends Activity {
         logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
         logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
         logsPage.addView(label("Логи соединений", 24, TEXT, true));
-        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. Пароли и содержимое сообщений не записываются.", 12, MUTED, false);
+        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. Если игра отдаёт читаемый JSON с предметами, отдельной строкой показываются их реальные названия, количество, редкость и характеристики. Если доступен только код ответа или бинарное сообщение, состав предметов определить нельзя. Пароли и полные тела сообщений не записываются.", 12, MUTED, false);
         note.setPadding(0, dp(8), 0, dp(8));
         logsPage.addView(note);
         detailStatus = label(detailedCaptureEnabled ? "ИГРОВОЙ ЖУРНАЛ · только IdleArc"

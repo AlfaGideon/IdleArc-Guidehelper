@@ -14,6 +14,8 @@ class XHR {
   constructor() { this.status = 202; }
   addEventListener(type, fn) { if (type === 'loadend') this.complete = fn; }
   open() {}
+  send() {}
+  getResponseHeader() { return 'application/json'; }
 }
 class WS {
   constructor(url) { this.url = url; }
@@ -26,7 +28,7 @@ const sandbox = {
     addEventListener(type, fn) { if (type === 'click') onClick = fn; },
     querySelectorAll() { return []; },
   },
-  Element, URL, XMLHttpRequest: XHR, WebSocket: WS,
+  Element, URL, XMLHttpRequest: XHR, WebSocket: WS, TextDecoder, Uint8Array,
   fetch: async () => ({ status: 204 }),
   IdleArcTelemetry: { postMessage(message) { sent.push(JSON.parse(message)); } },
 };
@@ -56,4 +58,42 @@ assert.equal(sent.length, 5, 'auth page is excluded');
 sandbox.location.pathname = '/game';
 await sandbox.fetch('https://other.example/track?token=TOPSECRET');
 assert.equal(sent.length, 5, 'external sites are not logged');
-console.log('Game probe click/fetch/XHR/WebSocket metadata and auth masking OK');
+// A real readable game JSON response may expose safe, concrete item attributes.
+const payload = { data: { items: [
+  { name: 'Железный меч', rarity: 'rare', quantity: 2, level: 12, stats: { attack: 14 },
+    token: 'TOPSECRET', ownerEmail: 'private@example.com' },
+  { name: 'Щит', rarity: 'common', defense: 7 },
+] } };
+sandbox.fetch = async () => ({ status: 200, headers: { get: () => 'application/json' },
+  clone: () => ({ body: { getReader: () => {
+    let done = false;
+    return { async read() { if (done) return { done: true }; done = true;
+      return { done: false, value: new TextEncoder().encode(JSON.stringify(payload)) }; }, async cancel() {} };
+  } } }) });
+// The installed wrapper closes over the original fetch, so install a second sandbox for this test.
+const itemSent = [];
+const game = { ...sandbox, fetch: sandbox.fetch,
+  IdleArcTelemetry: { postMessage(data) { itemSent.push(JSON.parse(data)); } } };
+game.window = game;
+delete game.__idleArcProbeInstalled;
+vm.runInNewContext(script, game);
+await game.fetch('/api/character/items?private=TOPSECRET');
+await new Promise(resolve => setTimeout(resolve, 0));
+const itemResult = itemSent.find(m => m.t === 'items');
+assert.equal(itemResult.d, 'in');
+assert.equal(itemResult.n, 2);
+assert.equal(itemResult.list[0].name, 'Железный меч');
+assert.equal(itemResult.list[0].attack, 14);
+assert.equal(itemResult.list[0].qty, 2);
+assert.equal(itemResult.list[1].defense, 7);
+assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
+assert.equal(JSON.stringify(itemSent).includes('private@example.com'), false);
+const wsItems = new WS('wss://idlearc.com/api/items');
+wsItems.send(JSON.stringify({ item: { name: 'Меч', quantity: 3, secret: 'TOPSECRET' } }));
+assert.equal(itemSent.filter(m => m.t === 'items').at(-1).d, 'out');
+assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
+const before = itemSent.length;
+const external = new WS('wss://other.example/api/items');
+external.send(JSON.stringify(payload));
+assert.equal(itemSent.length, before);
+console.log('Game probe game-only JSON item fields and auth masking OK');

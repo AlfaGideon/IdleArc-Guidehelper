@@ -42,6 +42,27 @@ public final class SessionLogTest {
         assertEquals("Неизвестный пункт", GameText.button("Неизвестный пункт"));
     }
 
+    @Test public void showsVerifiedItemValuesWithoutPrivateData() {
+        SessionLog log = new SessionLog();
+        String sword = GameText.item("Железный меч", "rare", 2, 12, 14, 0, null);
+        assertEquals("Железный меч, редкость: редкая, количество: 2, уровень: 12, атака: 14, защита: 0", sword);
+        assertNull(GameText.item("player@example.com", "rare", 1, null, null, null, null));
+        assertNull(GameText.item("TOPSECRET0123456789012345678", "rare", 1, null, null, null, null));
+        log.itemDetails("https://idlearc.com/api/character/items?token=TOPSECRET", "in", 5,
+                java.util.Arrays.asList(sword, "Щит, защита: 7"));
+        assertTrue(log.snapshot().get(0).description.contains("показаны 2 из 5"));
+        assertTrue(log.snapshot().get(0).description.contains("Железный меч"));
+        assertFalse(log.snapshot().get(0).description.contains("TOPSECRET"));
+        log.itemDetails("https://other.example/api/items", "out", 1, java.util.Arrays.asList(sword));
+        log.itemDetails("https://idlearc.com/api/auth/items", "out", 1, java.util.Arrays.asList(sword));
+        assertEquals(1, log.snapshot().size());
+        assertEquals("v0.7.0", UpdateDiscovery.tagFromRedirect(
+                "https://github.com/AlfaGideon/IdleArc-Guidehelper/releases/tag/v0.7.0"));
+        assertNull(UpdateDiscovery.tagFromRedirect("https://other.example/AlfaGideon/IdleArc-Guidehelper/releases/tag/v0.7.0"));
+        assertNull(UpdateDiscovery.tagFromRedirect("https://github.com/AlfaGideon/IdleArc-Guidehelper/releases/tag/v0.7.0?token=x"));
+        assertNull(UpdateDiscovery.apkUrl("v0.7.0/../../private"));
+    }
+
     @Test public void pausesClearsAndBoundsMemory() {
         SessionLog log = new SessionLog();
         for (int i = 0; i < 900; i++) log.network("fetch", "GET", "https://idlearc.com/api/items", 200, 0);

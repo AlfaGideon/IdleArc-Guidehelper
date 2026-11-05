@@ -94,4 +94,13 @@ jobs:
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then echo "Release $TAG already exists; bump versionCode and versionName."; exit 1; fi
           cp android/app/build/outputs/apk/release/app-release.apk IdleArc-Guide.apk
-          gh release create "$TAG" IdleArc-Guide.apk --target "$GITHUB_SHA" --title "IdleArc Guide $TAG" --notes "Подписанная Android-сборка. Установите вручную; последующие версии проверяются кнопкой ↻ APK."
+          SHA=$(sha256sum IdleArc-Guide.apk | cut -d' ' -f1)
+          export TAG SHA
+          python3 - <<'PYJSON'
+          import json, os
+          tag = os.environ['TAG']
+          url = f"https://github.com/AlfaGideon/IdleArc-Guidehelper/releases/download/{tag}/IdleArc-Guide.apk"
+          with open('update.json', 'w') as f:
+              json.dump({'version': tag, 'sha256': os.environ['SHA'], 'apk': url}, f)
+          PYJSON
+          gh release create "$TAG" IdleArc-Guide.apk update.json --target "$GITHUB_SHA" --title "IdleArc Guide $TAG" --notes "Подписанная Android-сборка. Установите вручную; последующие версии проверяются кнопкой ↻ APK."

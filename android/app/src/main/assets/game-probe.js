@@ -1,5 +1,5 @@
 // Runs only for idlearc.com and www.idlearc.com in an origin-restricted WebView.
-// Reports user-initiated control clicks and request METADATA, never request/response bodies.
+// Reports safe request metadata and a bounded allowlist of item fields from game JSON. Never forwards raw bodies.
 (() => {
   if (window.__idleArcProbeInstalled) return;
   Object.defineProperty(window, '__idleArcProbeInstalled', { value: true });
@@ -30,6 +30,97 @@
       a: Date.now() - lastClickAt < 1500 && Date.now() >= lastClickAt ? lastClickId : 0 });
   };
 
+
+  // Extract only specific, low-risk item attributes. No arbitrary JSON keys or raw bodies cross the bridge.
+  const itemText = value => {
+    if (typeof value !== 'string') return undefined;
+    const text = value.trim();
+    return text.length > 0 && text.length <= 48 && /^[\p{L}\p{N} .,_+%!?()/'-]+$/u.test(text)
+      && !/@|[0-9]{6,}|[A-Za-z0-9_-]{20,}|token|password|secret|cookie|email|bearer|key/i.test(text)
+      ? text : undefined;
+  };
+  const number = value => typeof value === 'number' && Number.isFinite(value) &&
+    value >= 0 && value <= 1000000 ? value : undefined;
+  const pick = (obj, keys, safe) => {
+    for (const key of keys) {
+      const value = safe(obj[key]);
+      if (value !== undefined) return value;
+    }
+    return undefined;
+  };
+  const item = obj => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+    const name = pick(obj, ['name', 'itemName', 'item_name', 'displayName', 'display_name', 'title'], itemText);
+    if (!name) return null; // No guess from an opaque ID.
+    const result = { name };
+    const rarity = pick(obj, ['rarity', 'quality'], itemText);
+    if (rarity) result.rarity = rarity;
+    const qty = pick(obj, ['quantity', 'qty', 'count', 'stack'], number);
+    if (qty !== undefined) result.qty = qty;
+    const level = pick(obj, ['level', 'itemLevel', 'item_level'], number);
+    if (level !== undefined) result.level = level;
+    const stats = obj.stats && typeof obj.stats === 'object' && !Array.isArray(obj.stats) ? obj.stats : {};
+    for (const [out, keys] of Object.entries({ attack: ['attack', 'damage', 'attackDamage', 'attack_damage'],
+      defense: ['defense', 'armor'], hp: ['hp', 'health', 'maxHp', 'max_hp'] })) {
+      const val = pick(obj, keys, number) ?? pick(stats, keys, number);
+      if (val !== undefined) result[out] = val;
+    }
+    return result;
+  };
+  const findItems = (obj, depth = 0) => {
+    if (!obj || typeof obj !== 'object' || depth > 3) return null;
+    if (Array.isArray(obj)) {
+      // Ignore collections of unrelated user/profile records.
+      const list = obj.slice(0, 3).map(item).filter(Boolean);
+      return list.length ? { list, total: Math.min(obj.length, 999) } : null;
+    }
+    for (const key of ['items', 'item', 'inventory', 'loot', 'equipment', 'rewards', 'data', 'result']) {
+      if (Object.hasOwn(obj, key)) {
+        const found = findItems(obj[key], depth + 1);
+        if (found) return found;
+      }
+    }
+    const single = item(obj);
+    return single ? { list: [single], total: 1 } : null;
+  };
+  const inspect = (body, url, direction) => {
+    if (hideAuth()) return;
+    const u = safeUrl(url);
+    if (!u || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(u).pathname)) return;
+    try {
+      const parsed = typeof body === 'string' && body.length <= 16000 ? JSON.parse(body) : body;
+      const result = findItems(parsed);
+      if (result) send({ t: 'items', u, d: direction, n: result.total, list: result.list });
+    } catch (_) { /* Unreadable or non-JSON game response: do not guess. */ }
+  };
+  const inspectFetchResponse = (response, url) => {
+    try {
+      if (!safeUrl(url) || hideAuth() || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(url, location.href).pathname)) return;
+      if (!response || !response.clone || !response.headers ||
+          !/json/i.test(response.headers.get('content-type') || '') ||
+          Number(response.headers.get('content-length') || 0) > 16000) return;
+      const copy = response.clone();
+      if (!copy.body || !copy.body.getReader || typeof TextDecoder !== 'function') return;
+      // Stream manually so an absent Content-Length cannot cause an unbounded read.
+      (async () => {
+        const reader = copy.body.getReader();
+        let size = 0; const chunks = [];
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.byteLength;
+            if (size > 16000) { await reader.cancel(); return; }
+            chunks.push(value);
+          }
+          const bytes = new Uint8Array(size); let offset = 0;
+          for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+          inspect(new TextDecoder().decode(bytes), url, 'in');
+        } catch (_) { try { await reader.cancel(); } catch (_) {} }
+      })();
+    } catch (_) {}
+  };
+
   document.addEventListener('click', event => {
     if (!event.isTrusted || hideAuth()) return;
     const node = event.target instanceof Element
@@ -48,10 +139,11 @@
     window.fetch = function(input, init) {
       const url = typeof input === 'string' || input instanceof URL ? String(input) : input && input.url;
       const m = init && init.method || input && input.method || 'GET';
+      if (init && typeof init.body === 'string') inspect(init.body, url, 'out');
       const response = original.apply(this, arguments);
       // Preserve the fetch result, rejection, credentials and body untouched.
       if (!response || typeof response.then !== 'function') return response;
-      return response.then(value => { record('fetch', m, url, value.status); return value; },
+      return response.then(value => { record('fetch', m, url, value.status); inspectFetchResponse(value, url); return value; },
         error => { record('fetch', m, url, 0); throw error; });
     };
   }
@@ -62,7 +154,15 @@
     XMLHttpRequest.prototype.open = function(m, url) {
       if (!state.has(this)) this.addEventListener('loadend', () => {
         const request = state.get(this);
-        if (request) record('xhr', request.m, request.url, this.status);
+        if (request) {
+          record('xhr', request.m, request.url, this.status);
+          try {
+            if (/json/i.test(this.getResponseHeader('Content-Type') || '')) {
+              if (this.responseType === 'json') inspect(this.response, request.url, 'in');
+              else if (!this.responseType || this.responseType === 'text') inspect(this.responseText, request.url, 'in');
+            }
+          } catch (_) {}
+        }
       });
       state.set(this, { m, url });
       return originalOpen.apply(this, arguments);
@@ -76,10 +176,10 @@
       if (!hideAuth()) {
         if (!listening.has(this)) {
           listening.add(this);
-          this.addEventListener('message', () => record('ws-rx', 'OTHER', this.url, 0));
+          this.addEventListener('message', event => { record('ws-rx', 'OTHER', this.url, 0); if (typeof event.data === 'string') inspect(event.data, this.url, 'in'); });
         }
-        // Only the fact that a message was sent, never its contents.
         record('ws-tx', 'OTHER', this.url, 0);
+        if (typeof data === 'string') inspect(data, this.url, 'out');
       }
       return originalSend.apply(this, arguments);
     };

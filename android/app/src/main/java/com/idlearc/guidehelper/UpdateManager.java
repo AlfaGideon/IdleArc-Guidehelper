@@ -12,7 +12,6 @@ import android.widget.Button;
 
 import androidx.core.content.FileProvider;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -23,76 +22,73 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 
 /** User-initiated GitHub Releases check. Android itself verifies the APK signature on install. */
 final class UpdateManager {
-    private static final String REPO = "AlfaGideon/IdleArc-Guidehelper";
-    private static final String API = "https://api.github.com/repos/" + REPO + "/releases/latest";
     private static final String APK = "IdleArc-Guide.apk";
     private static final int MAX_APK = 100 * 1024 * 1024;
     private static final java.util.concurrent.ExecutorService IO = Executors.newSingleThreadExecutor();
     private static final Handler UI = new Handler(Looper.getMainLooper());
     private UpdateManager() {}
 
-    static void check(Activity activity, Button button, Consumer<String> logger) {
+    static void check(Activity activity, Button button) {
         button.setEnabled(false);
         button.setText("Поиск…");
         IO.execute(() -> {
             try {
-                logger.accept("Проверка версии · api.github.com");
-                HttpURLConnection conn = connect(API);
-                int code = conn.getResponseCode();
-                logger.accept("Ответ GitHub · HTTP " + code);
-                if (code == 404) throw new Exception("Пока нет опубликованного стабильного релиза GitHub.");
-                if (code != 200) throw new Exception("GitHub ответил кодом " + code + ". Попробуйте позже.");
-                JSONObject release = new JSONObject(new String(readLimit(conn.getInputStream(), 256 * 1024), java.nio.charset.StandardCharsets.UTF_8));
-                String tag = release.optString("tag_name");
+                // Prefer an inexpensive public release asset; no API token or rate limit required.
+                String tag;
+                String hash = null;
+                String url;
+                HttpURLConnection manifest = connect(UpdateDiscovery.MANIFEST);
+                if (manifest.getResponseCode() == 200) {
+                    JSONObject data = new JSONObject(new String(readLimit(manifest.getInputStream(), 8192), java.nio.charset.StandardCharsets.UTF_8));
+                    tag = data.optString("version");
+                    url = UpdateDiscovery.apkUrl(tag);
+                    hash = data.optString("sha256");
+                    if (url == null || !url.equals(data.optString("apk")) || !hash.matches("[0-9a-fA-F]{64}"))
+                        throw new Exception("Некорректные данные релиза GitHub.");
+                } else if (manifest.getResponseCode() == 403 || manifest.getResponseCode() == 404) {
+                    // GitHub assets/API may be denied or rate-limited for this network.
+                    // The public /releases/latest page redirects to a versioned release.
+                    tag = latestTagFromPage();
+                    url = UpdateDiscovery.apkUrl(tag);
+                    if (url == null) throw new Exception("Не удалось определить версию GitHub. Откройте релиз вручную.");
+                } else {
+                    throw new Exception("GitHub не отдал информацию об обновлении (код " + manifest.getResponseCode() + ").");
+                }
                 String installed = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
                 if (compare(tag, installed) <= 0) {
-                    logger.accept("Актуальная версия установлена");
                     message(activity, button, "Обновлений нет", "Установлена версия " + installed + ". Последний релиз: " + tag + ".");
                     return;
                 }
-                JSONArray assets = release.optJSONArray("assets");
-                JSONObject asset = null;
-                for (int i = 0; assets != null && i < assets.length(); i++) {
-                    JSONObject item = assets.optJSONObject(i);
-                    if (item != null && APK.equals(item.optString("name"))) { asset = item; break; }
-                }
-                if (asset == null) throw new Exception("В релизе " + tag + " нет файла " + APK + ".");
-                String url = asset.getString("browser_download_url");
-                String digest = asset.optString("digest");
-                if (!url.startsWith("https://github.com/" + REPO + "/releases/download/") ||
-                        !url.endsWith("/" + APK) || !digest.matches("sha256:[0-9a-fA-F]{64}"))
-                    throw new Exception("У релиза нет проверяемого APK с SHA-256.");
                 String finalUrl = url;
-                String hash = digest.substring(7).toLowerCase(java.util.Locale.ROOT);
+                String finalHash = hash;
                 UI.post(() -> {
                     if (activity.isFinishing()) return;
                     button.setText("↻ APK"); button.setEnabled(true);
                     new AlertDialog.Builder(activity).setTitle("Версия " + tag)
                             .setMessage("Загрузить подписанное обновление с GitHub? Установка потребует подтверждения Android. Данные игры и справочника сохранятся только при совпадении подписи APK.")
                             .setNegativeButton("Отмена", null)
-                            .setPositiveButton("Загрузить", (dialog, which) -> download(activity, button, finalUrl, hash, logger))
+                            .setPositiveButton("Загрузить", (dialog, which) -> download(activity, button, finalUrl, finalHash))
                             .show();
                 });
-            } catch (Exception e) { logger.accept("Не удалось проверить обновление"); message(activity, button, "Обновление недоступно", e.getMessage()); }
+            } catch (Exception e) { message(activity, button, "Обновление недоступно", e.getMessage()); }
         });
     }
 
-    private static void download(Activity activity, Button button, String url, String sha256, Consumer<String> logger) {
+    private static void download(Activity activity, Button button, String url, String sha256) {
         button.setEnabled(false);
         button.setText("Загрузка…");
         IO.execute(() -> {
             File folder = new File(activity.getCacheDir(), "updates");
-            File temp = new File(folder, "incoming.tmp");
+            File temp = new File(folder, "incoming.apk");
             File apk = new File(folder, APK);
             try {
                 if (!folder.exists() && !folder.mkdirs()) throw new Exception("Не удалось создать папку обновления.");
-                logger.accept("Загрузка APK · github.com");
                 HttpURLConnection conn = connect(url);
-                if (conn.getResponseCode() != 200) throw new Exception("Не удалось скачать APK: HTTP " + conn.getResponseCode());
+                if (conn.getResponseCode() != 200) throw new Exception("GitHub не отдал APK (код " + conn.getResponseCode()
+                        + "). Откройте страницу релиза в браузере и установите файл вручную.");
                 MessageDigest md = MessageDigest.getInstance("SHA-256");
                 long size = 0;
                 try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(temp)) {
@@ -107,14 +103,15 @@ final class UpdateManager {
                 }
                 StringBuilder actual = new StringBuilder();
                 for (byte b : md.digest()) actual.append(String.format(java.util.Locale.ROOT, "%02x", b & 0xff));
-                if (size == 0 || !actual.toString().equals(sha256)) throw new Exception("Контрольная сумма APK не совпала.");
-                logger.accept("SHA-256 APK проверена");
+                if (size == 0 || (sha256 != null && !actual.toString().equalsIgnoreCase(sha256)))
+                    throw new Exception("Контрольная сумма APK не совпала.");
+                // Even without update.json, pin the actual APK to the installed app's signer.
+                verifyPackage(activity, temp);
                 if (apk.exists() && !apk.delete() || !temp.renameTo(apk)) throw new Exception("Не удалось сохранить APK.");
                 UI.post(() -> {
                     if (activity.isFinishing()) return;
                     button.setText("↻ APK"); button.setEnabled(true);
                     if (Build.VERSION.SDK_INT >= 26 && !activity.getPackageManager().canRequestPackageInstalls()) {
-                        logger.accept("Нужно разрешение на установку APK");
                         new AlertDialog.Builder(activity).setTitle("Разрешение Android")
                                 .setMessage("Разрешите установку из этого приложения, затем снова нажмите «↻ APK». Загруженный APK останется в кэше до очистки данных приложения.")
                                 .setPositiveButton("Настройки", (d, w) -> activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -125,15 +122,43 @@ final class UpdateManager {
                     Uri uri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".updates", apk);
                     Intent intent = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
                             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    try { activity.startActivity(intent); logger.accept("Открыт системный установщик APK"); }
+                    try { activity.startActivity(intent); }
                     catch (Exception e) { message(activity, button, "Установка", "Не найден установщик APK на устройстве."); }
                 });
             } catch (Exception e) {
                 temp.delete();
-                logger.accept("Загрузка APK завершилась ошибкой");
                 message(activity, button, "Ошибка загрузки", e.getMessage());
             }
         });
+    }
+
+    private static String latestTagFromPage() throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(UpdateDiscovery.LATEST).openConnection();
+        conn.setInstanceFollowRedirects(false);
+        conn.setConnectTimeout(10000); conn.setReadTimeout(20000);
+        conn.setRequestProperty("User-Agent", "IdleArc-Guide-Android");
+        int code = conn.getResponseCode();
+        if (code != 301 && code != 302 && code != 303) throw new Exception("Страница релиза недоступна (код " + code + ").");
+        String tag = UpdateDiscovery.tagFromRedirect(conn.getHeaderField("Location"));
+        conn.disconnect();
+        return tag;
+    }
+
+    private static void verifyPackage(Activity activity, File apk) throws Exception {
+        android.content.pm.PackageManager pm = activity.getPackageManager();
+        int flag = Build.VERSION.SDK_INT >= 28 ? android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                : android.content.pm.PackageManager.GET_SIGNATURES;
+        android.content.pm.PackageInfo incoming = pm.getPackageArchiveInfo(apk.getAbsolutePath(), flag);
+        android.content.pm.PackageInfo installed = pm.getPackageInfo(activity.getPackageName(), flag);
+        if (incoming == null || !activity.getPackageName().equals(incoming.packageName))
+            throw new Exception("Файл не является обновлением этого приложения.");
+        long incomingCode = Build.VERSION.SDK_INT >= 28 ? incoming.getLongVersionCode() : incoming.versionCode;
+        long installedCode = Build.VERSION.SDK_INT >= 28 ? installed.getLongVersionCode() : installed.versionCode;
+        if (incomingCode <= installedCode) throw new Exception("Версия файла не новее установленной.");
+        android.content.pm.Signature[] a = Build.VERSION.SDK_INT >= 28 ? incoming.signingInfo.getApkContentsSigners() : incoming.signatures;
+        android.content.pm.Signature[] b = Build.VERSION.SDK_INT >= 28 ? installed.signingInfo.getApkContentsSigners() : installed.signatures;
+        if (a == null || b == null || a.length != 1 || b.length != 1 || !a[0].equals(b[0]))
+            throw new Exception("Подпись APK отличается от установленного приложения.");
     }
 
     private static HttpURLConnection connect(String url) throws Exception {
@@ -144,7 +169,7 @@ final class UpdateManager {
             conn.setConnectTimeout(10000); conn.setReadTimeout(20000);
             conn.setInstanceFollowRedirects(false);
             conn.setRequestProperty("User-Agent", "IdleArc-Guide-Android");
-            conn.setRequestProperty("Accept", "application/vnd.github+json");
+            conn.setRequestProperty("Accept", "application/octet-stream, application/json");
             int code = conn.getResponseCode();
             if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
                 String next = conn.getHeaderField("Location"); conn.disconnect();

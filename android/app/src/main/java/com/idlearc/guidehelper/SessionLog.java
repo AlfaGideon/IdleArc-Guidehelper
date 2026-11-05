@@ -66,6 +66,8 @@ final class SessionLog {
                             ? "отправила данные" : "запросила данные";
             text = "Игра " + action + ": " + topic + " — " + GameText.result(status);
             if (status > 0 && status <= 599) text += " (код " + status + ")";
+            if (status >= 200 && status < 300 && (topic.contains("предмет") || topic.contains("инвентарь")))
+                text += ". Код ответа не раскрывает состав предметов; сведения появятся отдельно, если игра передала читаемый JSON";
         }
         if (afterClick > 0 && afterClick <= 1000000)
             text += " · после действия №" + afterClick + " (по времени)";
@@ -80,6 +82,18 @@ final class SessionLog {
             }
         }
         if (callback != null) callback.run();
+    }
+
+    /** Actual fields observed in a readable game JSON payload; no inferred item identity. */
+    void itemDetails(String url, String direction, int total, List<String> items) {
+        String route = safeRoute(url);
+        if (route == null || !route.matches("(?i).*(?:item|inventory|loot|equip|reward|drop).*") ||
+                !("in".equals(direction) || "out".equals(direction)) || total < 1 || total > 999 ||
+                items == null || items.isEmpty() || items.size() > 3 || items.size() > total) return;
+        String text = "out".equals(direction) ? "В игровом запросе указаны предметы" : "В ответе игры указаны предметы";
+        text += " (" + (total > items.size() ? "показаны " + items.size() + " из " + total : total) + "): "
+                + String.join("; ", items);
+        add(false, "Предметы игры", text);
     }
 
     void gameError(String message, String url) {

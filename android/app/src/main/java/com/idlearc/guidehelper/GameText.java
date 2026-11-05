@@ -76,6 +76,39 @@ final class GameText {
         return last == null ? "игровые данные (раздел не распознан)" : last;
     }
 
+    /** Validate again in native code: page scripts can post arbitrary messages. */
+    static String item(String name, String rarity, Object qty, Object level, Object attack, Object defense, Object hp) {
+        String safe = SessionLog.safeLabel(name);
+        if ("подпись скрыта".equals(safe) || safe.length() > 48) return null;
+        StringBuilder text = new StringBuilder(safe);
+        String r = SessionLog.safeLabel(rarity);
+        if (!"подпись скрыта".equals(r) && r.length() <= 48) {
+            String known;
+            switch (r.toLowerCase(Locale.ROOT)) {
+                case "common": known = "обычная"; break;
+                case "uncommon": known = "необычная"; break;
+                case "rare": known = "редкая"; break;
+                case "epic": known = "эпическая"; break;
+                case "legendary": known = "легендарная"; break;
+                default: known = r;
+            }
+            text.append(", редкость: ").append(known);
+        }
+        appendStat(text, "количество", qty);
+        appendStat(text, "уровень", level);
+        appendStat(text, "атака", attack);
+        appendStat(text, "защита", defense);
+        appendStat(text, "здоровье", hp);
+        return text.toString();
+    }
+    private static void appendStat(StringBuilder text, String title, Object number) {
+        if (!(number instanceof Number)) return;
+        double value = ((Number) number).doubleValue();
+        if (Double.isFinite(value) && value >= 0 && value <= 1000000)
+            text.append(", ").append(title).append(": ").append(value == Math.rint(value)
+                    ? String.valueOf((long) value) : String.valueOf(value));
+    }
+
     static String result(int code) {
         if (code >= 200 && code < 300) return "успешно";
         if (code == 401 || code == 403) return "доступ не разрешён";
