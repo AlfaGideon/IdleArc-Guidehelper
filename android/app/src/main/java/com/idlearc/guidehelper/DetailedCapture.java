@@ -39,7 +39,7 @@ final class DetailedCapture {
                         if (view != web || !isMainFrame || origin == null || !ORIGINS.contains(origin.toString()) ||
                                 message.getType() != WebMessageCompat.TYPE_STRING) return;
                         String raw = message.getData();
-                        if (raw == null || raw.length() > 1600) return;
+                        if (raw == null || raw.length() > 2400) return;
                         try {
                             JSONObject data = new JSONObject(raw);
                             String type = data.optString("t");
@@ -50,14 +50,15 @@ final class DetailedCapture {
                                 log.network(type, data.optString("m"), data.optString("u"), data.optInt("s", 0), data.optInt("a", 0));
                             } else if ("items".equals(type)) {
                                 JSONArray list = data.optJSONArray("list");
-                                if (list == null || list.length() == 0 || list.length() > 3) return;
+                                if (list == null || list.length() == 0 || list.length() > 6) return;
                                 List<String> items = new ArrayList<>();
                                 for (int i = 0; i < list.length(); i++) {
                                     JSONObject item = list.optJSONObject(i);
                                     if (item == null) return;
                                     String detail = GameText.item(item.optString("name"), item.optString("rarity"),
                                             item.opt("qty"), item.opt("level"), item.opt("attack"),
-                                            item.opt("defense"), item.opt("hp"));
+                                            item.opt("defense"), item.opt("hp"), item.opt("strength"),
+                                            item.opt("dexterity"), item.opt("intelligence"), item.opt("crit"));
                                     if (detail == null) return;
                                     items.add(detail);
                                 }

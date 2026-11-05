@@ -3,6 +3,8 @@
 (() => {
   if (window.__idleArcProbeInstalled) return;
   Object.defineProperty(window, '__idleArcProbeInstalled', { value: true });
+  const MAX_JSON = 65536; // Upper bound for JSON inspected locally; raw bodies never leave WebView.
+  const MAX_ITEMS = 6;
   const bridge = window.IdleArcTelemetry;
   if (!bridge || typeof bridge.postMessage !== 'function') return;
   const send = value => { try { bridge.postMessage(JSON.stringify(value)); } catch (_) {} };
@@ -59,22 +61,26 @@
     if (qty !== undefined) result.qty = qty;
     const level = pick(obj, ['level', 'itemLevel', 'item_level'], number);
     if (level !== undefined) result.level = level;
-    const stats = obj.stats && typeof obj.stats === 'object' && !Array.isArray(obj.stats) ? obj.stats : {};
+    const stats = ['stats', 'attributes', 'bonuses'].map(key => obj[key]).filter(value =>
+      value && typeof value === 'object' && !Array.isArray(value));
     for (const [out, keys] of Object.entries({ attack: ['attack', 'damage', 'attackDamage', 'attack_damage'],
-      defense: ['defense', 'armor'], hp: ['hp', 'health', 'maxHp', 'max_hp'] })) {
-      const val = pick(obj, keys, number) ?? pick(stats, keys, number);
+      defense: ['defense', 'armor'], hp: ['hp', 'health', 'maxHp', 'max_hp'],
+      strength: ['strength', 'str'], dexterity: ['dexterity', 'dex'],
+      intelligence: ['intelligence', 'int'], crit: ['critChance', 'crit_chance'] })) {
+      let val = pick(obj, keys, number);
+      for (const block of stats) if (val === undefined) val = pick(block, keys, number);
       if (val !== undefined) result[out] = val;
     }
     return result;
   };
   const findItems = (obj, depth = 0) => {
-    if (!obj || typeof obj !== 'object' || depth > 3) return null;
+    if (!obj || typeof obj !== 'object' || depth > 5) return null;
     if (Array.isArray(obj)) {
       // Ignore collections of unrelated user/profile records.
-      const list = obj.slice(0, 3).map(item).filter(Boolean);
+      const list = obj.slice(0, MAX_ITEMS).map(item).filter(Boolean);
       return list.length ? { list, total: Math.min(obj.length, 999) } : null;
     }
-    for (const key of ['items', 'item', 'inventory', 'loot', 'equipment', 'rewards', 'data', 'result']) {
+    for (const key of ['items', 'item', 'inventory', 'loot', 'equipment', 'rewards', 'data', 'result', 'payload', 'character', 'player']) {
       if (Object.hasOwn(obj, key)) {
         const found = findItems(obj[key], depth + 1);
         if (found) return found;
@@ -88,9 +94,14 @@
     const u = safeUrl(url);
     if (!u || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(u).pathname)) return;
     try {
-      const parsed = typeof body === 'string' && body.length <= 16000 ? JSON.parse(body) : body;
+      const parsed = typeof body === 'string' ? (body.length <= MAX_JSON ? JSON.parse(body) : null) : body;
       const result = findItems(parsed);
-      if (result) send({ t: 'items', u, d: direction, n: result.total, list: result.list });
+      if (result) {
+        const report = { t: 'items', u, d: direction, n: result.total, list: result.list };
+        // Long item names/stats must not exceed the native bridge bound.
+        while (report.list.length > 1 && JSON.stringify(report).length > 2200) report.list.pop();
+        if (JSON.stringify(report).length <= 2200) send(report);
+      }
     } catch (_) { /* Unreadable or non-JSON game response: do not guess. */ }
   };
   const inspectFetchResponse = (response, url) => {
@@ -98,7 +109,7 @@
       if (!safeUrl(url) || hideAuth() || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(url, location.href).pathname)) return;
       if (!response || !response.clone || !response.headers ||
           !/json/i.test(response.headers.get('content-type') || '') ||
-          Number(response.headers.get('content-length') || 0) > 16000) return;
+          Number(response.headers.get('content-length') || 0) > MAX_JSON) return;
       const copy = response.clone();
       if (!copy.body || !copy.body.getReader || typeof TextDecoder !== 'function') return;
       // Stream manually so an absent Content-Length cannot cause an unbounded read.
@@ -110,7 +121,7 @@
             const { done, value } = await reader.read();
             if (done) break;
             size += value.byteLength;
-            if (size > 16000) { await reader.cancel(); return; }
+            if (size > MAX_JSON) { await reader.cancel(); return; }
             chunks.push(value);
           }
           const bytes = new Uint8Array(size); let offset = 0;
@@ -157,7 +168,8 @@
         if (request) {
           record('xhr', request.m, request.url, this.status);
           try {
-            if (/json/i.test(this.getResponseHeader('Content-Type') || '')) {
+            if (/json/i.test(this.getResponseHeader('Content-Type') || '') &&
+                Number(this.getResponseHeader('Content-Length') || 0) <= MAX_JSON) {
               if (this.responseType === 'json') inspect(this.response, request.url, 'in');
               else if (!this.responseType || this.responseType === 'text') inspect(this.responseText, request.url, 'in');
             }

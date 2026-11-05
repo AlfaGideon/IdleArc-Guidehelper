@@ -64,11 +64,12 @@ const payload = { data: { items: [
     token: 'TOPSECRET', ownerEmail: 'private@example.com' },
   { name: 'Щит', rarity: 'common', defense: 7 },
 ] } };
+let responsePayload = payload;
 sandbox.fetch = async () => ({ status: 200, headers: { get: () => 'application/json' },
   clone: () => ({ body: { getReader: () => {
     let done = false;
     return { async read() { if (done) return { done: true }; done = true;
-      return { done: false, value: new TextEncoder().encode(JSON.stringify(payload)) }; }, async cancel() {} };
+      return { done: false, value: new TextEncoder().encode(JSON.stringify(responsePayload)) }; }, async cancel() {} };
   } } }) });
 // The installed wrapper closes over the original fetch, so install a second sandbox for this test.
 const itemSent = [];
@@ -88,6 +89,18 @@ assert.equal(itemResult.list[0].qty, 2);
 assert.equal(itemResult.list[1].defense, 7);
 assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
 assert.equal(JSON.stringify(itemSent).includes('private@example.com'), false);
+responsePayload = { payload: { character: { inventory: { items: Array.from({ length: 8 }, (_, i) => ({
+  name: `Меч ${i + 1}`, rarity: 'rare', attributes: { strength: i + 1, dexterity: 2, critChance: 3.5 },
+  accessToken: 'VERY_PRIVATE_MESSAGE', ownerEmail: 'private@example.com',
+})) } } } };
+await game.fetch('/api/character/items');
+await new Promise(resolve => setTimeout(resolve, 0));
+const nested = itemSent.filter(m => m.t === 'items').at(-1);
+assert.equal(nested.n, 8);
+assert.equal(nested.list.length, 6, 'journal bounds the number of item details per event');
+assert.equal(nested.list[0].strength, 1);
+assert.equal(nested.list[0].crit, 3.5);
+assert.equal(JSON.stringify(itemSent).includes('VERY_PRIVATE_MESSAGE'), false);
 const wsItems = new WS('wss://idlearc.com/api/items');
 wsItems.send(JSON.stringify({ item: { name: 'Меч', quantity: 3, secret: 'TOPSECRET' } }));
 assert.equal(itemSent.filter(m => m.t === 'items').at(-1).d, 'out');

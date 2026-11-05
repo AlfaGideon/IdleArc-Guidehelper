@@ -44,18 +44,22 @@ public final class SessionLogTest {
 
     @Test public void showsVerifiedItemValuesWithoutPrivateData() {
         SessionLog log = new SessionLog();
-        String sword = GameText.item("Железный меч", "rare", 2, 12, 14, 0, null);
-        assertEquals("Железный меч, редкость: редкая, количество: 2, уровень: 12, атака: 14, защита: 0", sword);
-        assertNull(GameText.item("player@example.com", "rare", 1, null, null, null, null));
-        assertNull(GameText.item("TOPSECRET0123456789012345678", "rare", 1, null, null, null, null));
+        String sword = GameText.item("Железный меч", "rare", 2, 12, 14, 0, null, 5, null, null, 12.5);
+        assertEquals("Железный меч, редкость: редкая, количество: 2, уровень: 12, атака: 14, защита: 0, сила: 5, шанс критического удара: 12.5", sword);
+        assertNull(GameText.item("player@example.com", "rare", 1, null, null, null, null, null, null, null, null));
+        assertNull(GameText.item("TOPSECRET0123456789012345678", "rare", 1, null, null, null, null, null, null, null, null));
         log.itemDetails("https://idlearc.com/api/character/items?token=TOPSECRET", "in", 5,
                 java.util.Arrays.asList(sword, "Щит, защита: 7"));
         assertTrue(log.snapshot().get(0).description.contains("показаны 2 из 5"));
         assertTrue(log.snapshot().get(0).description.contains("Железный меч"));
         assertFalse(log.snapshot().get(0).description.contains("TOPSECRET"));
+        assertTrue(sword.contains("сила: 5"));
+        log.itemDetails("https://idlearc.com/api/items", "in", 8,
+                java.util.Arrays.asList(sword, sword, sword, sword, sword, sword));
+        assertTrue(log.snapshot().get(1).description.contains("показаны 6 из 8"));
         log.itemDetails("https://other.example/api/items", "out", 1, java.util.Arrays.asList(sword));
         log.itemDetails("https://idlearc.com/api/auth/items", "out", 1, java.util.Arrays.asList(sword));
-        assertEquals(1, log.snapshot().size());
+        assertEquals(2, log.snapshot().size());
         assertEquals("v0.7.0", UpdateDiscovery.tagFromRedirect(
                 "https://github.com/AlfaGideon/IdleArc-Guidehelper/releases/tag/v0.7.0"));
         assertNull(UpdateDiscovery.tagFromRedirect("https://other.example/AlfaGideon/IdleArc-Guidehelper/releases/tag/v0.7.0"));

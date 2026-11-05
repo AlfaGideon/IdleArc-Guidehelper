@@ -89,7 +89,7 @@ final class SessionLog {
         String route = safeRoute(url);
         if (route == null || !route.matches("(?i).*(?:item|inventory|loot|equip|reward|drop).*") ||
                 !("in".equals(direction) || "out".equals(direction)) || total < 1 || total > 999 ||
-                items == null || items.isEmpty() || items.size() > 3 || items.size() > total) return;
+                items == null || items.isEmpty() || items.size() > 6 || items.size() > total) return;
         String text = "out".equals(direction) ? "В игровом запросе указаны предметы" : "В ответе игры указаны предметы";
         text += " (" + (total > items.size() ? "показаны " + items.size() + " из " + total : total) + "): "
                 + String.join("; ", items);

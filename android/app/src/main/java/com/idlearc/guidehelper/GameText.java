@@ -77,7 +77,8 @@ final class GameText {
     }
 
     /** Validate again in native code: page scripts can post arbitrary messages. */
-    static String item(String name, String rarity, Object qty, Object level, Object attack, Object defense, Object hp) {
+    static String item(String name, String rarity, Object qty, Object level, Object attack, Object defense, Object hp,
+            Object strength, Object dexterity, Object intelligence, Object crit) {
         String safe = SessionLog.safeLabel(name);
         if ("подпись скрыта".equals(safe) || safe.length() > 48) return null;
         StringBuilder text = new StringBuilder(safe);
@@ -99,6 +100,10 @@ final class GameText {
         appendStat(text, "атака", attack);
         appendStat(text, "защита", defense);
         appendStat(text, "здоровье", hp);
+        appendStat(text, "сила", strength);
+        appendStat(text, "ловкость", dexterity);
+        appendStat(text, "интеллект", intelligence);
+        appendStat(text, "шанс критического удара", crit);
         return text.toString();
     }
     private static void appendStat(StringBuilder text, String title, Object number) {
