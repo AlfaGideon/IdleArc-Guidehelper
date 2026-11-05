@@ -267,8 +267,8 @@ public final class MainActivity extends Activity {
         sessionLog.event("Система", "Окно входа открыто");
         popup.setWebViewClient(gameClient(true));
         column.addView(popup, new LinearLayout.LayoutParams(-1, 0, 1));
-        popupLayer.setVisibility(View.VISIBLE);
-        popupLayer.bringToFront();
+        popupLayer.setVisibility(page == 0 ? View.VISIBLE : View.GONE);
+        if (page == 0) popupLayer.bringToFront();
         WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
         transport.setWebView(popup);
         resultMsg.sendToTarget();
@@ -428,6 +428,7 @@ public final class MainActivity extends Activity {
         guide.setVisibility(target == 1 ? View.VISIBLE : View.GONE);
         analysis.setVisibility(target == 2 ? View.VISIBLE : View.GONE);
         logsPage.setVisibility(target == 3 ? View.VISIBLE : View.GONE);
+        popupLayer.setVisibility(popup != null && target == 0 ? View.VISIBLE : View.GONE);
         if (popupLayer.getVisibility() == View.VISIBLE) popupLayer.bringToFront();
         tabs.removeAllViews();
         String[] names = {"◈ Игра", "▤ Справка", "▥ Анализ", "☷ Логи"};
@@ -475,12 +476,12 @@ public final class MainActivity extends Activity {
     }
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + .5f); }
     @Override public void onBackPressed() {
-        if (popup != null) {
+        if (page == 1 && guide.canGoBack()) guide.goBack();
+        else if (page != 0) select(0);
+        else if (popup != null) {
             if (popup.canGoBack()) popup.goBack(); else closePopup();
         }
-        else if (page == 0 && game.canGoBack()) game.goBack();
-        else if (page == 1 && guide.canGoBack()) guide.goBack();
-        else if (page != 0) select(0);
+        else if (game.canGoBack()) game.goBack();
         else super.onBackPressed();
     }
     @Override protected void onDestroy() {
