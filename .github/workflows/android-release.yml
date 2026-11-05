@@ -25,7 +25,7 @@ jobs:
       - name: Build signed APK
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/idlearc-release.p12
-        run: gradle --no-daemon -p android :app:assembleRelease
+        run: gradle --no-daemon -p android :app:testDebugUnitTest :app:assembleRelease
       - name: Publish to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}

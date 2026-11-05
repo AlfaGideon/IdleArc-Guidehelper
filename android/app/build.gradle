@@ -7,8 +7,8 @@ android {
         applicationId 'com.idlearc.guidehelper'
         minSdk 26
         targetSdk 35
-        versionCode 3
-        versionName '0.3.0'
+        versionCode 4
+        versionName '0.4.0'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -16,7 +16,10 @@ android {
     }
 }
 
-dependencies { implementation 'androidx.core:core:1.13.1' }
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+    testImplementation 'junit:junit:4.13.2'
+}
 
 // Stable signing is ONLY configured on the release runner with repository secrets.
 def releaseKey = System.getenv('ANDROID_KEYSTORE_PATH')

@@ -5,6 +5,10 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.view.MotionEvent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -23,6 +27,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.Map;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.text.SimpleDateFormat;
 
 /** Native shell: live game, local offline reference, and a read-only snapshot panel. */
 public final class MainActivity extends Activity {
@@ -35,7 +43,11 @@ public final class MainActivity extends Activity {
     private FrameLayout popupLayer;
     private boolean googleNoticeVisible;
     private FrameLayout stage;
-    private LinearLayout analysis, stats, tabs;
+    private LinearLayout analysis, stats, tabs, logsPage, logRows;
+    private TextView logSummary;
+    private Button pauseLogs;
+    private final SessionLog sessionLog = new SessionLog();
+    private final Runnable logRenderer = this::renderLogs;
     private TextView status;
     private int page = 0;
     private Snapshot latest = new Snapshot();
@@ -66,6 +78,12 @@ public final class MainActivity extends Activity {
             return insets;
         });
         setContentView(root);
+        sessionLog.setOnChange(() -> handler.post(() -> {
+            if (page == 3 && !isFinishing()) {
+                handler.removeCallbacks(logRenderer);
+                handler.postDelayed(logRenderer, 400);
+            }
+        }));
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -87,7 +105,10 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(dp(80), dp(48));
         updateParams.leftMargin = dp(8);
         header.addView(update, updateParams);
-        update.setOnClickListener(v -> UpdateManager.check(this, update));
+        update.setOnClickListener(v -> {
+            sessionLog.event("Действие", "Проверка обновления APK");
+            UpdateManager.check(this, update, detail -> sessionLog.event("Система", detail));
+        });
 
         stage = new FrameLayout(this);
         root.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -95,6 +116,11 @@ public final class MainActivity extends Activity {
         game.setWebViewClient(gameClient(false));
         game.getSettings().setSupportMultipleWindows(true);
         game.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);
+        game.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP)
+                sessionLog.event("Действие", "Касание в игре (без текста и координат)");
+            return false;
+        });
         game.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onCreateWindow(WebView view, boolean dialog, boolean userGesture, android.os.Message resultMsg) {
                 if (!userGesture || popup != null) return false;
@@ -127,6 +153,10 @@ public final class MainActivity extends Activity {
         analysis.setOrientation(LinearLayout.VERTICAL);
         stage.addView(analysis, new FrameLayout.LayoutParams(-1, -1));
         buildAnalysis();
+        logsPage = new LinearLayout(this);
+        logsPage.setOrientation(LinearLayout.VERTICAL);
+        stage.addView(logsPage, new FrameLayout.LayoutParams(-1, -1));
+        buildLogs();
 
         tabs = new LinearLayout(this);
         tabs.setBackgroundColor(PANEL);
@@ -134,6 +164,7 @@ public final class MainActivity extends Activity {
         game.loadUrl(GAME);
         guide.loadUrl(AssetPage.HOME);
         select(0);
+        sessionLog.event("Система", "Приложение запущено · логи только в памяти");
         handler.postDelayed(ticker, 5000);
     }
 
@@ -142,22 +173,32 @@ public final class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 if (!req.isForMainFrame()) return false;
                 Uri url = req.getUrl();
-                if (isGoogleSignIn(url)) { showGoogleNotice(); return true; }
+                if (isGoogleSignIn(url)) {
+                    sessionLog.navigation("Google-вход недоступен в WebView", url.toString());
+                    showGoogleNotice(); return true;
+                }
                 // OAuth providers (except Google) can stay inside this APK. No silent browser launch.
-                if ("https".equals(url.getScheme()) && url.getPort() == -1) return false;
+                if ("https".equals(url.getScheme()) && url.getPort() == -1) {
+                    sessionLog.navigation("Переход", url.toString());
+                    return false;
+                }
                 if ("http".equals(url.getScheme()) && url.getPort() == -1) {
                     status.setText("НЕЗАЩИЩЁННАЯ ССЫЛКА");
+                    sessionLog.navigation("HTTP заблокирован", url.toString());
                     return true;
                 }
+                sessionLog.event("Система", "Внешняя схема ссылки (адрес скрыт)");
                 openExternal(url);
                 return true;
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 // A popup's first URL may bypass shouldOverrideUrlLoading.
                 if (isGoogleSignIn(Uri.parse(url))) { view.stopLoading(); showGoogleNotice(); }
+                else sessionLog.navigation(isPopup ? "Окно входа" : "Открытие", url);
             }
             @Override public void onPageFinished(WebView view, String url) {
                 String host = Uri.parse(url).getHost();
+                sessionLog.navigation("Загружено", url);
                 if (isPopup) {
                     status.setText(host == null ? "ОКНО ВХОДА" : host);
                     return;
@@ -167,7 +208,22 @@ public final class MainActivity extends Activity {
                 if (loaded) sample();
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
-                if (request.isForMainFrame()) status.setText("НЕТ СОЕДИНЕНИЯ");
+                if (request.isForMainFrame()) {
+                    status.setText("НЕТ СОЕДИНЕНИЯ");
+                    sessionLog.navigation("Ошибка сети (" + error.getErrorCode() + ")", request.getUrl().toString());
+                }
+            }
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (request.isForMainFrame())
+                    sessionLog.navigation("HTTP " + response.getStatusCode(), request.getUrl().toString());
+            }
+            @Override public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
+                sessionLog.event("Ошибка", "Ошибка TLS · соединение отменено");
+                handler.cancel();
+            }
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                sessionLog.request(request.getUrl().toString());
+                return null; // Observe the destination only; WebView performs the real request.
             }
         };
     }
@@ -203,6 +259,12 @@ public final class MainActivity extends Activity {
         close.setOnClickListener(v -> closePopup());
         column.addView(close, new LinearLayout.LayoutParams(-1, dp(50)));
         popup = web();
+        popup.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP)
+                sessionLog.event("Действие", "Касание в окне входа (без текста и координат)");
+            return false;
+        });
+        sessionLog.event("Система", "Окно входа открыто");
         popup.setWebViewClient(gameClient(true));
         column.addView(popup, new LinearLayout.LayoutParams(-1, 0, 1));
         popupLayer.setVisibility(View.VISIBLE);
@@ -219,6 +281,7 @@ public final class MainActivity extends Activity {
         popup.destroy();
         popup = null;
         popupLayer.setVisibility(View.GONE);
+        sessionLog.event("Система", "Окно входа закрыто");
         Uri current = Uri.parse(game.getUrl() == null ? "" : game.getUrl());
         status.setText(isGame(current) ? "ИГРА ОНЛАЙН" : current.getHost() == null ? "ВНЕ ИГРЫ" : current.getHost());
     }
@@ -241,7 +304,10 @@ public final class MainActivity extends Activity {
         refresh.setTextColor(BG);
         refresh.setBackgroundTintList(android.content.res.ColorStateList.valueOf(BLUE));
         body.addView(refresh, new LinearLayout.LayoutParams(-1, dp(52)));
-        refresh.setOnClickListener(v -> sample());
+        refresh.setOnClickListener(v -> {
+            sessionLog.event("Действие", "Запрошен снимок показателей");
+            sample();
+        });
         stats = new LinearLayout(this);
         stats.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
@@ -251,6 +317,76 @@ public final class MainActivity extends Activity {
         TextView note = label("Значения распознаются по подписям в интерфейсе IdleArc. Если сайт изменит разметку или показателей нет на текущем экране, откройте вкладку с характеристиками в игре и нажмите «Обновить». Возможны неточности: сверяйте с игрой.", 12, MUTED, false);
         note.setPadding(0, dp(18), 0, dp(12));
         body.addView(note);
+    }
+
+    private void buildLogs() {
+        logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
+        logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
+        logsPage.addView(label("Логи соединений", 24, TEXT, true));
+        TextView note = label("Только текущий запуск APK. Видны касания без содержимого, переходы, домены запросов и ошибки. Пароли, текст форм, cookie, тела запросов и параметры URL не записываются. Это не полный сетевой трафик игры.", 12, MUTED, false);
+        note.setPadding(0, dp(8), 0, dp(8));
+        logsPage.addView(note);
+        logSummary = label("", 13, BLUE, true);
+        logsPage.addView(logSummary);
+
+        LinearLayout actions = new LinearLayout(this);
+        logsPage.addView(actions, new LinearLayout.LayoutParams(-1, dp(52)));
+        pauseLogs = new Button(this);
+        pauseLogs.setTextSize(12);
+        actions.addView(pauseLogs, new LinearLayout.LayoutParams(0, -1, 1));
+        pauseLogs.setOnClickListener(v -> {
+            sessionLog.setPaused(!sessionLog.isPaused());
+            renderLogs();
+        });
+        Button clear = new Button(this);
+        clear.setText("Очистить"); clear.setTextSize(12);
+        actions.addView(clear, new LinearLayout.LayoutParams(0, -1, 1));
+        clear.setOnClickListener(v -> { sessionLog.clear(); renderLogs(); });
+        Button copy = new Button(this);
+        copy.setText("Копия"); copy.setTextSize(12);
+        actions.addView(copy, new LinearLayout.LayoutParams(0, -1, 1));
+        copy.setOnClickListener(v -> {
+            StringBuilder text = new StringBuilder("IdleArc Guide · журнал текущего сеанса\n");
+            SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+            for (SessionLog.Entry item : sessionLog.snapshot())
+                text.append(format.format(new Date(item.time))).append("  ").append(item.type).append("  ").append(item.description).append('\n');
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText("IdleArc: логи", text.toString()));
+            sessionLog.event("Действие", "Журнал скопирован вручную");
+        });
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, 0, 1);
+        scrollParams.topMargin = dp(10);
+        logsPage.addView(scroll, scrollParams);
+        logRows = new LinearLayout(this);
+        logRows.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(logRows);
+        renderLogs();
+    }
+
+    private void renderLogs() {
+        if (logRows == null || logSummary == null) return;
+        List<SessionLog.Entry> entries = sessionLog.snapshot();
+        logSummary.setText("Запросов: " + sessionLog.requests() + "  ·  записей: " + entries.size()
+                + (sessionLog.isPaused() ? "  ·  ПАУЗА" : ""));
+        pauseLogs.setText(sessionLog.isPaused() ? "Продолжить" : "Пауза");
+        logRows.removeAllViews();
+        if (entries.isEmpty()) {
+            logRows.addView(label("Записей пока нет. Перейдите в игру или обновите страницу.", 14, MUTED, false));
+            return;
+        }
+        SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+        for (int i = entries.size() - 1; i >= Math.max(0, entries.size() - 120); i--) {
+            SessionLog.Entry item = entries.get(i);
+            TextView row = label(format.format(new Date(item.time)) + "  •  " + item.type + "\n" + item.description,
+                    13, "Ошибка".equals(item.type) ? Color.rgb(255, 161, 149) : TEXT, false);
+            row.setPadding(dp(12), dp(10), dp(12), dp(10));
+            row.setBackgroundColor(PANEL);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+            params.bottomMargin = dp(5);
+            logRows.addView(row, params);
+        }
     }
 
     private void renderStats() {
@@ -277,7 +413,10 @@ public final class MainActivity extends Activity {
         String sampledUrl = game.getUrl();
         game.evaluateJavascript(Probe.JS, value -> {
             if (!isFinishing() && sampledUrl.equals(game.getUrl()) && isGame(Uri.parse(sampledUrl))) {
-                latest = Snapshot.parse(value);
+                Snapshot next = Snapshot.parse(value);
+                if (!latest.values.equals(next.values))
+                    sessionLog.event("Анализ", "Обновлены показатели · полей: " + next.values.size());
+                latest = next;
                 renderStats();
             }
         });
@@ -288,17 +427,20 @@ public final class MainActivity extends Activity {
         game.setVisibility(target == 0 ? View.VISIBLE : View.GONE);
         guide.setVisibility(target == 1 ? View.VISIBLE : View.GONE);
         analysis.setVisibility(target == 2 ? View.VISIBLE : View.GONE);
+        logsPage.setVisibility(target == 3 ? View.VISIBLE : View.GONE);
         if (popupLayer.getVisibility() == View.VISIBLE) popupLayer.bringToFront();
         tabs.removeAllViews();
-        String[] names = {"◈  Игра", "▤  Справочник", "▥  Анализ"};
+        String[] names = {"◈ Игра", "▤ Справка", "▥ Анализ", "☷ Логи"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
-            TextView tab = label(names[i], 13, i == target ? BLUE : MUTED, i == target);
+            TextView tab = label(names[i], 12, i == target ? BLUE : MUTED, i == target);
             tab.setGravity(Gravity.CENTER);
             tabs.addView(tab, new LinearLayout.LayoutParams(0, -1, 1));
             tab.setOnClickListener(v -> select(index));
         }
+        sessionLog.event("Действие", "Открыта вкладка · " + names[target]);
         if (target == 2) sample();
+        if (target == 3) renderLogs();
     }
 
     private WebView web() {
@@ -343,6 +485,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         handler.removeCallbacks(ticker);
+        handler.removeCallbacks(logRenderer);
         closePopup();
         stage.removeView(game); stage.removeView(guide);
         game.destroy(); guide.destroy();
