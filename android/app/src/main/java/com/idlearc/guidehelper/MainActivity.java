@@ -221,7 +221,7 @@ public final class MainActivity extends Activity {
                 handler.cancel();
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                sessionLog.request(request.getUrl().toString());
+                sessionLog.request(request.getUrl().toString(), request.getMethod());
                 return null; // Observe the destination only; WebView performs the real request.
             }
         };
@@ -317,7 +317,7 @@ public final class MainActivity extends Activity {
         logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
         logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
         logsPage.addView(label("Логи соединений", 24, TEXT, true));
-        TextView note = label("Действия на idlearc.com: имя нажатой кнопки/ссылки и fetch/XHR/WS — метод, безопасный маршрут, HTTP-статус. Формы входа и чужие домены исключены. Тела запросов, токены и пароли не записываются. Это НЕ перехват всех пакетов и не журнал сервера.", 12, MUTED, false);
+        TextView note = label("На idlearc.com: кнопка/ссылка и fetch/XHR/WS — метод, безопасный маршрут, HTTP-статус. «≈ после #N» означает только близость по времени, не доказанную причину. Формы входа исключены; от чужих доменов виден лишь хост ресурсов. Тела запросов, токены и пароли не записываются. Это не перехват всех пакетов.", 12, MUTED, false);
         note.setPadding(0, dp(8), 0, dp(8));
         logsPage.addView(note);
         detailStatus = label(detailedCaptureEnabled ? "ДЕТАЛЬНЫЙ РЕЖИМ · только сайт игры"

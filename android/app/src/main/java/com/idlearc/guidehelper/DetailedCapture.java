@@ -42,10 +42,10 @@ final class DetailedCapture {
                             JSONObject data = new JSONObject(raw);
                             String type = data.optString("t");
                             if ("click".equals(type)) {
-                                log.click(data.optString("tag"), data.optString("label"));
+                                log.click(data.optString("tag"), data.optString("label"), data.optInt("id", 0));
                             } else if ("fetch".equals(type) || "xhr".equals(type) ||
                                     "ws-tx".equals(type) || "ws-rx".equals(type)) {
-                                log.network(type, data.optString("m"), data.optString("u"), data.optInt("s", 0));
+                                log.network(type, data.optString("m"), data.optString("u"), data.optInt("s", 0), data.optInt("a", 0));
                             }
                         } catch (Exception ignored) { /* Reject malformed messages from page scripts. */ }
                     });

@@ -6,6 +6,9 @@
   const bridge = window.IdleArcTelemetry;
   if (!bridge || typeof bridge.postMessage !== 'function') return;
   const send = value => { try { bridge.postMessage(JSON.stringify(value)); } catch (_) {} };
+  let clickSequence = 0;
+  let lastClickAt = 0;
+  let lastClickId = 0;
   const hideAuth = () => /(?:login|sign-?in|account|oauth|auth|callback|password)/i.test(location.pathname)
     || Array.from(document.querySelectorAll('input[type="password"]')).some(el =>
       el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
@@ -23,7 +26,8 @@
   const record = (type, m, url, status) => {
     if (hideAuth()) return;
     const u = safeUrl(url);
-    if (u) send({ t: type, m: method(m), u, s: Number.isInteger(status) && status >= 0 && status <= 599 ? status : 0 });
+    if (u) send({ t: type, m: method(m), u, s: Number.isInteger(status) && status >= 0 && status <= 599 ? status : 0,
+      a: Date.now() - lastClickAt < 1500 && Date.now() >= lastClickAt ? lastClickId : 0 });
   };
 
   document.addEventListener('click', event => {
@@ -35,7 +39,8 @@
       .replace(/\s+/g, ' ').trim();
     const safeLabel = label.length <= 60 && !/@|https?:\/\/|[0-9]{6,}|[A-Za-z0-9_-]{20,}|token|password|secret|cookie|email/i.test(label)
       ? label : '';
-    send({ t: 'click', tag: node.tagName, label: safeLabel });
+    lastClickId = ++clickSequence; lastClickAt = Date.now();
+    send({ t: 'click', tag: node.tagName, label: safeLabel, id: lastClickId });
   }, true);
 
   if (typeof window.fetch === 'function') {

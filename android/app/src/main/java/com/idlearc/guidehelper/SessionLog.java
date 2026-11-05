@@ -61,9 +61,12 @@ final class SessionLog {
         add("Переход", action + " · " + host(url));
     }
 
-    void request(String url) {
-        String domain = host(url);
-        if ("домен скрыт".equals(domain)) return;
+    void request(String url) { request(url, "GET"); }
+
+    void request(String url, String method) {
+        String route = safeRoute(url);
+        if ("домен скрыт".equals(route)) return;
+        String verb = method != null && method.matches("GET|POST|PUT|PATCH|DELETE|HEAD") ? method : "OTHER";
         Runnable callback = null;
         synchronized (this) {
             if (paused) return;
@@ -72,7 +75,7 @@ final class SessionLog {
             if (now - requestWindow >= 1000) { requestWindow = now; shownInWindow = 0; }
             // Show at most four individual requests per second. Count all requests.
             if (shownInWindow++ < 4) {
-                put(new Entry(now, "Запрос", "Ресурс · " + domain));
+                put(new Entry(now, "Запрос", "Ресурс " + verb + " → " + route));
                 callback = onChange;
             }
         }
@@ -80,19 +83,21 @@ final class SessionLog {
     }
 
     /** A game control click; text must be a short, non-sensitive accessible label. */
-    void click(String tag, String label) {
+    void click(String tag, String label, int id) {
         String type = "A".equals(tag) ? "Ссылка" : "Кнопка";
-        add("Нажатие", type + " · " + safeLabel(label));
+        String prefix = id > 0 && id <= 1000000 ? "#" + id + " · " : "";
+        add("Нажатие", prefix + type + " · " + safeLabel(label));
     }
 
     /** fetch/XHR/WebSocket request metadata from the allowlisted game origin. */
-    void network(String type, String method, String url, int status) {
+    void network(String type, String method, String url, int status, int afterClick) {
         if (!("fetch".equals(type) || "xhr".equals(type) || "ws-tx".equals(type) || "ws-rx".equals(type))) return;
         String route = safeRoute(url);
         if ("домен скрыт".equals(route)) return;
         String verb = method != null && method.matches("GET|POST|PUT|PATCH|DELETE|HEAD") ? method : "OTHER";
         String state = status > 0 && status <= 599 ? " · HTTP " + status : "";
         String kind = type.startsWith("ws-") ? ("ws-tx".equals(type) ? "WS →" : "WS ←") : type.toUpperCase(Locale.ROOT);
+        String correlation = afterClick > 0 && afterClick <= 1000000 ? " · ≈ после #" + afterClick : "";
         Runnable callback = null;
         synchronized (this) {
             if (paused) return;
@@ -100,7 +105,7 @@ final class SessionLog {
             long now = System.currentTimeMillis();
             if (now - operationWindow >= 1000) { operationWindow = now; shownOperations = 0; }
             if (shownOperations++ < 12) {
-                put(new Entry(now, "Сеть", kind + " " + verb + " · " + route + state));
+                put(new Entry(now, "Сеть", kind + " " + verb + " · " + route + state + correlation));
                 callback = onChange;
             }
         }
@@ -131,7 +136,7 @@ final class SessionLog {
             if (!("idlearc.com".equals(domain) || "www.idlearc.com".equals(domain))) return domain;
             String path = uri.getRawPath();
             if (path == null || path.isEmpty() || "/".equals(path)) return domain + "/";
-            if (path.matches("(?i).*(?:auth|token|session|password|oauth|login|callback|credential).*"))
+            if (path.matches("(?i).*(?:auth|token|session|password|oauth|login|callback|credential|private).*"))
                 return domain + "/[защищённый маршрут]";
             StringBuilder safe = new StringBuilder(domain);
             String[] parts = path.split("/");

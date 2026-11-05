@@ -33,11 +33,12 @@ const sandbox = {
 sandbox.window = sandbox;
 vm.runInNewContext(script, sandbox);
 onClick({ isTrusted: true, target: new Element() });
-assert.deepEqual(JSON.parse(JSON.stringify(sent[0])), { t: 'click', tag: 'BUTTON', label: 'Инвентарь' });
+assert.deepEqual(JSON.parse(JSON.stringify(sent[0])), { t: 'click', tag: 'BUTTON', label: 'Инвентарь', id: 1 });
 await sandbox.fetch('/api/player/123?token=TOPSECRET');
 assert.equal(sent[1].t, 'fetch');
 assert.equal(sent[1].u, 'https://idlearc.com/api/player/123');
 assert.equal(sent[1].s, 204);
+assert.equal(sent[1].a, 1, 'request is time-correlated with preceding click');
 const xhr = new XHR(); xhr.open('POST', '/api/shop?secret=TOPSECRET'); xhr.complete();
 assert.equal(sent[2].t, 'xhr');
 assert.equal(sent[2].m, 'POST');
