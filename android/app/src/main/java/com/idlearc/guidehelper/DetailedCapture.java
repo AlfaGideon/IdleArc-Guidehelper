@@ -1,7 +1,6 @@
 package com.idlearc.guidehelper;
 
 import android.content.res.AssetManager;
-import android.net.Uri;
 import android.webkit.WebView;
 
 import androidx.webkit.WebMessageCompat;
@@ -52,7 +51,6 @@ final class DetailedCapture {
             WebViewCompat.addDocumentStartJavaScript(web, new String(script, StandardCharsets.UTF_8), ORIGINS);
             return true;
         } catch (Exception e) {
-            log.event("Система", "Детальный сбор недоступен на этой версии WebView");
             return false;
         }
     }

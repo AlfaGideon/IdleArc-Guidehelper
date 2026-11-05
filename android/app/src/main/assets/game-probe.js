@@ -15,7 +15,7 @@
   const safeUrl = input => {
     try {
       const u = new URL(input, location.href);
-      if (u.protocol !== 'https:' && u.protocol !== 'wss:') return null;
+      if ((u.protocol !== 'https:' && u.protocol !== 'wss:') || !/(?:^|\.)idlearc\.com$/i.test(u.hostname)) return null;
       // Query strings, fragments, credentials, and request bodies never leave the page.
       if (u.username || u.password || /(?:auth|token|session|password|oauth|login|callback|credential)/i.test(u.pathname)) return null;
       return u.origin + u.pathname;

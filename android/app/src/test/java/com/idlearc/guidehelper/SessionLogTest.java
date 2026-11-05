@@ -4,57 +4,56 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 public final class SessionLogTest {
-    @Test public void stripsTokensPasswordsPathsAndQueries() {
-        assertEquals("idlearc.com", SessionLog.host("https://idlearc.com/account/secret?token=very-secret#password"));
-        assertEquals("домен скрыт", SessionLog.host("https://user:password@idlearc.com/"));
-        assertEquals("домен скрыт", SessionLog.host("javascript:alert('secret')"));
+    @Test public void recordsOnlyGameplayInHumanRussian() {
         SessionLog log = new SessionLog();
-        log.navigation("Открытие", "https://idlearc.com/account?token=very-secret");
-        log.request("https://idlearc.com/private?password=very-secret");
-        for (SessionLog.Entry item : log.snapshot()) {
-            assertFalse(item.description.contains("very-secret"));
-            assertFalse(item.description.contains("account"));
-            assertFalse(item.description.contains("private"));
-        }
-    }
-
-    @Test public void recordsSpecificClicksAndSafeNetworkMetadata() {
-        SessionLog log = new SessionLog();
-        log.click("BUTTON", "Инвентарь", 1);
-        log.click("A", "player@example.com", 2);
-        log.network("fetch", "POST", "https://idlearc.com/api/character/987654/items?token=TOPSECRET", 201, 1);
-        log.network("xhr", "GET", "https://other.example/private?apiKey=TOPSECRET", 403, 0);
-        log.network("ws-tx", "OTHER", "wss://idlearc.com/api/stream", 0, 0);
-        assertEquals(3, log.operations());
+        log.click("BUTTON", "Inventory", 1);
+        log.network("fetch", "GET", "https://idlearc.com/api/character/987654/items?token=TOPSECRET", 200, 1);
+        log.network("ws-tx", "OTHER", "wss://api.idlearc.com/socket?secret=TOPSECRET", 0, 0);
+        assertEquals(1, log.actions());
+        assertEquals(2, log.operations());
         StringBuilder descriptions = new StringBuilder();
         for (SessionLog.Entry item : log.snapshot()) descriptions.append(item.description).append('\n');
-        String safe = descriptions.toString();
-        assertTrue(safe.contains("#1 · Кнопка · Инвентарь"));
-        assertTrue(safe.contains("подпись скрыта"));
-        assertTrue(safe.contains("FETCH POST · idlearc.com/api/character/:id/items · HTTP 201 · ≈ после #1"));
-        assertTrue(safe.contains("XHR GET · other.example · HTTP 403"));
-        assertTrue(safe.contains("WS → OTHER · idlearc.com/api/stream"));
-        assertFalse(safe.contains("987654"));
-        assertFalse(safe.contains("TOPSECRET"));
-        assertFalse(safe.contains("player@example.com"));
-        assertEquals("idlearc.com/[защищённый маршрут]",
-            SessionLog.safeRoute("https://idlearc.com/api/auth/token?secret=1"));
+        String text = descriptions.toString();
+        assertTrue(text.contains("Вы нажали: кнопка «Инвентарь» №1"));
+        assertTrue(text.contains("Игра получила данные: предметы персонажа — успешно (код 200)"));
+        assertTrue(text.contains("после действия №1 (по времени)"));
+        assertTrue(text.contains("Игра отправила сообщение серверу (содержимое скрыто)"));
+        assertFalse(text.contains("GET"));
+        assertFalse(text.contains("FETCH"));
+        assertFalse(text.contains("987654"));
+        assertFalse(text.contains("TOPSECRET"));
+        assertFalse(text.contains("socket"));
     }
 
-    @Test public void boundsMemoryAndCountsWithoutFloodingTimeline() {
+    @Test public void ignoresOtherSitesAndAuthData() {
         SessionLog log = new SessionLog();
-        for (int i = 0; i < 900; i++) log.request("https://idlearc.com/asset-" + i);
-        assertEquals(900, log.requests());
-        assertTrue("timeline should be sampled rather than flooded", log.snapshot().size() <= 20);
-        for (int i = 0; i < 500; i++) log.event("Действие", "Касание");
+        log.network("xhr", "POST", "https://accounts.google.com/auth?token=TOPSECRET", 200, 0);
+        log.network("fetch", "GET", "https://idlearc.com/api/auth/token", 200, 0);
+        log.network("fetch", "GET", "https://evil-idlearc.com/api/items", 200, 0);
+        log.network("fetch", "GET", "http://idlearc.com/api/items", 200, 0);
+        assertEquals(0, log.operations());
+        assertTrue(log.snapshot().isEmpty());
+        assertNull(SessionLog.safeRoute("https://idlearc.com/private?password=TOPSECRET"));
+        assertNull(SessionLog.safeRoute("https://user:password@idlearc.com/api/items"));
+        assertEquals("подпись скрыта", SessionLog.safeLabel("player@example.com"));
+        assertEquals("подпись скрыта", SessionLog.safeLabel("1234567890"));
+        assertEquals("подпись скрыта", SessionLog.safeLabel("https://example.com"));
+    }
+
+    @Test public void pausesClearsAndBoundsMemory() {
+        SessionLog log = new SessionLog();
+        for (int i = 0; i < 900; i++) log.network("fetch", "GET", "https://idlearc.com/api/items", 200, 0);
+        assertEquals(900, log.operations());
+        assertTrue(log.snapshot().size() <= 24);
+        for (int i = 0; i < 500; i++) log.click("BUTTON", "Battle", i + 1);
+        assertEquals(500, log.actions());
         assertEquals(SessionLog.LIMIT, log.snapshot().size());
         log.setPaused(true);
-        log.request("https://idlearc.com/private");
-        log.event("Действие", "Касание");
-        assertEquals(900, log.requests());
-        assertEquals(SessionLog.LIMIT, log.snapshot().size());
+        log.click("BUTTON", "Inventory", 999);
+        assertEquals(500, log.actions());
         log.clear();
         assertTrue(log.snapshot().isEmpty());
-        assertEquals(0, log.requests());
+        assertEquals(0, log.operations());
+        assertEquals(0, log.actions());
     }
 }

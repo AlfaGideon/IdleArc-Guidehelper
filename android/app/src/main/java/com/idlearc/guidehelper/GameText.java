@@ -1,0 +1,87 @@
+package com.idlearc.guidehelper;
+
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
+/** Short, deliberately conservative translations: never invents an action from a URL. */
+final class GameText {
+    private static final Map<String, String> BUTTONS = new HashMap<>();
+    private static final Map<String, String> PARTS = new HashMap<>();
+    static {
+        String[][] buttons = {
+            {"inventory", "Инвентарь"}, {"items", "Предметы"}, {"character", "Персонаж"},
+            {"equipment", "Экипировка"}, {"equip", "Надеть предмет"}, {"unequip", "Снять предмет"},
+            {"skills", "Навыки"}, {"passives", "Пассивные навыки"}, {"passive tree", "Дерево пассивных навыков"},
+            {"pets", "Питомцы"}, {"quests", "Задания"}, {"quest", "Задание"},
+            {"battle", "Бой"}, {"fight", "Начать бой"}, {"attack", "Атаковать"},
+            {"boss", "Босс"}, {"dungeon", "Подземелье"}, {"map", "Карта"},
+            {"forge", "Кузница"}, {"craft", "Создать предмет"}, {"upgrade", "Улучшить"},
+            {"shop", "Магазин"}, {"buy", "Купить"}, {"sell", "Продать"},
+            {"collect", "Собрать"}, {"claim", "Получить награду"}, {"claim reward", "Получить награду"},
+            {"start", "Начать"}, {"play", "Играть"}, {"continue", "Продолжить"},
+            {"settings", "Настройки"}, {"guild", "Гильдия"}, {"farm", "Фарм"},
+            {"level up", "Повысить уровень"}, {"close", "Закрыть"}, {"back", "Назад"},
+            {"save", "Сохранить"}, {"confirm", "Подтвердить"}, {"cancel", "Отмена"},
+            {"raid", "Рейд"}, {"raids", "Рейды"}, {"arena", "Арена"},
+            {"tower", "Башня"}, {"mastery", "Мастерство"}, {"stats", "Характеристики"},
+            {"chat", "Чат"}, {"leaderboard", "Таблица лидеров"}, {"market", "Рынок"},
+            {"class", "Класс"}, {"battle pass", "Боевой пропуск"}, {"adventure", "Приключение"},
+            {"collect all", "Собрать всё"}, {"open", "Открыть"}, {"training", "Тренировка"}
+        };
+        for (String[] pair : buttons) BUTTONS.put(pair[0], pair[1]);
+        String[][] parts = {
+            {"character", "персонаж"}, {"characters", "персонажи"}, {"player", "игрок"},
+            {"inventory", "инвентарь"}, {"item", "предмет"}, {"items", "предметы"},
+            {"skill", "навык"}, {"skills", "навыки"}, {"passive", "пассивные навыки"},
+            {"passives", "пассивные навыки"}, {"pet", "питомец"}, {"pets", "питомцы"},
+            {"battle", "бой"}, {"combat", "бой"}, {"fight", "бой"},
+            {"monster", "монстр"}, {"monsters", "монстры"}, {"boss", "босс"},
+            {"quest", "задание"}, {"quests", "задания"}, {"reward", "награда"},
+            {"rewards", "награды"}, {"loot", "добыча"}, {"drop", "добыча"},
+            {"gold", "золото"}, {"shop", "магазин"}, {"guild", "гильдия"},
+            {"forge", "кузница"}, {"craft", "создание предмета"}, {"upgrade", "улучшение"},
+            {"stats", "характеристики"}, {"level", "уровень"}, {"map", "карта"},
+            {"dungeon", "подземелье"}, {"farm", "фарм"}
+        };
+        for (String[] pair : parts) PARTS.put(pair[0], pair[1]);
+    }
+    private GameText() {}
+
+    static String button(String safeLabel) {
+        if ("подпись скрыта".equals(safeLabel)) return "кнопка без доступного названия";
+        String key = safeLabel.trim().toLowerCase(Locale.ROOT).replaceAll("\\s*\\(\\d{1,3}\\)$", "");
+        String known = BUTTONS.get(key);
+        if (known != null) return known;
+        // Unknown text is the actual site label, not a guessed translation.
+        return safeLabel;
+    }
+
+    static String topic(String safeRoute) {
+        if (safeRoute == null) return "игровые данные";
+        String[] pieces = safeRoute.split("/");
+        java.util.Set<String> segments = new java.util.HashSet<>();
+        String last = null;
+        for (String piece : pieces) {
+            String name = PARTS.get(piece.toLowerCase(Locale.ROOT));
+            if (name != null) { segments.add(piece.toLowerCase(Locale.ROOT)); last = name; }
+        }
+        boolean character = segments.contains("character") || segments.contains("characters") || segments.contains("player");
+        if (character && (segments.contains("items") || segments.contains("item"))) return "предметы персонажа";
+        if (character && segments.contains("inventory")) return "инвентарь персонажа";
+        if (character && segments.contains("stats")) return "характеристики персонажа";
+        if (character && (segments.contains("skills") || segments.contains("skill"))) return "навыки персонажа";
+        if ((segments.contains("quest") || segments.contains("quests")) &&
+                (segments.contains("reward") || segments.contains("rewards"))) return "награды за задания";
+        return last == null ? "игровые данные (раздел не распознан)" : last;
+    }
+
+    static String result(int code) {
+        if (code >= 200 && code < 300) return "успешно";
+        if (code == 401 || code == 403) return "доступ не разрешён";
+        if (code == 404) return "данные не найдены";
+        if (code >= 500 && code <= 599) return "ошибка сервера";
+        if (code >= 400) return "запрос отклонён";
+        return "ответ не получен";
+    }
+}

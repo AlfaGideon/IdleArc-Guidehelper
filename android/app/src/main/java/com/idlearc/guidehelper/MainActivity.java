@@ -105,10 +105,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(dp(80), dp(48));
         updateParams.leftMargin = dp(8);
         header.addView(update, updateParams);
-        update.setOnClickListener(v -> {
-            sessionLog.event("Действие", "Проверка обновления APK");
-            UpdateManager.check(this, update, detail -> sessionLog.event("Система", detail));
-        });
+        update.setOnClickListener(v -> UpdateManager.check(this, update, detail -> {}));
 
         stage = new FrameLayout(this);
         root.addView(stage, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -125,9 +122,6 @@ public final class MainActivity extends Activity {
             @Override public void onCloseWindow(WebView window) { closePopup(); }
         });
         detailedCaptureEnabled = DetailedCapture.install(game, getAssets(), sessionLog);
-        sessionLog.event("Система", detailedCaptureEnabled
-                ? "Детальные события кнопок и сети активны для idlearc.com"
-                : "WebView не поддерживает детальные события · обновите Android System WebView");
         stage.addView(game);
 
         guide = web();
@@ -163,7 +157,6 @@ public final class MainActivity extends Activity {
         game.loadUrl(GAME);
         guide.loadUrl(AssetPage.HOME);
         select(0);
-        sessionLog.event("Система", "Приложение запущено · логи только в памяти");
         handler.postDelayed(ticker, 5000);
     }
 
@@ -173,31 +166,25 @@ public final class MainActivity extends Activity {
                 if (!req.isForMainFrame()) return false;
                 Uri url = req.getUrl();
                 if (isGoogleSignIn(url)) {
-                    sessionLog.navigation("Google-вход недоступен в WebView", url.toString());
                     showGoogleNotice(); return true;
                 }
                 // OAuth providers (except Google) can stay inside this APK. No silent browser launch.
                 if ("https".equals(url.getScheme()) && url.getPort() == -1) {
-                    sessionLog.navigation("Переход", url.toString());
                     return false;
                 }
                 if ("http".equals(url.getScheme()) && url.getPort() == -1) {
                     status.setText("НЕЗАЩИЩЁННАЯ ССЫЛКА");
-                    sessionLog.navigation("HTTP заблокирован", url.toString());
                     return true;
                 }
-                sessionLog.event("Система", "Внешняя схема ссылки (адрес скрыт)");
                 openExternal(url);
                 return true;
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 // A popup's first URL may bypass shouldOverrideUrlLoading.
                 if (isGoogleSignIn(Uri.parse(url))) { view.stopLoading(); showGoogleNotice(); }
-                else sessionLog.navigation(isPopup ? "Окно входа" : "Открытие", url);
             }
             @Override public void onPageFinished(WebView view, String url) {
                 String host = Uri.parse(url).getHost();
-                sessionLog.navigation("Загружено", url);
                 if (isPopup) {
                     status.setText(host == null ? "ОКНО ВХОДА" : host);
                     return;
@@ -209,20 +196,17 @@ public final class MainActivity extends Activity {
             @Override public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
                 if (request.isForMainFrame()) {
                     status.setText("НЕТ СОЕДИНЕНИЯ");
-                    sessionLog.navigation("Ошибка сети (" + error.getErrorCode() + ")", request.getUrl().toString());
+                    sessionLog.gameError("Игра не смогла подключиться к серверу", request.getUrl().toString());
                 }
             }
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (request.isForMainFrame())
-                    sessionLog.navigation("HTTP " + response.getStatusCode(), request.getUrl().toString());
+                    sessionLog.gameError("Игра сообщила: " + GameText.result(response.getStatusCode())
+                            + " (код " + response.getStatusCode() + ")", request.getUrl().toString());
             }
             @Override public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
-                sessionLog.event("Ошибка", "Ошибка TLS · соединение отменено");
+                sessionLog.gameError("Безопасное соединение с игрой прервано", error.getUrl());
                 handler.cancel();
-            }
-            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                sessionLog.request(request.getUrl().toString(), request.getMethod());
-                return null; // Observe the destination only; WebView performs the real request.
             }
         };
     }
@@ -258,7 +242,6 @@ public final class MainActivity extends Activity {
         close.setOnClickListener(v -> closePopup());
         column.addView(close, new LinearLayout.LayoutParams(-1, dp(50)));
         popup = web();
-        sessionLog.event("Система", "Окно входа открыто");
         popup.setWebViewClient(gameClient(true));
         column.addView(popup, new LinearLayout.LayoutParams(-1, 0, 1));
         popupLayer.setVisibility(page == 0 ? View.VISIBLE : View.GONE);
@@ -275,7 +258,6 @@ public final class MainActivity extends Activity {
         popup.destroy();
         popup = null;
         popupLayer.setVisibility(View.GONE);
-        sessionLog.event("Система", "Окно входа закрыто");
         Uri current = Uri.parse(game.getUrl() == null ? "" : game.getUrl());
         status.setText(isGame(current) ? "ИГРА ОНЛАЙН" : current.getHost() == null ? "ВНЕ ИГРЫ" : current.getHost());
     }
@@ -298,10 +280,7 @@ public final class MainActivity extends Activity {
         refresh.setTextColor(BG);
         refresh.setBackgroundTintList(android.content.res.ColorStateList.valueOf(BLUE));
         body.addView(refresh, new LinearLayout.LayoutParams(-1, dp(52)));
-        refresh.setOnClickListener(v -> {
-            sessionLog.event("Действие", "Запрошен снимок показателей");
-            sample();
-        });
+        refresh.setOnClickListener(v -> sample());
         stats = new LinearLayout(this);
         stats.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, -2);
@@ -317,11 +296,11 @@ public final class MainActivity extends Activity {
         logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
         logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
         logsPage.addView(label("Логи соединений", 24, TEXT, true));
-        TextView note = label("На idlearc.com: кнопка/ссылка и fetch/XHR/WS — метод, безопасный маршрут, HTTP-статус. «≈ после #N» означает только близость по времени, не доказанную причину. Формы входа исключены; от чужих доменов виден лишь хост ресурсов. Тела запросов, токены и пароли не записываются. Это не перехват всех пакетов.", 12, MUTED, false);
+        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. Пароли и содержимое сообщений не записываются.", 12, MUTED, false);
         note.setPadding(0, dp(8), 0, dp(8));
         logsPage.addView(note);
-        detailStatus = label(detailedCaptureEnabled ? "ДЕТАЛЬНЫЙ РЕЖИМ · только сайт игры"
-                : "ДЕТАЛЬНЫЙ РЕЖИМ НЕДОСТУПЕН · обновите Android System WebView", 12,
+        detailStatus = label(detailedCaptureEnabled ? "ИГРОВОЙ ЖУРНАЛ · только IdleArc"
+                : "ИГРОВОЙ ЖУРНАЛ НЕДОСТУПЕН · обновите Android System WebView", 12,
                 detailedCaptureEnabled ? BLUE : Color.rgb(255, 195, 125), true);
         logsPage.addView(detailStatus);
         logSummary = label("", 13, BLUE, true);
@@ -350,7 +329,6 @@ public final class MainActivity extends Activity {
                 text.append(format.format(new Date(item.time))).append("  ").append(item.type).append("  ").append(item.description).append('\n');
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             clipboard.setPrimaryClip(ClipData.newPlainText("IdleArc: логи", text.toString()));
-            sessionLog.event("Действие", "Журнал скопирован вручную");
         });
 
         ScrollView scroll = new ScrollView(this);
@@ -366,20 +344,20 @@ public final class MainActivity extends Activity {
     private void renderLogs() {
         if (logRows == null || logSummary == null) return;
         List<SessionLog.Entry> entries = sessionLog.snapshot();
-        logSummary.setText("Ресурсов: " + sessionLog.requests() + "  ·  сетевых операций: "
+        logSummary.setText("Действий в игре: " + sessionLog.actions() + "  ·  обменов с игрой: "
                 + sessionLog.operations() + "  ·  записей: " + entries.size()
                 + (sessionLog.isPaused() ? "  ·  ПАУЗА" : ""));
         pauseLogs.setText(sessionLog.isPaused() ? "Продолжить" : "Пауза");
         logRows.removeAllViews();
         if (entries.isEmpty()) {
-            logRows.addView(label("Записей пока нет. Перейдите в игру или обновите страницу.", 14, MUTED, false));
+            logRows.addView(label("В игре ещё нет записанных действий. Нажмите игровую кнопку и вернитесь сюда.", 14, MUTED, false));
             return;
         }
         SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
         for (int i = entries.size() - 1; i >= Math.max(0, entries.size() - 120); i--) {
             SessionLog.Entry item = entries.get(i);
             TextView row = label(format.format(new Date(item.time)) + "  •  " + item.type + "\n" + item.description,
-                    13, "Ошибка".equals(item.type) ? Color.rgb(255, 161, 149) : TEXT, false);
+                    13, "Ошибка игры".equals(item.type) ? Color.rgb(255, 161, 149) : TEXT, false);
             row.setPadding(dp(12), dp(10), dp(12), dp(10));
             row.setBackgroundColor(PANEL);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
@@ -413,8 +391,6 @@ public final class MainActivity extends Activity {
         game.evaluateJavascript(Probe.JS, value -> {
             if (!isFinishing() && sampledUrl.equals(game.getUrl()) && isGame(Uri.parse(sampledUrl))) {
                 Snapshot next = Snapshot.parse(value);
-                if (!latest.values.equals(next.values))
-                    sessionLog.event("Анализ", "Обновлены показатели · полей: " + next.values.size());
                 latest = next;
                 renderStats();
             }
@@ -438,7 +414,6 @@ public final class MainActivity extends Activity {
             tabs.addView(tab, new LinearLayout.LayoutParams(0, -1, 1));
             tab.setOnClickListener(v -> select(index));
         }
-        sessionLog.event("Действие", "Открыта вкладка · " + names[target]);
         if (target == 2) sample();
         if (target == 3) renderLogs();
     }

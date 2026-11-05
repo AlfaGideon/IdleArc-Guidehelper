@@ -53,4 +53,7 @@ sandbox.location.pathname = '/login';
 onClick({ isTrusted: true, target: new Element('Войти') });
 await sandbox.fetch('/api/login?token=TOPSECRET');
 assert.equal(sent.length, 5, 'auth page is excluded');
+sandbox.location.pathname = '/game';
+await sandbox.fetch('https://other.example/track?token=TOPSECRET');
+assert.equal(sent.length, 5, 'external sites are not logged');
 console.log('Game probe click/fetch/XHR/WebSocket metadata and auth masking OK');
