@@ -38,6 +38,8 @@ public final class SessionLogTest {
         assertEquals("подпись скрыта", SessionLog.safeLabel("player@example.com"));
         assertEquals("подпись скрыта", SessionLog.safeLabel("1234567890"));
         assertEquals("подпись скрыта", SessionLog.safeLabel("https://example.com"));
+        assertEquals("Бой", GameText.button("Battle"));
+        assertEquals("Неизвестный пункт", GameText.button("Неизвестный пункт"));
     }
 
     @Test public void pausesClearsAndBoundsMemory() {
