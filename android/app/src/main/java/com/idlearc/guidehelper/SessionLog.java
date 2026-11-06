@@ -58,13 +58,32 @@ final class SessionLog {
         add(true, "В игре", "Вы нажали: " + type + " «" + title + "»" + number);
     }
 
+    void botClick(String label) {
+        String safe = safeLabel(label);
+        if (!"подпись скрыта".equals(safe)) add(true, "В игре", "Бот нажал игровую кнопку «" + GameText.button(safe) + "»");
+    }
+
     void network(String type, String method, String url, int status, int afterClick) {
+        network(type, method, url, status, afterClick, "");
+    }
+
+    void network(String type, String method, String url, int status, int afterClick, String payloadClass) {
         if (!("fetch".equals(type) || "xhr".equals(type) || "ws-tx".equals(type) || "ws-rx".equals(type))) return;
         String route = safeRoute(url);
         if (route == null) return;
         String text;
-        if ("ws-tx".equals(type)) text = "Игра отправила сообщение серверу (содержимое скрыто)";
-        else if ("ws-rx".equals(type)) text = "Игра получила сообщение сервера (содержимое скрыто)";
+        if ("ws-tx".equals(type) || "ws-rx".equals(type)) {
+            String detail;
+            switch (payloadClass) {
+                case "json": detail = "JSON: распознанные игровые поля показаны отдельно, если они есть"; break;
+                case "text": detail = "текст без доступных игровых полей"; break;
+                case "binary": detail = "двоичные данные: состав нельзя достоверно расшифровать"; break;
+                case "large": detail = "сообщение превышает предел безопасного разбора"; break;
+                default: detail = "формат не указан игрой";
+            }
+            text = ("ws-tx".equals(type) ? "Игра отправила сообщение серверу" :
+                    "Игра получила сообщение сервера") + " — " + detail;
+        }
         else {
             String topic = GameText.topic(route);
             String action = "GET".equals(method) && status >= 200 && status < 300 ? "получила данные" :
@@ -88,6 +107,35 @@ final class SessionLog {
             }
         }
         if (callback != null) callback.run();
+    }
+
+    void gameFields(String url, String direction, String action, String currency, Object amount,
+            String entity, String name) {
+        String route = safeRoute(url);
+        if (route == null || !("in".equals(direction) || "out".equals(direction))) return;
+        String prefix = "in".equals(direction) ? "В ответе игры" : "В игровом запросе";
+        if (action != null && action.matches("attack|battle|fight|explore|quest|event|reward|drop|equip|craft|upgrade|buy|sell")) {
+            String label = GameText.button(action);
+            add(false, "Сведения игры", prefix + " указано действие: " + label);
+        }
+        if (entity != null && entity.matches("monster|quest|event") && name != null && name.length() <= 48 &&
+                !"подпись скрыта".equals(safeLabel(name))) {
+            String title = "monster".equals(entity) ? "монстр" : "quest".equals(entity) ? "задание" : "событие";
+            add(false, "Сведения игры", prefix + " указан " + title + ": «" + name + "»");
+        }
+        if (currency != null && currency.matches("gold|gems|rubies|essence") && amount instanceof Number) {
+            double n = ((Number) amount).doubleValue();
+            if (Double.isFinite(n) && n >= 0 && n <= 1e12 && n == Math.rint(n))
+                add(false, "Сведения игры", prefix + " указано: " + currencyName(currency) + " = " + (long) n);
+        }
+    }
+    private static String currencyName(String field) {
+        switch (field) {
+            case "gold": return "золото";
+            case "gems": return "самоцветы";
+            case "rubies": return "рубины";
+            default: return "эссенция";
+        }
     }
 
     /** Actual fields observed in a readable game JSON payload; no inferred item identity. */

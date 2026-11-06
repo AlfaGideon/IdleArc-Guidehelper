@@ -39,7 +39,12 @@ final class GameText {
             {"monster", "монстр"}, {"monsters", "монстры"}, {"boss", "босс"},
             {"quest", "задание"}, {"quests", "задания"}, {"reward", "награда"},
             {"rewards", "награды"}, {"loot", "добыча"}, {"drop", "добыча"},
-            {"gold", "золото"}, {"shop", "магазин"}, {"guild", "гильдия"},
+            {"gold", "золото"}, {"events", "события"}, {"event", "событие"},
+            {"achievements", "достижения"}, {"achievement", "достижение"},
+            {"wallet", "кошелёк"}, {"balance", "баланс"}, {"currency", "валюта"},
+            {"resources", "ресурсы"}, {"resource", "ресурс"}, {"profile", "профиль"},
+            {"notifications", "уведомления"}, {"zone", "область"}, {"explore", "исследование"},
+            {"shop", "магазин"}, {"guild", "гильдия"},
             {"forge", "кузница"}, {"craft", "создание предмета"}, {"upgrade", "улучшение"},
             {"stats", "характеристики"}, {"level", "уровень"}, {"map", "карта"},
             {"dungeon", "подземелье"}, {"farm", "фарм"}
@@ -73,7 +78,7 @@ final class GameText {
         if (character && (segments.contains("skills") || segments.contains("skill"))) return "навыки персонажа";
         if ((segments.contains("quest") || segments.contains("quests")) &&
                 (segments.contains("reward") || segments.contains("rewards"))) return "награды за задания";
-        return last == null ? "игровые данные (раздел не распознан)" : last;
+        return last == null ? "маршрут игры " + safeRoute : last;
     }
 
     /** Validate again in native code: page scripts can post arbitrary messages. */

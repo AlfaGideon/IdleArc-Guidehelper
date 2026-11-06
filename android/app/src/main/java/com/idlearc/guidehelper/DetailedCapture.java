@@ -47,7 +47,12 @@ final class DetailedCapture {
                                 log.click(data.optString("tag"), data.optString("label"), data.optInt("id", 0));
                             } else if ("fetch".equals(type) || "xhr".equals(type) ||
                                     "ws-tx".equals(type) || "ws-rx".equals(type)) {
-                                log.network(type, data.optString("m"), data.optString("u"), data.optInt("s", 0), data.optInt("a", 0));
+                                log.network(type, data.optString("m"), data.optString("u"), data.optInt("s", 0),
+                                        data.optInt("a", 0), data.optString("p"));
+                            } else if ("fields".equals(type)) {
+                                log.gameFields(data.optString("u"), data.optString("d"),
+                                        data.optString("action"), data.optString("currency"), data.opt("amount"),
+                                        data.optString("entity"), data.optString("name"));
                             } else if ("audit".equals(type)) {
                                 String url = data.optString("u");
                                 if ("balance".equals(data.optString("k"))) {

@@ -45,7 +45,11 @@ public final class MainActivity extends Activity {
     private LinearLayout analysis, stats, tabs, logsPage, logRows;
     private TextView logSummary, detailStatus;
     private boolean detailedCaptureEnabled;
-    private Button pauseLogs;
+    private Button pauseLogs, botButton;
+    private TextView botStatus;
+    private boolean botEnabled;
+    private int botActions;
+    private boolean botTickPending;
     private final SessionLog sessionLog = new SessionLog();
     private final Runnable logRenderer = this::renderLogs;
     private TextView status;
@@ -54,7 +58,7 @@ public final class MainActivity extends Activity {
     private boolean loaded = false;
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
-            if (game != null && loaded) sample();
+            if (game != null && loaded) { sample(); botTick(); }
             handler.postDelayed(this, 5000);
         }
     };
@@ -275,6 +279,21 @@ public final class MainActivity extends Activity {
         TextView intro = label("Читает только доступные числовые показатели с открытой страницы игры. Данные не отправляются и не сохраняются. Это не перехват трафика или файлов игры.", 14, MUTED, false);
         intro.setPadding(0, dp(10), 0, dp(20));
         body.addView(intro);
+        botStatus = label("БОТ ОСТАНОВЛЕН · запускается только по вашему разрешению", 13, BLUE, true);
+        body.addView(botStatus);
+        botButton = new Button(this);
+        botButton.setText("▶ Запустить игрового бота");
+        body.addView(botButton, new LinearLayout.LayoutParams(-1, dp(52)));
+        botButton.setOnClickListener(v -> {
+            botEnabled = !botEnabled;
+            if (botEnabled) botActions = 0;
+            botButton.setText(botEnabled ? "■ Остановить бота" : "▶ Запустить игрового бота");
+            botStatus.setText(botEnabled ? "БОТ РАБОТАЕТ · только разрешённые игровые кнопки"
+                    : "БОТ ОСТАНОВЛЕН");
+            if (botEnabled) { select(0); handler.postDelayed(this::botTick, 1500); }
+        });
+        TextView botNote = label("Бот сам нажимает только явно названные игровые кнопки: события, достижения, персонаж, инвентарь, задания, бой, атака. До 16 действий за запуск, интервал от 4 секунд. Покупки, получение наград, формы входа и отправка самодельных запросов запрещены. Если игра рисует кнопки на canvas или названия другие, бот их не видит.", 12, MUTED, false);
+        body.addView(botNote);
         Button refresh = new Button(this);
         refresh.setText("Обновить показатели");
         refresh.setTextColor(BG);
@@ -292,11 +311,32 @@ public final class MainActivity extends Activity {
         body.addView(note);
     }
 
+    private void botTick() {
+        if (!botEnabled || botTickPending || botActions >= 16 || popup != null || !loaded ||
+                game == null || !isGame(Uri.parse(game.getUrl() == null ? "" : game.getUrl()))) return;
+        botTickPending = true;
+        game.evaluateJavascript("window.__idleArcBotTick && window.__idleArcBotTick()", raw -> {
+            botTickPending = false;
+            if (!botEnabled || raw == null || raw.length() > 150 || "null".equals(raw)) return;
+            try {
+                String label = new org.json.JSONArray("[" + raw + "]").getString(0);
+                if ("подпись скрыта".equals(SessionLog.safeLabel(label))) return;
+                botActions++;
+                sessionLog.botClick(label);
+                if (botActions >= 16) {
+                    botEnabled = false;
+                    botButton.setText("▶ Запустить игрового бота");
+                    botStatus.setText("БОТ ЗАВЕРШИЛ СЕАНС · 16 игровых действий");
+                } else botStatus.setText("БОТ РАБОТАЕТ · действий в игре: " + botActions + "/16");
+            } catch (Exception ignored) { /* No valid game control selected. */ }
+        });
+    }
+
     private void buildLogs() {
         logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
         logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
         logsPage.addView(label("Логи соединений", 24, TEXT, true));
-        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. После входа APK сам наблюдает доступные ответы игры: изменения сообщённых балансов, отметки достижений и возможное расхождение явных названий событий в одном ответе. Это наблюдение, а не доказательство ошибки начисления. Если игра отдаёт читаемый JSON с предметами, отдельно показываются реальные названия, количество, редкость и характеристики. Если доступен только код ответа или бинарное сообщение, состав предметов определить нельзя. Пароли и полные тела сообщений не записываются.", 12, MUTED, false);
+        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. После входа APK сам наблюдает доступные ответы игры: изменения сообщённых балансов, отметки достижений и возможное расхождение явных названий событий в одном ответе. Это наблюдение, а не доказательство ошибки начисления. Если игра отдаёт читаемый JSON с предметами, отдельно показываются реальные названия, количество, редкость и характеристики. Если доступен только код ответа или бинарное сообщение, состав предметов определить нельзя. JSON-сообщения показывают разрешённые игровые поля, а для бинарных данных указывается ограничение расшифровки. Пароли и полные тела сообщений не записываются.", 12, MUTED, false);
         note.setPadding(0, dp(8), 0, dp(8));
         logsPage.addView(note);
         detailStatus = label(detailedCaptureEnabled ? "ИГРОВОЙ ЖУРНАЛ · только IdleArc"
@@ -460,6 +500,7 @@ public final class MainActivity extends Activity {
         else super.onBackPressed();
     }
     @Override protected void onDestroy() {
+        botEnabled = false;
         handler.removeCallbacks(ticker);
         handler.removeCallbacks(logRenderer);
         closePopup();

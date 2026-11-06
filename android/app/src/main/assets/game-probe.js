@@ -25,11 +25,12 @@
   };
   const method = text => /^(GET|POST|PUT|PATCH|DELETE|HEAD)$/i.test(String(text || ''))
     ? String(text).toUpperCase() : 'OTHER';
-  const record = (type, m, url, status) => {
+  const record = (type, m, url, status, payloadClass) => {
     if (hideAuth()) return;
     const u = safeUrl(url);
-    if (u) send({ t: type, m: method(m), u, s: Number.isInteger(status) && status >= 0 && status <= 599 ? status : 0,
-      a: Date.now() - lastClickAt < 1500 && Date.now() >= lastClickAt ? lastClickId : 0 });
+    if (u && !/\.(?:js|css|png|jpg|jpeg|webp|svg|ico|woff2?)(?:$|\/)/i.test(new URL(u).pathname)) send({ t: type, m: method(m), u, s: Number.isInteger(status) && status >= 0 && status <= 599 ? status : 0,
+      a: Date.now() - lastClickAt < 1500 && Date.now() >= lastClickAt ? lastClickId : 0,
+      p: ['json', 'text', 'binary', 'large'].includes(payloadClass) ? payloadClass : '' });
   };
 
 
@@ -125,10 +126,27 @@
     if (!u) return;
     const path = new URL(u).pathname;
     const itemRoute = /(?:item|inventory|loot|equip|reward|drop)/i.test(path);
-    if (!itemRoute && !(direction === 'in' && auditPath(path))) return;
+    // Unknown game routes may still carry recognizable, allowlisted fields.
     try {
       const parsed = typeof body === 'string' ? (body.length <= MAX_JSON ? JSON.parse(body) : null) : body;
       if (direction === 'in' && auditPath(path)) observeAudit(parsed, u);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const base = parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+        const action = itemText(base.action || base.operation || base.activity);
+        const currency = itemText(base.currency || base.currencyType || '');
+        const amount = typeof base.amount === 'number' && Number.isSafeInteger(base.amount) &&
+          base.amount >= 0 && base.amount <= 1e12 ? base.amount : undefined;
+        if (action && /^(?:attack|battle|fight|explore|quest|event|reward|drop|equip|craft|upgrade|buy|sell)$/i.test(action))
+          send({ t: 'fields', u, d: direction, action: action.toLowerCase() });
+        if (currency && amount !== undefined && /^(?:gold|gems|rubies|essence)$/i.test(currency))
+          send({ t: 'fields', u, d: direction, currency: currency.toLowerCase(), amount });
+        for (const kind of ['monster', 'quest', 'event']) {
+          const entity = base[kind];
+          const name = entity && typeof entity === 'object' && !Array.isArray(entity)
+            ? itemText(entity.name || entity.title) : undefined;
+          if (name) send({ t: 'fields', u, d: direction, entity: kind, name });
+        }
+      }
       const result = itemRoute ? findItems(parsed) : null;
       if (result) {
         const report = { t: 'items', u, d: direction, n: result.total, list: result.list };
@@ -140,8 +158,7 @@
   };
   const inspectFetchResponse = (response, url) => {
     try {
-      if (!safeUrl(url) || hideAuth() || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(url, location.href).pathname) &&
-          !auditPath(new URL(url, location.href).pathname)) return;
+      if (!safeUrl(url) || hideAuth()) return;
       if (!response || !response.clone || !response.headers ||
           !/json/i.test(response.headers.get('content-type') || '') ||
           Number(response.headers.get('content-length') || 0) > MAX_JSON) return;
@@ -165,6 +182,31 @@
         } catch (_) { try { await reader.cancel(); } catch (_) {} }
       })();
     } catch (_) {}
+  };
+
+  // Opt-in native-driven browser UI runner. Never crafts requests or touches auth/payment/reward forms.
+  const botSeen = new Set();
+  let botLastAt = 0;
+  window.__idleArcBotTick = () => {
+    if (hideAuth() || Date.now() - botLastAt < 4000) return null;
+    const allowed = new Set(['events', 'achievements', 'inventory', 'character', 'quests',
+      'battle', 'fight', 'attack', 'explore', 'continue']);
+    for (const node of Array.from(document.querySelectorAll('button,[role="button"],a[href]')).slice(0, 100)) {
+      if (!(node instanceof Element) || node.closest('form,[contenteditable]') || node.disabled ||
+          node.getClientRects().length === 0) continue;
+      const label = (node.getAttribute('aria-label') || node.getAttribute('title') || node.textContent || '')
+        .replace(/\s+/g, ' ').trim();
+      const key = label.toLowerCase();
+      if (!allowed.has(key) || botSeen.has(key)) continue;
+      if (node.matches('a[href]') && !safeUrl(node.href)) continue;
+      // A page may have a named purchase/claim nested inside a navigation control.
+      if (/(?:buy|purchase|sell|shop|claim|collect|reward|pay|checkout|upgrade|craft|купить|получить)/i.test(
+        node.outerHTML.slice(0, 600))) continue;
+      botSeen.add(key); botLastAt = Date.now();
+      node.click();
+      return label;
+    }
+    return null;
   };
 
   document.addEventListener('click', event => {
@@ -216,6 +258,12 @@
     };
   }
 
+  const classify = data => {
+    if (typeof data !== 'string') return 'binary';
+    if (data.length > MAX_JSON) return 'large';
+    try { JSON.parse(data); return 'json'; } catch (_) { return 'text'; }
+  };
+
   if (window.WebSocket && window.WebSocket.prototype) {
     const originalSend = WebSocket.prototype.send;
     const listening = new WeakSet();
@@ -223,9 +271,9 @@
       if (!hideAuth()) {
         if (!listening.has(this)) {
           listening.add(this);
-          this.addEventListener('message', event => { record('ws-rx', 'OTHER', this.url, 0); if (typeof event.data === 'string') inspect(event.data, this.url, 'in'); });
+          this.addEventListener('message', event => { record('ws-rx', 'OTHER', this.url, 0, classify(event.data)); if (typeof event.data === 'string') inspect(event.data, this.url, 'in'); });
         }
-        record('ws-tx', 'OTHER', this.url, 0);
+        record('ws-tx', 'OTHER', this.url, 0, classify(data));
         if (typeof data === 'string') inspect(data, this.url, 'out');
       }
       return originalSend.apply(this, arguments);

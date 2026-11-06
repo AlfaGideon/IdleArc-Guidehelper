@@ -125,4 +125,33 @@ const before = itemSent.length;
 const external = new WS('wss://other.example/api/items');
 external.send(JSON.stringify(payload));
 assert.equal(itemSent.length, before);
-console.log('Game probe game-only JSON item fields and auth masking OK');
+// A deliberately bounded UI runner clicks ordinary named game controls, not shops or forms.
+let clicks = 0;
+class BotControl extends Element {
+  constructor(label, markup) { super(label); this.outerHTML = markup; this.disabled = false; }
+  getClientRects() { return [1]; }
+  click() { clicks++; }
+}
+const controls = [new BotControl('Buy', '<button>Buy</button>'),
+  new BotControl('Fight', '<button>Fight</button>')];
+const bot = { ...sandbox, document: { ...sandbox.document,
+  querySelectorAll(selector) { return selector.includes('button') ? controls : []; } },
+  IdleArcTelemetry: { postMessage() {} } };
+bot.window = bot;
+vm.runInNewContext(script, bot);
+assert.equal(bot.__idleArcBotTick(), 'Fight');
+assert.equal(clicks, 1);
+assert.equal(bot.__idleArcBotTick(), null, 'rate-limit prevents rapid repeated actions');
+bot.location = { href: 'https://idlearc.com/login', pathname: '/login' };
+assert.equal(bot.__idleArcBotTick(), null, 'no automation on auth pages');
+responsePayload = { action: 'attack', currency: 'gold', amount: 42, password: 'TOPSECRET' };
+await game.fetch('/api/game/action');
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(itemSent.some(m => m.t === 'fields' && m.action === 'attack'), true,
+  'unknown game route is recognized from actual allowlisted JSON fields');
+await game.fetch('/api/character/reward');
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(itemSent.some(m => m.t === 'fields' && m.action === 'attack'), true);
+assert.equal(itemSent.some(m => m.t === 'fields' && m.currency === 'gold' && m.amount === 42), true);
+assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
+console.log('Game probe UI bot, bounded game fields, and auth masking OK');

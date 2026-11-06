@@ -17,11 +17,11 @@ public final class SessionLogTest {
         assertTrue(text.contains("Вы нажали: кнопка «Инвентарь» №1"));
         assertTrue(text.contains("Игра получила данные: предметы персонажа — успешно (код 200)"));
         assertTrue(text.contains("после действия №1 (по времени)"));
-        assertTrue(text.contains("Игра отправила сообщение серверу (содержимое скрыто)"));
+        assertTrue(text.contains("Игра отправила сообщение серверу — формат не указан игрой"));
         assertFalse(text.contains("GET"));
         assertFalse(text.contains("FETCH"));
         assertFalse(text.contains("987654"));
-        assertFalse(text.contains("TOPSECRET"));
+        assertFalse(text.toString().contains("TOPSECRET"));
         assertFalse(text.contains("socket"));
     }
 
@@ -90,6 +90,22 @@ public final class SessionLogTest {
         for (SessionLog.Entry e : log.snapshot()) assertFalse(e.description.contains("TOPSECRET"));
         log.clear();
         assertTrue(log.snapshot().isEmpty());
+    }
+
+    @Test public void botAndGameFieldsNeverLogSecretsOrInventUnknownTopics() {
+        SessionLog log = new SessionLog();
+        log.botClick("Attack");
+        log.gameFields("https://idlearc.com/api/character/reward?token=TOPSECRET",
+                "in", "attack", "gold", 42, "", "");
+        log.network("ws-rx", "OTHER", "wss://idlearc.com/socket", 0, 0, "binary");
+        StringBuilder text = new StringBuilder();
+        for (SessionLog.Entry entry : log.snapshot()) text.append(entry.description);
+        assertTrue(log.snapshot().get(0).description.contains("Бот нажал игровую кнопку «Атаковать»"));
+        assertTrue(log.snapshot().get(2).description.contains("золото = 42"));
+        assertTrue(log.snapshot().get(3).description.contains("двоичные данные"));
+        assertFalse(text.toString().contains("TOPSECRET"));
+        assertEquals("маршрут игры /api/unknown", GameText.topic("/api/unknown"));
+        assertNull(SessionLog.safeRoute("https://idlearc.com/api/auth/token"));
     }
 
     @Test public void pausesClearsAndBoundsMemory() {
