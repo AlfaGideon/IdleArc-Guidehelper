@@ -5,6 +5,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /** Game-only, in-memory journal. No app navigation, external domains or raw request content. */
 final class SessionLog {
@@ -24,6 +28,8 @@ final class SessionLog {
     private long operationCount;
     private long operationWindow;
     private int shownOperations;
+    private final Map<String, Long> lastBalance = new HashMap<>();
+    private final Set<String> seenAchievements = new HashSet<>();
 
     synchronized void setOnChange(Runnable callback) { onChange = callback; }
     synchronized boolean isPaused() { return paused; }
@@ -40,7 +46,7 @@ final class SessionLog {
         Runnable callback;
         synchronized (this) {
             entries.clear(); actionCount = 0; operationCount = 0;
-            operationWindow = 0; shownOperations = 0; callback = onChange;
+            operationWindow = 0; shownOperations = 0; lastBalance.clear(); seenAchievements.clear(); callback = onChange;
         }
         if (callback != null) callback.run();
     }
@@ -94,6 +100,69 @@ final class SessionLog {
         text += " (" + (total > items.size() ? "показаны " + items.size() + " из " + total : total) + "): "
                 + String.join("; ", items);
         add(false, "Предметы игры", text);
+    }
+
+    /** Observations only. A balance increase alone does NOT imply a resource exploit. */
+    void observeBalance(String url, String field, Object raw) {
+        String route = safeRoute(url);
+        if (route == null || !route.matches("(?i).*(?:wallet|balance|currency|resources|character|player).*") ||
+                !("gold".equals(field) || "gems".equals(field) || "rubies".equals(field) ||
+                  "essence".equals(field) || "experience".equals(field)) || !(raw instanceof Number)) return;
+        double value = ((Number) raw).doubleValue();
+        if (!Double.isFinite(value) || value < 0 || value > 1e12 || value != Math.rint(value)) return;
+        long next = (long) value;
+        Long before;
+        synchronized (this) {
+            if (paused) return;
+            before = lastBalance.put(field, next);
+        }
+        if (before != null && before == next) return;
+        String title;
+        switch (field) {
+            case "gold": title = "золото"; break;
+            case "gems": title = "самоцветы"; break;
+            case "rubies": title = "рубины"; break;
+            case "essence": title = "эссенция"; break;
+            default: title = "опыт";
+        }
+        String delta = before == null ? "первая доступная величина" :
+                "изменение " + (next - before >= 0 ? "+" : "") + (next - before);
+        add(false, "Ресурсы игры", "Игра сообщила: " + title + " = " + next + " (" + delta + "). Причина изменения не установлена");
+    }
+
+    void observeAchievement(String url, String name, String event) {
+        String route = safeRoute(url);
+        if (route == null || !route.matches("(?i).*(?:achievement|event|quest|reward).*") ||
+                "подпись скрыта".equals(safeLabel(name)) || name.length() > 48) return;
+        String safeEvent = safeLabel(event);
+        String key = name + "|" + safeEvent;
+        synchronized (this) {
+            if (paused || seenAchievements.contains(key)) return;
+            if (seenAchievements.size() >= 100) seenAchievements.clear();
+            seenAchievements.add(key);
+        }
+        add(false, "Достижения игры", "В ответе игры отмечено достижение «" + name + "»" +
+                ("подпись скрыта".equals(safeEvent) || safeEvent.length() > 48 ? "" :
+                    " · указанное событие: «" + safeEvent + "»") +
+                ". Время получения без отдельного подтверждения неизвестно");
+    }
+
+    void observeEventMismatch(String url, String achievement, String expectedEvent, String shownEvent) {
+        String route = safeRoute(url);
+        if (route == null || !route.matches("(?i).*(?:achievement|event|quest|reward).*") ||
+                "подпись скрыта".equals(safeLabel(achievement)) || achievement.length() > 48 ||
+                "подпись скрыта".equals(safeLabel(expectedEvent)) || expectedEvent.length() > 48 ||
+                "подпись скрыта".equals(safeLabel(shownEvent)) || shownEvent.length() > 48 ||
+                expectedEvent.equalsIgnoreCase(shownEvent)) return;
+        String key = "mismatch|" + achievement + "|" + expectedEvent + "|" + shownEvent;
+        synchronized (this) {
+            if (paused || seenAchievements.contains(key)) return;
+            if (seenAchievements.size() >= 100) seenAchievements.clear();
+            seenAchievements.add(key);
+        }
+        add(false, "Проверить событие", "В одном ответе игры для достижения «" + achievement +
+                "» указано событие «" + expectedEvent + "», а рядом событие «" + shownEvent +
+                "». Это возможное несоответствие меток, не доказательство ошибочной награды");
     }
 
     void gameError(String message, String url) {

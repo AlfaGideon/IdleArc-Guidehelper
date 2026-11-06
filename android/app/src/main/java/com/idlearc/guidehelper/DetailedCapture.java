@@ -48,6 +48,20 @@ final class DetailedCapture {
                             } else if ("fetch".equals(type) || "xhr".equals(type) ||
                                     "ws-tx".equals(type) || "ws-rx".equals(type)) {
                                 log.network(type, data.optString("m"), data.optString("u"), data.optInt("s", 0), data.optInt("a", 0));
+                            } else if ("audit".equals(type)) {
+                                String url = data.optString("u");
+                                if ("balance".equals(data.optString("k"))) {
+                                    JSONObject values = data.optJSONObject("v");
+                                    if (values != null && values.length() <= 5) {
+                                        for (String field : new String[]{"gold", "gems", "rubies", "essence", "experience"})
+                                            if (values.has(field)) log.observeBalance(url, field, values.opt(field));
+                                    }
+                                } else if ("achievement".equals(data.optString("k"))) {
+                                    log.observeAchievement(url, data.optString("name"), data.optString("event"));
+                                } else if ("mismatch".equals(data.optString("k"))) {
+                                    log.observeEventMismatch(url, data.optString("name"),
+                                            data.optString("event"), data.optString("sourceEvent"));
+                                }
                             } else if ("items".equals(type)) {
                                 JSONArray list = data.optJSONArray("list");
                                 if (list == null || list.length() == 0 || list.length() > 6) return;

@@ -296,7 +296,7 @@ public final class MainActivity extends Activity {
         logsPage.setPadding(dp(16), dp(16), dp(16), dp(10));
         logsPage.addView(label("ЖУРНАЛ СЕАНСА", 12, BLUE, true));
         logsPage.addView(label("Логи соединений", 24, TEXT, true));
-        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. Если игра отдаёт читаемый JSON с предметами, отдельной строкой показываются их реальные названия, количество, редкость и характеристики. Если доступен только код ответа или бинарное сообщение, состав предметов определить нельзя. Пароли и полные тела сообщений не записываются.", 12, MUTED, false);
+        TextView note = label("Только действия внутри игры: какую кнопку нажали и как игра обменялась данными с сервером. Подписи известных игровых кнопок переведены на русский. «После действия №» означает близость по времени, а не доказанную причину. Вкладки APK, вход, сторонние сайты и техническая загрузка ресурсов здесь не показываются. После входа APK сам наблюдает доступные ответы игры: изменения сообщённых балансов, отметки достижений и возможное расхождение явных названий событий в одном ответе. Это наблюдение, а не доказательство ошибки начисления. Если игра отдаёт читаемый JSON с предметами, отдельно показываются реальные названия, количество, редкость и характеристики. Если доступен только код ответа или бинарное сообщение, состав предметов определить нельзя. Пароли и полные тела сообщений не записываются.", 12, MUTED, false);
         note.setPadding(0, dp(8), 0, dp(8));
         logsPage.addView(note);
         detailStatus = label(detailedCaptureEnabled ? "ИГРОВОЙ ЖУРНАЛ · только IdleArc"
@@ -350,14 +350,15 @@ public final class MainActivity extends Activity {
         pauseLogs.setText(sessionLog.isPaused() ? "Продолжить" : "Пауза");
         logRows.removeAllViews();
         if (entries.isEmpty()) {
-            logRows.addView(label("В игре ещё нет записанных действий. Нажмите игровую кнопку и вернитесь сюда.", 14, MUTED, false));
+            logRows.addView(label("Наблюдение включено автоматически: записи появятся, когда игра передаст доступные сведения. Ничего нажимать для включения не нужно.", 14, MUTED, false));
             return;
         }
         SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
         for (int i = entries.size() - 1; i >= Math.max(0, entries.size() - 120); i--) {
             SessionLog.Entry item = entries.get(i);
             TextView row = label(format.format(new Date(item.time)) + "  •  " + item.type + "\n" + item.description,
-                    13, "Ошибка игры".equals(item.type) ? Color.rgb(255, 161, 149) : TEXT, false);
+                    13, ("Ошибка игры".equals(item.type) || "Проверить событие".equals(item.type))
+                            ? Color.rgb(255, 161, 149) : TEXT, false);
             row.setPadding(dp(12), dp(10), dp(12), dp(10));
             row.setBackgroundColor(PANEL);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);

@@ -89,13 +89,47 @@
     const single = item(obj);
     return single ? { list: [single], total: 1 } : null;
   };
+  // Automatic, read-only observations: never invokes game actions or sends credentials.
+  const auditPath = path => /(?:achievement|event|quest|reward|wallet|balance|currency|resources|character|player)/i.test(path);
+  const observeAudit = (parsed, url) => {
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+    const source = parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
+    const player = source.player || source.character || source;
+    const wallet = player && (player.wallet || player.balances || player.currencies || player.resources);
+    if (wallet && typeof wallet === 'object' && !Array.isArray(wallet)) {
+      const values = {};
+      for (const field of ['gold', 'gems', 'rubies', 'essence', 'experience']) {
+        const n = wallet[field];
+        if (typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 && n <= 1e12) values[field] = n;
+      }
+      if (Object.keys(values).length) send({ t: 'audit', k: 'balance', u: url, v: values });
+    }
+    // Only an explicit unlocked flag: never turn an arbitrary achievement list into a new award.
+    const achievement = source.unlockedAchievement || source.achievementUnlocked || source.achievement;
+    if (achievement && typeof achievement === 'object' && !Array.isArray(achievement) &&
+        (achievement.unlocked === true || achievement.completed === true ||
+         Object.hasOwn(source, 'unlockedAchievement') || Object.hasOwn(source, 'achievementUnlocked'))) {
+      const name = itemText(achievement.name || achievement.title);
+      const event = itemText(achievement.eventName || achievement.event_name || '');
+      if (name) send({ t: 'audit', k: 'achievement', u: url, name, event: event || '' });
+      // Candidate only when both labels are explicitly present in the SAME game response.
+      const sourceEvent = source.event && typeof source.event === 'object'
+        ? itemText(source.event.name || source.event.title) : undefined;
+      if (name && event && sourceEvent && sourceEvent.toLowerCase() !== event.toLowerCase())
+        send({ t: 'audit', k: 'mismatch', u: url, name, event, sourceEvent });
+    }
+  };
   const inspect = (body, url, direction) => {
     if (hideAuth()) return;
     const u = safeUrl(url);
-    if (!u || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(u).pathname)) return;
+    if (!u) return;
+    const path = new URL(u).pathname;
+    const itemRoute = /(?:item|inventory|loot|equip|reward|drop)/i.test(path);
+    if (!itemRoute && !(direction === 'in' && auditPath(path))) return;
     try {
       const parsed = typeof body === 'string' ? (body.length <= MAX_JSON ? JSON.parse(body) : null) : body;
-      const result = findItems(parsed);
+      if (direction === 'in' && auditPath(path)) observeAudit(parsed, u);
+      const result = itemRoute ? findItems(parsed) : null;
       if (result) {
         const report = { t: 'items', u, d: direction, n: result.total, list: result.list };
         // Long item names/stats must not exceed the native bridge bound.
@@ -106,7 +140,8 @@
   };
   const inspectFetchResponse = (response, url) => {
     try {
-      if (!safeUrl(url) || hideAuth() || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(url, location.href).pathname)) return;
+      if (!safeUrl(url) || hideAuth() || !/(?:item|inventory|loot|equip|reward|drop)/i.test(new URL(url, location.href).pathname) &&
+          !auditPath(new URL(url, location.href).pathname)) return;
       if (!response || !response.clone || !response.headers ||
           !/json/i.test(response.headers.get('content-type') || '') ||
           Number(response.headers.get('content-length') || 0) > MAX_JSON) return;

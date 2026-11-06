@@ -67,6 +67,31 @@ public final class SessionLogTest {
         assertNull(UpdateDiscovery.apkUrl("v0.7.0/../../private"));
     }
 
+    @Test public void automaticallyTracksOnlyGameObservationsWithoutCallingThemExploits() {
+        SessionLog log = new SessionLog();
+        String wallet = "https://idlearc.com/api/player/balance?token=TOPSECRET";
+        log.observeBalance(wallet, "gold", 100);
+        log.observeBalance(wallet, "gold", 100);
+        log.observeBalance(wallet, "gold", 125);
+        assertEquals(2, log.snapshot().size());
+        assertTrue(log.snapshot().get(1).description.contains("изменение +25"));
+        assertTrue(log.snapshot().get(1).description.contains("Причина изменения не установлена"));
+        log.observeBalance("https://evil.example/api/player/balance", "gold", 999);
+        log.observeBalance(wallet, "token", 123);
+        log.observeBalance(wallet, "gems", -5);
+        assertEquals(2, log.snapshot().size());
+        String route = "https://idlearc.com/api/events/achievements";
+        log.observeAchievement(route, "Goblin Hunter", "Goblin Event");
+        log.observeAchievement(route, "Goblin Hunter", "Goblin Event");
+        log.observeEventMismatch(route, "Goblin Hunter", "Goblin Event", "Pumpkin Event");
+        log.observeEventMismatch(route, "Goblin Hunter", "Goblin Event", "Goblin Event");
+        assertEquals(4, log.snapshot().size());
+        assertTrue(log.snapshot().get(3).description.contains("не доказательство ошибочной награды"));
+        for (SessionLog.Entry e : log.snapshot()) assertFalse(e.description.contains("TOPSECRET"));
+        log.clear();
+        assertTrue(log.snapshot().isEmpty());
+    }
+
     @Test public void pausesClearsAndBoundsMemory() {
         SessionLog log = new SessionLog();
         for (int i = 0; i < 900; i++) log.network("fetch", "GET", "https://idlearc.com/api/items", 200, 0);

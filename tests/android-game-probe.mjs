@@ -101,6 +101,22 @@ assert.equal(nested.list.length, 6, 'journal bounds the number of item details p
 assert.equal(nested.list[0].strength, 1);
 assert.equal(nested.list[0].crit, 3.5);
 assert.equal(JSON.stringify(itemSent).includes('VERY_PRIVATE_MESSAGE'), false);
+responsePayload = { data: { event: { name: 'Pumpkin Event' },
+  unlockedAchievement: { name: 'Goblin Hunter', eventName: 'Goblin Event', unlocked: true },
+  token: 'TOPSECRET' } };
+await game.fetch('/api/events/achievements');
+await new Promise(resolve => setTimeout(resolve, 0));
+const mismatch = itemSent.find(m => m.t === 'audit' && m.k === 'mismatch');
+assert.equal(mismatch.sourceEvent, 'Pumpkin Event');
+assert.equal(mismatch.event, 'Goblin Event');
+assert.equal(itemSent.find(m => m.t === 'audit' && m.k === 'achievement').name, 'Goblin Hunter');
+responsePayload = { data: { player: { wallet: { gold: 100, gems: 2,
+  token: 'TOPSECRET', email: 'private@example.com' } } } };
+await game.fetch('/api/player/balance');
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(itemSent.find(m => m.t === 'audit' && m.k === 'balance').v.gold, 100);
+assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
+assert.equal(JSON.stringify(itemSent).includes('private@example.com'), false);
 const wsItems = new WS('wss://idlearc.com/api/items');
 wsItems.send(JSON.stringify({ item: { name: 'Меч', quantity: 3, secret: 'TOPSECRET' } }));
 assert.equal(itemSent.filter(m => m.t === 'items').at(-1).d, 'out');
