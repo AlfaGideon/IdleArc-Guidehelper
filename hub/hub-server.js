@@ -26,6 +26,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const { staticPath, inside } = require('../scripts/static-access.cjs');
 const net = require('node:net');
 const { spawn } = require('node:child_process');
 
@@ -140,13 +141,17 @@ const MIME = {
 };
 
 function sendFile(res, file) {
-  fs.readFile(file, (err, buf) => {
-    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('404'); }
-    res.writeHead(200, {
-      'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-store',
+  fs.realpath(file, (realErr, real) => {
+    if (!realErr && (!inside(ROOT, real) ||
+        !staticPath(ROOT, '/' + path.relative(ROOT, real).split(path.sep).join('/'), [['brand'], ['companion']]))) { res.writeHead(403); return res.end('403'); }
+    fs.readFile(realErr ? file : real, (err, buf) => {
+      if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('404'); }
+      res.writeHead(200, {
+        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Cache-Control': 'no-store',
+      });
+      res.end(buf);
     });
-    res.end(buf);
   });
 }
 
@@ -184,7 +189,7 @@ function proxyToArc(req, res) {
 
 function createHubServer() {
   return http.createServer((req, res) => {
-    const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+    const urlPath = (req.url || '/').split('?')[0];
 
     // Метка сборки самого хаба: по ней scripts/serve.mjs ждёт готовности и
     // понимает, что на порту уже работает именно хаб (второй не нужен).
@@ -198,8 +203,8 @@ function createHubServer() {
 
     let rel = urlPath === '/' ? '/index.html' : urlPath;
     if (rel.endsWith('/')) rel += 'index.html';
-    const file = path.normalize(path.join(ROOT, rel));
-    if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end('403'); }
+    const file = staticPath(ROOT, rel, [['brand'], ['companion']]);
+    if (!file) { res.writeHead(403); return res.end('403'); }
     sendFile(res, file);
   });
 }

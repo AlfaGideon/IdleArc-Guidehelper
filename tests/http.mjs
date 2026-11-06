@@ -32,13 +32,13 @@ function get(path, { redirect = true } = {}) {
 
 
 /** POST с JSON-телом (для маршрутов приёма игровых иконок). */
-function post(path, bodyObj) {
+function post(path, bodyObj, token = '') {
   const target = BASE + path;
   const payload = JSON.stringify(bodyObj);
   return new Promise((resolve, reject) => {
     const req = http.request(target, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload), 'X-Art-Write-Token': token },
     }, (res) => {
       let data = '';
       res.setEncoding('utf8');
@@ -115,18 +115,34 @@ try {
 /* 4. Игровые иконки: приём картинок из браузера (dry-run — файлы не пишутся) */
 try {
   const fake = Buffer.from('RIFF0000WEBPVP8 ' + 'x'.repeat(380)).toString('base64');
-  const res = await post('/api/art/upload?dry=1', {
+  const payload = {
     files: { 'torch.webp': fake, '../evil.webp': fake, 'notimage.txt': fake },
     meta: { index: { Torch: { tiers: { 1: 'torch.webp' } } }, total: 1 },
-  });
-  const data = JSON.parse(res.body);
-  if (!data.ok || !data.dryRun) throw new Error('ответ: ' + res.body);
-  if (data.saved.join(',') !== 'torch.webp') throw new Error('принимать нужно только torch.webp: ' + JSON.stringify(data.saved));
-  if (!data.skipped.includes('../evil.webp') || !data.skipped.includes('notimage.txt')) throw new Error('подозрительные имена должны отклоняться');
+  };
+  const denied = await post('/api/art/upload?dry=1', payload);
+  if (denied.status !== 403) throw new Error('запись без ключа должна быть запрещена');
+  const fetchDenied = await post('/api/art/fetch', {});
+  if (fetchDenied.status !== 403) throw new Error('загрузка на сервер без ключа должна быть запрещена');
+  if (process.env.ART_WRITE_TOKEN) {
+    const res = await post('/api/art/upload?dry=1', payload, process.env.ART_WRITE_TOKEN);
+    const data = JSON.parse(res.body);
+    if (!data.ok || !data.dryRun) throw new Error('ответ: ' + res.body);
+    if (data.saved.join(',') !== 'torch.webp') throw new Error('принимать нужно только torch.webp: ' + JSON.stringify(data.saved));
+    if (!data.skipped.includes('../evil.webp') || !data.skipped.includes('notimage.txt')) throw new Error('подозрительные имена должны отклоняться');
+  }
   const st = JSON.parse((await get('/api/art/status')).body);
   if (typeof st.available !== 'boolean' || typeof st.files !== 'number') throw new Error('статус: ' + JSON.stringify(st));
-  ok('игровые иконки: приём из браузера защищён (dry-run), статус отвечает');
+  ok('иконки: запись требует ключ, статус отвечает' + (process.env.ART_WRITE_TOKEN ? ', dry-run проверен' : ''));
 } catch (e) { fail('игровые иконки', e.message); }
+
+try {
+  for (const url of ['/server.js', '/.git/HEAD', '/%2e%67it/config', '/hub/hub-server.js',
+    '/android/signing-public.pem', '/v/test/.github/workflows/android-apk.yml', '/assets/%2e%2e/server.js']) {
+    const res = await get(url);
+    if (res.status === 200) throw new Error(`${url} оказался доступен`);
+  }
+  ok('исходники сервера, .git, Android и обходы пути не отдаются статикой');
+} catch (e) { fail('границы статического сервера', e.message); }
 
 console.log(failures ? `\n${failures} проверок провалено` : '\nHTTP-проверки пройдены ✓');
 process.exit(failures ? 1 : 0);

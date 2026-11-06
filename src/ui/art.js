@@ -220,10 +220,10 @@ async function readAsBase64(name, timeoutMs = 20000) {
   return null;
 }
 
-async function postFiles(files, meta, dryRun) {
+async function postFiles(files, meta, dryRun, writeToken) {
   const res = await fetch(`api/art/upload${dryRun ? '?dry=1' : ''}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Art-Write-Token': writeToken },
     body: JSON.stringify({ files, meta }),
   });
   return res.json();
@@ -233,10 +233,11 @@ async function postFiles(files, meta, dryRun) {
  * Скачать игровые иконки через браузер и сохранить их на сервере.
  * onProgress(done, total) вызывается по ходу; возвращает итог.
  */
-export async function downloadArtViaBrowser(onProgress = () => {}) {
+export async function downloadArtViaBrowser(onProgress = () => {}, writeToken = '') {
   artDownload.active = true; artDownload.done = 0; artDownload.saved = 0; artDownload.error = null;
   artDownload.note = 'Ищу Item Codex…';
   try {
+    if (!writeToken) throw new Error('Для записи иконок нужен ART_WRITE_TOKEN сервера.');
     // 1. Item Codex: список имён картинок (напрямую или через прокси).
     let codex = null;
     for (const url of CODEX_URLS) {
@@ -276,7 +277,8 @@ export async function downloadArtViaBrowser(onProgress = () => {}) {
       if (b64) { batch[name] = b64; batchCount += 1; } else { failed.push(name); }
       if (batchCount >= 12 || artDownload.done === names.length) {
         if (batchCount) {
-          const out = await postFiles(batch, { index, total: names.length }, false);
+          const out = await postFiles(batch, { index, total: names.length }, false, writeToken);
+          if (!out.ok && out.error) throw new Error(out.error);
           saved += (out.saved || []).length;
           for (const k of Object.keys(batch)) delete batch[k];
           batchCount = 0;

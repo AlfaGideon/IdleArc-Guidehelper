@@ -6,10 +6,20 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const { staticPath, inside } = require('./scripts/static-access.cjs');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 5173);
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
+// Opt-in for server-side writes, even if a reverse proxy exposes a loopback server.
+const ART_WRITE_TOKEN = process.env.ART_WRITE_TOKEN || '';
+const artAuthorized = (req) => {
+  const supplied = req.headers['x-art-write-token'];
+  if (ART_WRITE_TOKEN.length < 32 || typeof supplied !== 'string' || supplied.length > 512) return false;
+  const a = Buffer.from(supplied), b = Buffer.from(ART_WRITE_TOKEN);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+};
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -45,10 +55,7 @@ const NO_STORE = {
 };
 
 function safePath(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
-  const target = path.normalize(path.join(ROOT, decoded));
-  if (!target.startsWith(ROOT)) return null;
-  return target;
+  return staticPath(ROOT, urlPath, [['src'], ['styles'], ['assets'], ['docs'], ['hub', 'companion']]);
 }
 
 /**
@@ -180,15 +187,18 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (urlPath === '/api/art/fetch' && req.method === 'POST') {
+    if (!artAuthorized(req)) return json(res, 403, { ok: false, error: 'Для записи иконок нужен ART_WRITE_TOKEN сервера.' });
     artFetch(res);
     return;
   }
   // Иконки, скачанные браузером пользователя (когда у сервера нет интернета).
   if (urlPath === '/api/art/upload' && req.method === 'POST') {
+    if (!artAuthorized(req)) return json(res, 403, { ok: false, error: 'Для записи иконок нужен ART_WRITE_TOKEN сервера.' });
     artUpload(req, res, req.url);
     return;
   }
 
+  if (urlPath.startsWith('/api/')) return json(res, 404, { error: 'Маршрут не найден' });
   let filePath = safePath(stripVersion(urlPath === '/' ? '/index.html' : urlPath));
   if (!filePath) {
     res.writeHead(403, NO_STORE);
@@ -196,7 +206,11 @@ const server = http.createServer((req, res) => {
   }
   fs.stat(filePath, (err, stat) => {
     if (!err && stat.isDirectory()) filePath = path.join(filePath, 'index.html');
-    fs.readFile(filePath, (readErr, data) => {
+    fs.realpath(filePath, (realErr, real) => {
+      if (!realErr && (!inside(ROOT, real) || !safePath('/' + path.relative(ROOT, real).split(path.sep).join('/')))) {
+        res.writeHead(403, NO_STORE); return res.end('Forbidden');
+      }
+      fs.readFile(realErr ? filePath : real, (readErr, data) => {
       if (readErr) {
         // SPA-фолбэк
         fs.readFile(path.join(ROOT, 'index.html'), (e2, html) => {
@@ -217,6 +231,7 @@ const server = http.createServer((req, res) => {
         ...NO_STORE,
       });
       res.end(isHtml ? htmlWithVersionedEntry(data.toString('utf8')) : data);
+      });
     });
   });
 });

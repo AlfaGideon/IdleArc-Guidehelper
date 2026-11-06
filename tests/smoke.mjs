@@ -1000,6 +1000,7 @@ check('загрузка иконок через браузер: скачивае
     }
     if (u.includes('api/art/upload')) {
       const body = JSON.parse(opts.body);
+      if (opts.headers['X-Art-Write-Token'] !== 'test-art-token-not-a-real-secret') throw new Error('нет токена записи');
       calls.uploads.push(Object.keys(body.files));
       return { ok: true, json: async () => ({ ok: true, saved: Object.keys(body.files) }) };
     }
@@ -1010,7 +1011,7 @@ check('загрузка иконок через браузер: скачивае
     return { ok: false, status: 404, json: async () => ({}), arrayBuffer: async () => new ArrayBuffer(0) };
   };
   try {
-    const out = await artUi.downloadArtViaBrowser(() => {});
+    const out = await artUi.downloadArtViaBrowser(() => {}, 'test-art-token-not-a-real-secret');
     if (!out.ok || out.saved !== 3) throw new Error(`скачано: ${JSON.stringify(out)}`);
     const flat = calls.uploads.flat().sort();
     if (flat.join(',') !== 'torch-2.webp,torch-7.webp,torch.webp') throw new Error('отправлены не те файлы: ' + flat);

@@ -785,9 +785,11 @@ function artPanel(root) {
         disabled: st.loading ? 'disabled' : null,
         onclick: async (e) => {
           e.target.textContent = 'Скачиваю…';
+          const writeToken = globalThis.prompt?.('Ключ записи иконок ART_WRITE_TOKEN (только для владельца сервера):');
+          if (!writeToken) { e.target.textContent = 'Скачать игровые картинки'; return; }
           let serverOk = false;
           try {
-            const res = await fetch('api/art/fetch', { method: 'POST' });
+            const res = await fetch('api/art/fetch', { method: 'POST', headers: { 'X-Art-Write-Token': writeToken } });
             const data = await res.json();
             serverOk = Boolean(data.ok);
           } catch { serverOk = false; }
@@ -798,7 +800,7 @@ function artPanel(root) {
             const out = await downloadArtViaBrowser((done, total) => {
               const t = document.querySelector ? document.querySelector('#art-progress') : null;
               if (t) t.textContent = `Скачано ${done} из ${total}`;
-            });
+            }, writeToken);
             if (!out.ok) alert(`Не получилось скачать игровые картинки ни сервером, ни браузером.\n${out.error || artDownload.note || ''}\nПроверьте интернет и попробуйте ещё раз.`);
           }
           await loadArt(true);
@@ -811,18 +813,20 @@ function artPanel(root) {
         onclick: async () => { await loadArt(true); render(root); },
       }),
     ]),
-    el('p', { class: 'muted small', text: 'Если у сервера нет интернета, нажмите эту кнопку — картинки скачает ваш браузер и передаст их серверу: после этого иконки будут храниться в проекте и работать без сети.' }),
+    el('p', { class: 'muted small', text: 'Для записи файлов нужен ART_WRITE_TOKEN сервера; ключ не сохраняется в браузере. Если у сервера нет интернета, нажмите эту кнопку — картинки скачает ваш браузер и передаст их серверу: после этого иконки будут храниться в проекте и работать без сети.' }),
     el('div', { class: 'actions' }, [
       el('button', {
         class: 'btn primary',
         text: artDownload.active ? 'Скачиваю…' : 'Скачать игровые картинки через браузер',
         disabled: artDownload.active ? 'disabled' : null,
         onclick: async (e) => {
+          const writeToken = globalThis.prompt?.('Ключ записи иконок ART_WRITE_TOKEN (только для владельца сервера):');
+          if (!writeToken) return;
           e.target.textContent = 'Скачиваю через браузер…';
           const out = await downloadArtViaBrowser((done, total) => {
             const t = document.querySelector ? document.querySelector('#art-progress') : null;
             if (t) t.textContent = `Скачано ${done} из ${total}`;
-          });
+          }, writeToken);
           if (!out.ok) alert(`Не получилось скачать картинки: ${out.error || artDownload.note}`);
           await loadArt(true);
           render(root);

@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - 'android/**'
+      - 'server.js'
+      - 'src/**'
+      - 'hub/hub-server.js'
+      - 'scripts/static-access.cjs'
+      - 'tests/**'
       - 'hub/companion/**'
       - '.github/workflows/android-apk.yml'
 permissions:
@@ -20,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: '17'
       # GitHub hosted Ubuntu images include an Android SDK; avoid commandline-tools downloads.
-      - run: node tests/android-game-probe.mjs && node tests/companion-passive.mjs && node tests/smoke.mjs
+      - run: node tests/security-static.mjs && node tests/android-game-probe.mjs && node tests/companion-passive.mjs && node tests/smoke.mjs
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
@@ -58,7 +63,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: node tests/android-game-probe.mjs && node tests/companion-passive.mjs && node tests/smoke.mjs
+      - run: node tests/security-static.mjs && node tests/android-game-probe.mjs && node tests/companion-passive.mjs && node tests/smoke.mjs
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
