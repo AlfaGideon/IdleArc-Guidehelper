@@ -91,7 +91,7 @@
     return single ? { list: [single], total: 1 } : null;
   };
   // Automatic, read-only observations: never invokes game actions or sends credentials.
-  const auditPath = path => /(?:achievement|event|quest|reward|wallet|balance|currency|resources|character|player)/i.test(path);
+  const auditPath = path => /(?:achievement|event|quest|reward|wallet|balance|currency|resources|character|player|inscri)/i.test(path);
   const observeAudit = (parsed, url) => {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
     const source = parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
@@ -104,6 +104,16 @@
         if (typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 && n <= 1e12) values[field] = n;
       }
       if (Object.keys(values).length) send({ t: 'audit', k: 'balance', u: url, v: values });
+    }
+    // Separate auto-inscription fields from wallet balance: costs/limits may look like currency.
+    const inscription = source.autoInscription || source.auto_inscription || source.inscription ||
+      (player && (player.autoInscription || player.auto_inscription || player.inscription));
+    if (inscription && typeof inscription === 'object' && !Array.isArray(inscription)) {
+      for (const field of ['rubies', 'availableRubies', 'remainingRubies', 'rubyBalance', 'costRubies']) {
+        const value = inscription[field];
+        if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 1e12)
+          send({ t: 'audit', k: 'rubyPanel', u: url, field, value });
+      }
     }
     // Only an explicit unlocked flag: never turn an arbitrary achievement list into a new award.
     const achievement = source.unlockedAchievement || source.achievementUnlocked || source.achievement;

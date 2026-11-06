@@ -61,6 +61,8 @@ final class DetailedCapture {
                                         for (String field : new String[]{"gold", "gems", "rubies", "essence", "experience"})
                                             if (values.has(field)) log.observeBalance(url, field, values.opt(field));
                                     }
+                                } else if ("rubyPanel".equals(data.optString("k"))) {
+                                    log.observeRubyPanel(url, data.optString("field"), data.opt("value"));
                                 } else if ("achievement".equals(data.optString("k"))) {
                                     log.observeAchievement(url, data.optString("name"), data.optString("event"));
                                 } else if ("mismatch".equals(data.optString("k"))) {

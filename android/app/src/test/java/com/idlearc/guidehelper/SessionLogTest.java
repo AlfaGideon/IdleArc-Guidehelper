@@ -92,6 +92,24 @@ public final class SessionLogTest {
         assertTrue(log.snapshot().isEmpty());
     }
 
+    @Test public void doesNotConfuseAutoInscriptionCostWithMainRubyBalance() {
+        SessionLog log = new SessionLog();
+        String main = "https://idlearc.com/api/player/balance?token=TOPSECRET";
+        String inscription = "https://idlearc.com/api/inscription/balance?token=TOPSECRET";
+        log.observeBalance(main, "rubies", 100);
+        log.observeBalance(inscription, "rubies", 5);
+        assertEquals(2, log.snapshot().size());
+        assertTrue(log.snapshot().get(1).description.contains("первая доступная величина"));
+        assertFalse(log.snapshot().get(1).description.contains("изменение -95"));
+        log.observeRubyPanel(inscription, "costRubies", 5);
+        log.observeRubyPanel(inscription, "costRubies", 5);
+        assertEquals(3, log.snapshot().size());
+        assertTrue(log.snapshot().get(2).description.contains("стоимость, а не баланс"));
+        assertFalse(log.snapshot().get(2).description.contains("TOPSECRET"));
+        log.observeBalance(main, "rubies", 105);
+        assertTrue(log.snapshot().get(3).description.contains("изменение +5"));
+    }
+
     @Test public void botAndGameFieldsNeverLogSecretsOrInventUnknownTopics() {
         SessionLog log = new SessionLog();
         log.botClick("Attack");

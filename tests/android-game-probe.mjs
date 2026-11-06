@@ -117,6 +117,13 @@ await new Promise(resolve => setTimeout(resolve, 0));
 assert.equal(itemSent.find(m => m.t === 'audit' && m.k === 'balance').v.gold, 100);
 assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
 assert.equal(JSON.stringify(itemSent).includes('private@example.com'), false);
+responsePayload = { data: { player: { wallet: { rubies: 100, token: 'TOPSECRET' } },
+  autoInscription: { costRubies: 5, secret: 'TOPSECRET' } } };
+await game.fetch('/api/player/inscription?token=TOPSECRET');
+await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(itemSent.some(m => m.t === 'audit' && m.k === 'balance' && m.v.rubies === 100), true);
+assert.equal(itemSent.some(m => m.t === 'audit' && m.k === 'rubyPanel' && m.field === 'costRubies' && m.value === 5), true);
+assert.equal(JSON.stringify(itemSent).includes('TOPSECRET'), false);
 const wsItems = new WS('wss://idlearc.com/api/items');
 wsItems.send(JSON.stringify({ item: { name: 'Меч', quantity: 3, secret: 'TOPSECRET' } }));
 assert.equal(itemSent.filter(m => m.t === 'items').at(-1).d, 'out');

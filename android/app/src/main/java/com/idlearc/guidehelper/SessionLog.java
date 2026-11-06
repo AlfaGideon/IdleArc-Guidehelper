@@ -29,6 +29,7 @@ final class SessionLog {
     private long operationWindow;
     private int shownOperations;
     private final Map<String, Long> lastBalance = new HashMap<>();
+    private final Map<String, Long> lastRubyPanel = new HashMap<>();
     private final Set<String> seenAchievements = new HashSet<>();
 
     synchronized void setOnChange(Runnable callback) { onChange = callback; }
@@ -46,7 +47,7 @@ final class SessionLog {
         Runnable callback;
         synchronized (this) {
             entries.clear(); actionCount = 0; operationCount = 0;
-            operationWindow = 0; shownOperations = 0; lastBalance.clear(); seenAchievements.clear(); callback = onChange;
+            operationWindow = 0; shownOperations = 0; lastBalance.clear(); lastRubyPanel.clear(); seenAchievements.clear(); callback = onChange;
         }
         if (callback != null) callback.run();
     }
@@ -162,7 +163,8 @@ final class SessionLog {
         Long before;
         synchronized (this) {
             if (paused) return;
-            before = lastBalance.put(field, next);
+            // Never compare different responses as if they were one wallet.
+            before = lastBalance.put(route + "|" + field, next);
         }
         if (before != null && before == next) return;
         String title;
@@ -175,7 +177,26 @@ final class SessionLog {
         }
         String delta = before == null ? "первая доступная величина" :
                 "изменение " + (next - before >= 0 ? "+" : "") + (next - before);
-        add(false, "Ресурсы игры", "Игра сообщила: " + title + " = " + next + " (" + delta + "). Причина изменения не установлена");
+        add(false, "Ресурсы игры", "Игра сообщила: " + title + " = " + next + " (" + delta +
+                "; источник: " + GameText.topic(route) + " [" + route + "]). Причина изменения не установлена");
+    }
+
+    void observeRubyPanel(String url, String field, Object raw) {
+        String route = safeRoute(url);
+        if (route == null || !route.matches("(?i).*(?:inscri|player|character|wallet|balance).*") ||
+                !("rubies".equals(field) || "availableRubies".equals(field) ||
+                  "remainingRubies".equals(field) || "rubyBalance".equals(field) ||
+                  "costRubies".equals(field)) || !(raw instanceof Number)) return;
+        double value = ((Number) raw).doubleValue();
+        if (!Double.isFinite(value) || value < 0 || value > 1e12 || value != Math.rint(value)) return;
+        long next = (long) value;
+        synchronized (this) {
+            if (paused || Long.valueOf(next).equals(lastRubyPanel.put(route + "|" + field, next))) return;
+        }
+        String meaning = "costRubies".equals(field) ? "Это указанная стоимость, а не баланс кошелька" :
+                "Без схемы игры нельзя приравнивать это поле к общему запасу";
+        add(false, "Рубины автонадписи", "Игра передала поле автонадписи «" + field + "» = " +
+                next + " (" + route + "). " + meaning);
     }
 
     void observeAchievement(String url, String name, String event) {
