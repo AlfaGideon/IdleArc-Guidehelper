@@ -1,3 +1,5 @@
+import { t } from '../i18n.js';
+
 /**
  * Биомы и гейт Кузницы (Season 2).
  *
@@ -24,19 +26,19 @@
 
 /** Официальный список биомов: Monster Level открытия и «биомный тир». */
 export const BIOMES = [
-  { id: 'verdant_woods', name: 'Verdant Woods', ru: 'Зелёные леса', ml: 1, tier: 1 },
-  { id: 'scorched_sands', name: 'Scorched Sands', ru: 'Выжженные пески', ml: 10, tier: 1 },
-  { id: 'murky_depths', name: 'Murky Depths', ru: 'Мутные глубины', ml: 30, tier: 2 },
-  { id: 'frozen_peaks', name: 'Frozen Peaks', ru: 'Мёрзлые вершины', ml: 45, tier: 3 },
-  { id: 'shadow_realm', name: 'Shadow Realm', ru: 'Царство теней', ml: 65, tier: 4 },
-  { id: 'infernal_pits', name: 'Infernal Pits', ru: 'Инфернальные ямы', ml: 90, tier: 5 },
-  { id: 'elderwood', name: 'Elderwood', ru: 'Древний лес', ml: 115, tier: 6 },
-  { id: 'glasslands', name: 'Glasslands', ru: 'Стеклянные земли', ml: 150, tier: 7 },
-  { id: 'drowned_abyss', name: 'Drowned Abyss', ru: 'Затонувшая бездна', ml: 185, tier: 8 },
-  { id: 'shattered_summit', name: 'Shattered Summit', ru: 'Расколотая вершина', ml: 220, tier: 9 },
-  { id: 'umbral_rift', name: 'Umbral Rift', ru: 'Сумрачный разлом', ml: 260, tier: 10 },
-  { id: 'oblivions_crown', name: "Oblivion's Crown", ru: 'Корона забвения', ml: 300, tier: 11 },
-  { id: 'convergence', name: 'The Convergence', ru: 'Схождение', ml: 350, tier: 12 },
+  { id: 'verdant_woods', name: 'Verdant Woods', ru: t('Зелёные леса', 'Verdant Woods'), ml: 1, tier: 1 },
+  { id: 'scorched_sands', name: 'Scorched Sands', ru: t('Выжженные пески', 'Scorched Sands'), ml: 10, tier: 1 },
+  { id: 'murky_depths', name: 'Murky Depths', ru: t('Мутные глубины', 'Murky Depths'), ml: 30, tier: 2 },
+  { id: 'frozen_peaks', name: 'Frozen Peaks', ru: t('Мёрзлые вершины', 'Frozen Peaks'), ml: 45, tier: 3 },
+  { id: 'shadow_realm', name: 'Shadow Realm', ru: t('Царство теней', 'Shadow Realm'), ml: 65, tier: 4 },
+  { id: 'infernal_pits', name: 'Infernal Pits', ru: t('Инфернальные ямы', 'Infernal Pits'), ml: 90, tier: 5 },
+  { id: 'elderwood', name: 'Elderwood', ru: t('Древний лес', 'Elderwood'), ml: 115, tier: 6 },
+  { id: 'glasslands', name: 'Glasslands', ru: t('Стеклянные земли', 'Glasslands'), ml: 150, tier: 7 },
+  { id: 'drowned_abyss', name: 'Drowned Abyss', ru: t('Затонувшая бездна', 'Drowned Abyss'), ml: 185, tier: 8 },
+  { id: 'shattered_summit', name: 'Shattered Summit', ru: t('Расколотая вершина', 'Shattered Summit'), ml: 220, tier: 9 },
+  { id: 'umbral_rift', name: 'Umbral Rift', ru: t('Сумрачный разлом', 'Umbral Rift'), ml: 260, tier: 10 },
+  { id: 'oblivions_crown', name: "Oblivion's Crown", ru: t('Корона забвения', "Oblivion's Crown"), ml: 300, tier: 11 },
+  { id: 'convergence', name: 'The Convergence', ru: t('Схождение', 'The Convergence'), ml: 350, tier: 12 },
 ];
 
 /** Материалы монстров первых биомов (официальные страницы биомов). */
@@ -72,12 +74,12 @@ export const BIOME_MATERIALS = {
  * Порядок тиров совпадает с фрагментами: Iron → Steel → Mithril → Adamantine → Celestial → Infernal.
  */
 export const FORGE_GATE = [
-  { tier: 1, biomeId: 'verdant_woods', ml: 1, fragment: 'Iron Fragment', fragmentRu: 'Железный фрагмент' },
-  { tier: 2, biomeId: 'scorched_sands', ml: 10, fragment: 'Steel Fragment', fragmentRu: 'Стальной фрагмент' },
-  { tier: 3, biomeId: 'murky_depths', ml: 30, fragment: 'Mithril Fragment', fragmentRu: 'Мифриловый фрагмент' },
-  { tier: 4, biomeId: 'frozen_peaks', ml: 45, fragment: 'Adamantine Fragment', fragmentRu: 'Адамантиновый фрагмент' },
-  { tier: 5, biomeId: 'shadow_realm', ml: 65, fragment: 'Celestial Fragment', fragmentRu: 'Небесный фрагмент' },
-  { tier: 6, biomeId: 'infernal_pits', ml: 90, fragment: 'Infernal Fragment', fragmentRu: 'Инфернальный фрагмент' },
+  { tier: 1, biomeId: 'verdant_woods', ml: 1, fragment: 'Iron Fragment', fragmentRu: t('Железный фрагмент', 'Iron Fragment') },
+  { tier: 2, biomeId: 'scorched_sands', ml: 10, fragment: 'Steel Fragment', fragmentRu: t('Стальной фрагмент', 'Steel Fragment') },
+  { tier: 3, biomeId: 'murky_depths', ml: 30, fragment: 'Mithril Fragment', fragmentRu: t('Мифриловый фрагмент', 'Mithril Fragment') },
+  { tier: 4, biomeId: 'frozen_peaks', ml: 45, fragment: 'Adamantine Fragment', fragmentRu: t('Адамантиновый фрагмент', 'Adamantine Fragment') },
+  { tier: 5, biomeId: 'shadow_realm', ml: 65, fragment: 'Celestial Fragment', fragmentRu: t('Небесный фрагмент', 'Celestial Fragment') },
+  { tier: 6, biomeId: 'infernal_pits', ml: 90, fragment: 'Infernal Fragment', fragmentRu: t('Инфернальный фрагмент', 'Infernal Fragment') },
 ];
 
 const biomeById = (id) => BIOMES.find((b) => b.id === id);
@@ -132,11 +134,11 @@ export function biomeAtMl(ml) {
  * Промоушен переводит СЛОТ из тира в тир: нужен предмет на максимуме тира + эссенция + материалы.
  */
 export const TIER_PROMOTION = [
-  { from: 1, to: 2, gold: 7500, essence: 'Uncommon Essence', essenceRu: 'Необычная эссенция', materials: [['Ogre Bone', 5], ['Heartwood Core', 3]], fail: 0 },
-  { from: 2, to: 3, gold: 45000, essence: 'Rare Essence', essenceRu: 'Редкая эссенция', materials: [['Windswept Shard', 8], ['Djinn Essence', 5], ['Ogre Bone', 3]], fail: 10 },
-  { from: 3, to: 4, gold: 225000, essence: 'Epic Essence', essenceRu: 'Эпическая эссенция', materials: [['Hydra Scale', 12], ['Sprite Dust', 8], ['Windswept Shard', 5]], fail: 20 },
-  { from: 4, to: 5, gold: 1125000, essence: 'Legendary Essence', essenceRu: 'Легендарная эссенция', materials: [['Dragon Frost', 18], ['Glacial Heart', 12], ['Hydra Scale', 8]], fail: 35 },
-  { from: 5, to: 6, gold: 5250000, essence: 'Infernal Essence', essenceRu: 'Инфернальная эссенция', materials: [['Horror Tentacle', 30], ['Void Core', 20], ['Stalker Claw', 15], ['Dragon Frost', 10]], fail: 50 },
+  { from: 1, to: 2, gold: 7500, essence: 'Uncommon Essence', essenceRu: t('Необычная эссенция', 'Uncommon Essence'), materials: [['Ogre Bone', 5], ['Heartwood Core', 3]], fail: 0 },
+  { from: 2, to: 3, gold: 45000, essence: 'Rare Essence', essenceRu: t('Редкая эссенция', 'Rare Essence'), materials: [['Windswept Shard', 8], ['Djinn Essence', 5], ['Ogre Bone', 3]], fail: 10 },
+  { from: 3, to: 4, gold: 225000, essence: 'Epic Essence', essenceRu: t('Эпическая эссенция', 'Epic Essence'), materials: [['Hydra Scale', 12], ['Sprite Dust', 8], ['Windswept Shard', 5]], fail: 20 },
+  { from: 4, to: 5, gold: 1125000, essence: 'Legendary Essence', essenceRu: t('Легендарная эссенция', 'Legendary Essence'), materials: [['Dragon Frost', 18], ['Glacial Heart', 12], ['Hydra Scale', 8]], fail: 35 },
+  { from: 5, to: 6, gold: 5250000, essence: 'Infernal Essence', essenceRu: t('Инфернальная эссенция', 'Infernal Essence'), materials: [['Horror Tentacle', 30], ['Void Core', 20], ['Stalker Claw', 15], ['Dragon Frost', 10]], fail: 50 },
 ];
 
 /** Промоушен из тира N в N+1. */

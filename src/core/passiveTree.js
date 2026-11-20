@@ -17,6 +17,7 @@
  * гемами и классовыми очками.
  */
 
+import { bi } from '../i18n.js';
 import { PASSIVE_ROWS, PASSIVE_RULES, PASSIVE_STATS, isMilestoneRow } from '../data/passives.js';
 import { statPriorityFor } from '../data/builds.js';
 import { CLASSES } from '../data/classes.js';
@@ -116,7 +117,7 @@ export function planPassives(classId, goalId, level) {
     if (!pts) return;
     const [code, per] = PASSIVE_ROWS[r][n];
     const meta = PASSIVE_STATS[code];
-    const key = `${meta.ru} (${meta.en})${meta.pct ? ' %' : ''}`;
+    const key = `${bi(meta.ru, meta.en)}${meta.pct ? ' %' : ''}`;
     totals[key] = (totals[key] || 0) + per * pts;
   }));
 

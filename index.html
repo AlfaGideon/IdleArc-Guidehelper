@@ -6,10 +6,11 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<title>IdleArc Guide Helper — планировщик сборок</title>
-<meta name="build" content="2026-10-05.1" />
+<title data-en="IdleArc Guide Helper — Build Planner">IdleArc Guide Helper — планировщик сборок</title>
+<meta name="build" content="2026-11-19.1" />
 <meta name="description" content="Помощник по сборке персонажа в IdleArc (Season 2, патч 1.3.1): классовые навыки, статы, аффиксы, гемы, петы, талисманы." />
 <link rel="stylesheet" href="styles/app.css" />
+<script src="hub/language.js"></script>
 <style>
   .logo-flip{padding:0;border:1px solid rgba(255,255,255,.16);background:#0b1020;border-radius:13px;
     cursor:pointer;overflow:hidden;width:46px;height:46px;display:grid;place-items:center;
@@ -24,16 +25,19 @@
     <button class="logo logo-flip" id="hubFlip" title="Клик по логотипу — перейти в IdleArc Companion"><img src="assets/brand/logo.png" alt="IdleArc" width="44" height="44" /></button>
     <div>
       <h1>IdleArc Guide Helper</h1>
-      <p class="sub">Планировщик сборок под класс, цель и уровень · <span id="meta-version">Season 2</span> · сборка <b id="meta-build">…</b></p>
+      <p class="sub"><span data-en="Build planner for your class, goal and level">Планировщик сборок под класс, цель и уровень</span> · <span id="meta-version">Season 2</span> · <span data-en="build">сборка</span> <b id="meta-build">…</b></p>
     </div>
   </div>
   <nav class="tabs" id="tabs">
-    <button data-tab="planner" class="active">Планировщик</button>
-    <button data-tab="passives">Пассивное дерево</button>
-    <button data-tab="calc">Калькуляторы</button>
-    <button data-tab="codex">Кодекс</button>
-    <button data-tab="nuances">Нюансы и источники</button>
-    <button id="reload-btn" class="btn ghost" title="Загрузить файлы приложения заново (обход кэша браузера)">Обновить</button>
+    <button data-tab="planner" class="active" data-en="Planner">Планировщик</button>
+    <button data-tab="passives" data-en="Passive Tree">Пассивное дерево</button>
+    <button data-tab="calc" data-en="Calculators">Калькуляторы</button>
+    <button data-tab="codex" data-en="Codex">Кодекс</button>
+    <button data-tab="nuances" data-en="Tips and Sources">Нюансы и источники</button>
+    <button id="reload-btn" class="btn ghost" data-en="Reload" title="Загрузить файлы приложения заново (обход кэша браузера)">Обновить</button>
+    <select data-language aria-label="Language / Язык">
+      <option value="ru" lang="ru">Русский</option><option value="en" lang="en">English</option>
+    </select>
   </nav>
 </header>
 
@@ -42,41 +46,52 @@
 <main id="view"></main>
 
 <footer class="foot">
-  <p>Неофициальный фанатский инструмент. Данные: <a href="https://idlearc.com/patch-notes/1-3-1" target="_blank" rel="noopener">официальные патч-ноты 1.3.1</a>,
-  <a href="https://idlearc.com/classes" target="_blank" rel="noopener">официальные классы</a> и
+  <p><span data-en="Unofficial fan tool. Sources:">Неофициальный фанатский инструмент. Данные:</span> <a href="https://idlearc.com/patch-notes/1-3-1" target="_blank" rel="noopener" data-en="official 1.3.1 patch notes">официальные патч-ноты 1.3.1</a>,
+  <a href="https://idlearc.com/classes" target="_blank" rel="noopener" data-en="official class guide">официальные классы</a> <span data-en="and">и</span>
   <a href="https://idlearc.fandom.com/wiki/IdleArc_Wiki" target="_blank" rel="noopener">IdleArc Wiki</a>.
-  Снапшот: <span id="foot-date"></span>. Сборка приложения: <span id="foot-build"></span>.</p>
+  <span data-en="Snapshot:">Снапшот:</span> <span id="foot-date"></span>. <span data-en="App build:">Сборка приложения:</span> <span id="foot-build"></span>.</p>
 </footer>
 
 <script>
 /* Страховка: если модули не загрузились (кэш, прокси, старый браузер), страница не останется пустой. */
 (function () {
+  function t(ru, en) { return document.documentElement.lang === 'en' ? en : ru; }
+  if (document.documentElement.lang === 'en') {
+    document.getElementById('reload-btn').title = 'Reload the app files';
+    document.getElementById('hubFlip').title = 'Switch to IdleArc Companion';
+    document.querySelector('meta[name="description"]').content = 'IdleArc Season 2 character planner for skills, gear, gems, pets and talismans.';
+  }
   function build() {
     var m = document.querySelector('meta[name="build"]');
-    return m ? m.content : 'неизвестно';
+    return m ? m.content : t('неизвестно', 'unknown');
   }
   function show(html) {
     var box = document.getElementById('boot-error');
     if (!box) return;
     box.hidden = false;
-    box.innerHTML = '<b>Приложение не загрузилось</b><div>' + html + '</div>'
-      + '<div class="boot-actions">HTML-сборка страницы: <code>' + build() + '</code> · ожидается сборка приложения '
-      + '<code>2026-10-05.1</code>'
-      + ' <button class="btn primary" onclick="location.reload(true)">Перезагрузить</button></div>'
-      + '<div class="muted small">Если кнопка не помогает — нажмите Ctrl+Shift+R (жёсткая перезагрузка): браузер мог сохранить старые файлы.</div>';
+    box.innerHTML = t('<b>Приложение не загрузилось</b><div>', '<b>The app could not load</b><div>') + html + '</div>'
+      + t('<div class="boot-actions">HTML-сборка страницы: <code>', '<div class="boot-actions">Page build: <code>') + build() + t('</code> · ожидается сборка приложения ', '</code> · expected app build ')
+      + '<code>2026-11-19.1</code>'
+      + t(' <button class="btn primary" onclick="location.reload(true)">Перезагрузить</button></div>', ' <button class="btn primary" onclick="location.reload(true)">Reload</button></div>')
+      + t('<div class="muted small">Если кнопка не помогает — нажмите Ctrl+Shift+R (жёсткая перезагрузка): браузер мог сохранить старые файлы.</div>', '<div class="muted small">If reloading does not help, use a hard refresh to clear cached files.</div>');
   }
-  window.__boot = { ready: false, show: show };
+  window.__boot = { ready: false, show: show, entryError: function () {
+    show(t('Файл точки входа <code>src/app.js</code> не загрузился: сервер не отдал модуль. Проверьте, что приложение запущено, и нажмите «Перезагрузить без кэша».', 'The server could not load <code>src/app.js</code>. Check that the app is running and reload without cache.'));
+  } };
+  window.addEventListener('ia-language', function () {
+    if (!window.__boot.ready) location.reload();
+  });
 
   window.addEventListener('error', function (e) {
     if (window.__boot.ready) return;
     var where = e.filename || (e.target && (e.target.src || e.target.href)) || '';
-    show('Ошибка: <code>' + (e.message || 'скрипт не выполнился') + '</code>' + (where ? '<br>Файл: <code>' + where + '</code>' : ''));
+    show(t('Ошибка: <code>', 'Error: <code>') + (e.message || t('скрипт не выполнился', 'script failed')) + '</code>' + (where ? t('<br>Файл: <code>', '<br>File: <code>') + where + '</code>' : ''));
   }, true);
 
   window.addEventListener('unhandledrejection', function (e) {
     if (window.__boot.ready) return;
     var r = e.reason && e.reason.message ? e.reason.message : String(e.reason);
-    show('Ошибка JS: <code>' + r + '</code>');
+    show(t('Ошибка JS: <code>', 'JavaScript error: <code>') + r + '</code>');
   });
 
   /* Перезагрузка в обход кэша: добавляем к адресу метку времени. */
@@ -89,21 +104,21 @@
   setTimeout(function () {
     if (window.__boot.ready) return;
     var entry = (document.querySelector('script[type="module"]') || {}).src || 'src/app.js';
-    var graph = window.__boot.graph ? '<br>Файлы модулей загрузились, но приложение не отрисовалось — значит ошибка при выполнении.' : '';
-    var head = 'Модуль приложения не запустился за 8 секунд.' + graph
-      + '<br>Файл точки входа: <code>' + entry + '</code>';
-    var tail = '<div class="boot-actions"><button class="btn primary" onclick="window.__boot.hardReload()">Перезагрузить без кэша</button></div>';
+    var graph = window.__boot.graph ? t('<br>Файлы модулей загрузились, но приложение не отрисовалось — значит ошибка при выполнении.', '<br>The modules loaded, but the app could not render.') : '';
+    var head = t('Модуль приложения не запустился за 8 секунд.', 'The app did not start within 8 seconds.') + graph
+      + t('<br>Файл точки входа: <code>', '<br>Entry file: <code>') + entry + '</code>';
+    var tail = t('<div class="boot-actions"><button class="btn primary" onclick="window.__boot.hardReload()">Перезагрузить без кэша</button></div>', '<div class="boot-actions"><button class="btn primary" onclick="window.__boot.hardReload()">Reload without cache</button></div>');
     if (!window.fetch) { show(head + tail); return; }
     /* Проверяем, отдаётся ли файл модуля вообще: это отличает проблему сервера от ошибки в коде. */
     fetch(entry, { cache: 'reload' }).then(function (r) { return r.status; })
       .then(function (code) {
         var verdict = code === 200
-          ? '<br>Файл модуля сервер отдаёт (200) — значит дело в выполнении кода или в загрузке зависимостей.'
-          : '<br>Сервер отдал файл модуля с кодом <code>' + code + '</code> — страница открыта по старому адресу.';
+          ? t('<br>Файл модуля сервер отдаёт (200) — значит дело в выполнении кода или в загрузке зависимостей.', '<br>The server returned the module (200). A dependency or the app code failed to load.')
+          : t('<br>Сервер отдал файл модуля с кодом <code>', '<br>The server returned status <code>') + code + t('</code> — страница открыта по старому адресу.', '</code>. The page address is out of date.');
         show(head + verdict + tail);
       })
       .catch(function () {
-        show(head + '<br>Файл модуля не удалось даже скачать — похоже, пропала связь с сервером.' + tail);
+        show(head + t('<br>Файл модуля не удалось даже скачать — похоже, пропала связь с сервером.', '<br>The module could not be downloaded. Check the server connection.') + tail);
       });
   }, 8000);
 
@@ -111,13 +126,13 @@
     fetch('api/build', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (info) {
       if (!info || !info.build || window.__boot.ready) return;
       if (info.build !== build()) {
-        show('Страница загружена из кэша: HTML-сборка <code>' + build() + '</code>, на сервере <code>' + info.build + '</code>.');
+        show(t('Страница загружена из кэша: HTML-сборка <code>', 'The browser loaded a cached page. Page build: <code>') + build() + t('</code>, на сервере <code>', '</code>, server build: <code>') + info.build + '</code>.');
       }
     }).catch(function () {});
   } catch (err) { /* fetch недоступен — не критично */ }
 })();
 </script>
-<script type="module" src="src/app.js" onerror="window.__boot && window.__boot.show('Файл точки входа <code>src/app.js</code> не загрузился: сервер не отдал модуль. Проверьте, что приложение запущено, и нажмите «Перезагрузить без кэша».')"></script>
+<script type="module" src="src/app.js" onerror="window.__boot && window.__boot.entryError()"></script>
 <script>
   (function(){
     var b=document.getElementById('hubFlip');

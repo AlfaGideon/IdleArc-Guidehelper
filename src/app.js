@@ -2,6 +2,7 @@
 if (typeof window !== 'undefined' && window.__boot) window.__boot.graph = true;
 
 import { DATA_META } from './data/systems.js';
+import { t } from './i18n.js';
 import * as planner from './ui/planner.js';
 import * as passives from './ui/passives.js';
 import * as calculators from './ui/calculators.js';
@@ -11,6 +12,22 @@ import * as nuances from './ui/nuances.js';
 const views = { planner, passives, calc: calculators, codex, nuances };
 const root = document.getElementById('view');
 const tabs = document.getElementById('tabs');
+
+// Data labels are chosen when modules load. Keep transient inputs across a language reload.
+const viewState = globalThis.history?.state?.idleArcViews;
+if (viewState) {
+  calculators.restoreViewState(viewState.calculators);
+  codex.restoreViewState(viewState.codex);
+  const { idleArcViews, ...rest } = history.state;
+  history.replaceState(rest, '');
+}
+window.addEventListener('ia-language', () => {
+  history.replaceState({ ...history.state, idleArcViews: {
+    calculators: calculators.getViewState(),
+    codex: codex.getViewState(),
+  } }, '');
+  location.reload();
+});
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -44,12 +61,13 @@ fetch('api/build', { cache: 'no-store' })
     if (!info || !info.build || info.build === DATA_META.build) return;
     const banner = document.createElement('div');
     banner.className = 'warnbox stale';
-    banner.innerHTML = '<b>Открыта старая сборка</b> (' + DATA_META.build + ') → на сервере уже <b>' + info.build + '</b>. '
-      + 'Нажмите «Перезагрузить», чтобы загрузить свежие данные: '
-      + '<button class="btn primary" id="stale-reload">Перезагрузить</button>';
+    banner.textContent = t(`Открыта старая сборка (${DATA_META.build}). На сервере уже ${info.build}. `, `You are using build ${DATA_META.build}. Build ${info.build} is available. `);
+    const btn = document.createElement('button');
+    btn.className = 'btn primary';
+    btn.textContent = t('Перезагрузить', 'Reload');
+    banner.appendChild(btn);
     root.insertBefore(banner, root.firstChild);
-    const btn = banner.querySelector('#stale-reload');
-    if (btn) btn.addEventListener('click', () => location.reload(true));
+    btn.addEventListener('click', () => location.reload(true));
   })
   .catch(() => {});
 

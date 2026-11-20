@@ -147,6 +147,8 @@ const check = (name, fn) => {
   return null;
 };
 
+const englishRun = process.argv.includes('--english');
+if (englishRun) window.IdleArcLanguage = { current: 'en' };
 const views = {
   planner: await import(src('ui/planner.js')),
   passives: await import(src('ui/passives.js')),
@@ -214,6 +216,33 @@ function renderPages(ids = PAGE_IDS) {
 }
 
 const pagesText = (ids) => renderPages(ids).map((p) => p.text).join('');
+
+if (englishRun) {
+  const checkEnglish = (label, text) => {
+    const russian = text.match(/.{0,24}[а-яё].{0,80}/iu);
+    if (!text.trim() || russian) throw new Error(`${label}: ${russian?.[0] || 'empty'}`);
+  };
+  for (const [name, view] of Object.entries(views)) {
+    const root = new El('main');
+    view.render(root);
+    checkEnglish(name, textOf(root));
+    for (const node of findAll(root, () => true)) {
+      for (const key of ['title', 'alt', 'placeholder', 'aria-label']) {
+        if (node.attrs[key]) checkEnglish(name, node.attrs[key]);
+      }
+    }
+  }
+  for (const cls of classes.CLASSES) {
+    Object.assign(views.planner.plannerState, { classId: cls.id, goal: 'boss', level: 120, ml: 150 });
+    for (const page of renderPages()) checkEnglish(`${cls.id}/${page.id}`, page.text);
+    checkEnglish('build export', core.planToText(core.planBuild(views.planner.plannerState)));
+  }
+  process.exit(failures ? 1 : 0);
+}
+
+check('English content across views, classes and build exports', () => {
+  execFileSync(process.execPath, [fileURLToPath(import.meta.url), '--english']);
+});
 
 /** Все узлы, подходящие под условие (обход дерева). */
 function findAll(node, pred, acc = []) {

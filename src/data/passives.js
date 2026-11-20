@@ -1,3 +1,5 @@
+import { t } from '../i18n.js';
+
 /**
  * Пассивное дерево (Passive Skill Tree) — снапшот данных текущего билда игры
  * (config 2026-09-29-003, сверено 2026-10-02 с данными IdleArc Companion).
@@ -16,28 +18,28 @@
 
 /** Словарь статов дерева: код → { ru, en, процентный ли, ключ стата в системе рекомендаций }. */
 export const PASSIVE_STATS = {
-  str: { ru: 'Сила', en: 'Strength', pct: false, rec: 'mainstat' },
-  dex: { ru: 'Ловкость', en: 'Dexterity', pct: false, rec: 'mainstat' },
-  int: { ru: 'Интеллект', en: 'Intelligence', pct: false, rec: 'mainstat' },
-  adf: { ru: 'Урон атаки', en: 'Attack Damage', pct: false, rec: 'ad' },
-  adp: { ru: 'Урон атаки', en: 'Attack Damage', pct: true, rec: 'ad' },
-  pdf: { ru: 'Урон пета', en: 'Pet Damage', pct: false, rec: 'petDamage' },
-  pdp: { ru: 'Урон пета', en: 'Pet Damage', pct: true, rec: 'petDamage' },
-  cc: { ru: 'Шанс крита', en: 'Crit Chance', pct: true, rec: 'crit' },
-  cd: { ru: 'Урон крита', en: 'Crit Damage', pct: true, rec: 'critDmg' },
-  dh: { ru: 'Двойной удар', en: 'Double Hit', pct: true, rec: 'dh' },
-  dd: { ru: 'Двойной урон', en: 'Double Damage', pct: true, rec: 'dd' },
-  hp: { ru: 'Макс. здоровье', en: 'Max HP', pct: false, rec: 'maxHp' },
-  hpp: { ru: 'Макс. здоровье', en: 'Max HP', pct: true, rec: 'maxHp' },
-  df: { ru: 'Защита', en: 'Defense', pct: false, rec: 'defense' },
-  dfp: { ru: 'Защита', en: 'Defense', pct: true, rec: 'defense' },
-  dg: { ru: 'Уклонение', en: 'Dodge Chance', pct: true, rec: 'dodge' },
-  gg: { ru: 'Золото', en: 'Gold Gain', pct: true, rec: 'gold' },
-  xg: { ru: 'Опыт', en: 'Exp Gain', pct: true, rec: 'exp' },
-  id: { ru: 'Дроп предметов', en: 'Item Drop Chance', pct: true, rec: 'itemDrop' },
-  md: { ru: 'Дроп материалов', en: 'Material Drop Chance', pct: true, rec: 'mat' },
-  loh: { ru: 'Лечение за удар', en: 'Life on Hit', pct: false, rec: 'loh' },
-  lok: { ru: 'Лечение за убийство', en: 'Life on Kill', pct: false, rec: 'lok' },
+  str: { ru: t('Сила', 'Strength'), en: 'Strength', pct: false, rec: 'mainstat' },
+  dex: { ru: t('Ловкость', 'Dexterity'), en: 'Dexterity', pct: false, rec: 'mainstat' },
+  int: { ru: t('Интеллект', 'Intelligence'), en: 'Intelligence', pct: false, rec: 'mainstat' },
+  adf: { ru: t('Урон атаки', 'Attack Damage'), en: 'Attack Damage', pct: false, rec: 'ad' },
+  adp: { ru: t('Урон атаки', 'Attack Damage'), en: 'Attack Damage', pct: true, rec: 'ad' },
+  pdf: { ru: t('Урон пета', 'Pet Damage'), en: 'Pet Damage', pct: false, rec: 'petDamage' },
+  pdp: { ru: t('Урон пета', 'Pet Damage'), en: 'Pet Damage', pct: true, rec: 'petDamage' },
+  cc: { ru: t('Шанс крита', 'Crit Chance'), en: 'Crit Chance', pct: true, rec: 'crit' },
+  cd: { ru: t('Урон крита', 'Crit Damage'), en: 'Crit Damage', pct: true, rec: 'critDmg' },
+  dh: { ru: t('Двойной удар', 'Double Hit'), en: 'Double Hit', pct: true, rec: 'dh' },
+  dd: { ru: t('Двойной урон', 'Double Damage'), en: 'Double Damage', pct: true, rec: 'dd' },
+  hp: { ru: t('Макс. здоровье', 'Max HP'), en: 'Max HP', pct: false, rec: 'maxHp' },
+  hpp: { ru: t('Макс. здоровье', 'Max HP'), en: 'Max HP', pct: true, rec: 'maxHp' },
+  df: { ru: t('Защита', 'Defense'), en: 'Defense', pct: false, rec: 'defense' },
+  dfp: { ru: t('Защита', 'Defense'), en: 'Defense', pct: true, rec: 'defense' },
+  dg: { ru: t('Уклонение', 'Dodge Chance'), en: 'Dodge Chance', pct: true, rec: 'dodge' },
+  gg: { ru: t('Золото', 'Gold Gain'), en: 'Gold Gain', pct: true, rec: 'gold' },
+  xg: { ru: t('Опыт', 'Exp Gain'), en: 'Exp Gain', pct: true, rec: 'exp' },
+  id: { ru: t('Дроп предметов', 'Item Drop Chance'), en: 'Item Drop Chance', pct: true, rec: 'itemDrop' },
+  md: { ru: t('Дроп материалов', 'Material Drop Chance'), en: 'Material Drop Chance', pct: true, rec: 'mat' },
+  loh: { ru: t('Лечение за удар', 'Life on Hit'), en: 'Life on Hit', pct: false, rec: 'loh' },
+  lok: { ru: t('Лечение за убийство', 'Life on Kill'), en: 'Life on Kill', pct: false, rec: 'lok' },
 };
 
 /** Правила дерева. */
@@ -286,7 +288,7 @@ export const PASSIVE_ROWS = [
 export function nodeLabel(node) {
   const meta = PASSIVE_STATS[node[0]] || { ru: node[0], en: node[0], pct: false };
   const unit = meta.pct ? '%' : '';
-  return `${meta.ru} (${meta.en}) +${node[1]}${unit}/очко`;
+  return t(`${meta.ru} (${meta.en}) +${node[1]}${unit}/очко`, `${meta.en} +${node[1]}${unit}/point`);
 }
 
 /** Короткая подпись значения: «+4% за очко, до 3 очков». */
