@@ -39,6 +39,8 @@ h1 { font-size: 18px; margin: 0; }
 .sub { margin: 0; color: var(--muted); font-size: 12px; }
 
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs select[data-language] { width: auto; }
+.hub-embedded select[data-language] { display: none; }
 .tabs button {
   background: var(--bg2); color: var(--text); border: 1px solid var(--line);
   padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 13px;

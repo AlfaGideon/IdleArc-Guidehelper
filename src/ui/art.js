@@ -10,6 +10,7 @@
  *
  * Найденная карта иконок кэшируется в localStorage, чтобы не запрашивать её каждый раз.
  */
+import { t as tr } from '../i18n.js';
 import { el } from './dom.js';
 import { itemArt, shapeArt } from './itemArt.js';
 
@@ -163,7 +164,7 @@ export function artNode(family, tier = 1, awaken = 0, opts = {}) {
   const img = el('img', {
     class: 'art-img',
     src,
-    alt: family ? family.name : 'предмет',
+    alt: family ? family.name : tr('предмет', "Item"),
     width: String(size),
     height: String(size),
     loading: 'lazy',
@@ -235,7 +236,7 @@ async function postFiles(files, meta, dryRun) {
  */
 export async function downloadArtViaBrowser(onProgress = () => {}) {
   artDownload.active = true; artDownload.done = 0; artDownload.saved = 0; artDownload.error = null;
-  artDownload.note = 'Ищу Item Codex…';
+  artDownload.note = tr('Ищу Item Codex…', "Looking up Item Codex…");
   try {
     // 1. Item Codex: список имён картинок (напрямую или через прокси).
     let codex = null;
@@ -256,13 +257,13 @@ export async function downloadArtViaBrowser(onProgress = () => {}) {
       }
       if (codex) break;
     }
-    if (!codex || !codex.item_variants) throw new Error('не удалось открыть Item Codex');
+    if (!codex || !codex.item_variants) throw new Error(tr('не удалось открыть Item Codex', "Could not open Item Codex"));
     const index = indexFromCodex(codex);
 
     // 2. Имена файлов — уникальные, по тирам и просыпаниям.
     const names = [...new Set(Object.values(index).flatMap((e) => [...Object.values(e.tiers || {}), ...Object.values(e.awakens || {})]))];
     artDownload.total = names.length;
-    artDownload.note = `Скачиваю ${names.length} иконок…`;
+    artDownload.note = tr(`Скачиваю ${names.length} иконок…`, `Downloading icons: ${names.length}…`);
 
     // 3. Скачиваем пачками и отправляем на сервер.
     const batch = {};
@@ -285,14 +286,14 @@ export async function downloadArtViaBrowser(onProgress = () => {}) {
     }
     artDownload.saved = saved;
     artDownload.note = failed.length
-      ? `Сохранено ${saved} иконок, не удалось ${failed.length}`
-      : `Сохранено ${saved} иконок`;
+      ? tr(`Сохранено ${saved} иконок, не удалось ${failed.length}`, `Icons saved: ${saved}. Failed: ${failed.length}.`)
+      : tr(`Сохранено ${saved} иконок`, `Icons saved: ${saved}.`);
     artDownload.active = false;
     return { ok: saved > 0, saved, failed: failed.length, total: names.length };
   } catch (e) {
     artDownload.active = false;
     artDownload.error = e.message;
-    artDownload.note = 'Не получилось: ' + e.message;
+    artDownload.note = tr('Не получилось: ', "Download failed: ") + e.message;
     return { ok: false, error: e.message };
   }
 }

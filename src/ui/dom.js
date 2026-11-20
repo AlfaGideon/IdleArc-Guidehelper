@@ -1,5 +1,6 @@
 /** Минимальные DOM-хелперы (без фреймворков). */
 
+import { t as tr } from '../i18n.js';
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -15,7 +16,10 @@ export function el(tag, attrs = {}, children = []) {
     // Числа/булевы/строки превращаем в текстовый узел: appendChild(0) в браузере бросает TypeError,
     // а в таблицы часто попадают числа прямо из данных (кол-во вторичек, ML, золото).
     if (typeof c === 'object') {
-      if (!c.nodeType) throw new Error(`el(${tag}): в children попал объект без nodeType (${Object.keys(c).slice(0, 4).join(', ')}) — для карточек передавайте массив, а не объект`);
+      if (!c.nodeType) throw new Error(tr(
+        `el(${tag}): в children попал объект без nodeType (${Object.keys(c).slice(0, 4).join(', ')}) — для карточек передавайте массив, а не объект`,
+        `el(${tag}): a child object has no nodeType (${Object.keys(c).slice(0, 4).join(', ')}). Pass an array of children to a card.`,
+      ));
       node.appendChild(c);
     } else node.appendChild(document.createTextNode(String(c)));
   }
@@ -44,17 +48,17 @@ export function kpi(items) {
   return el('div', { class: 'kpi' }, items.map((it) => el('div', { class: 'k' }, [el('b', { text: it.value }), el('span', { text: it.label })])));
 }
 
-export function copyButton(text, label = 'Скопировать') {
+export function copyButton(text, label = tr('Скопировать', 'Copy')) {
   return el('button', {
     class: 'btn',
     text: label,
     onclick: async (e) => {
       try {
         await navigator.clipboard.writeText(text);
-        e.target.textContent = 'Скопировано ✓';
+        e.target.textContent = tr('Скопировано ✓', 'Copied ✓');
         setTimeout(() => { e.target.textContent = label; }, 1500);
       } catch {
-        e.target.textContent = 'Не удалось скопировать';
+        e.target.textContent = tr('Не удалось скопировать', 'Could not copy');
       }
     },
   });

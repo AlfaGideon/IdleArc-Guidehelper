@@ -14,6 +14,7 @@
  * Всё считается из данных Item Codex (src/data/items.js) и правил целей (src/data/builds.js),
  * поэтому рекомендация меняется вместе с классом, целью и Monster Level.
  */
+import { t as tr, isEnglish, bi } from '../i18n.js';
 import {
   GEAR_CELLS, CLASS_GEAR_RULES, SLOT_GEM_REGION, SLOT_RU, SLOT_EN,
   GEAR_FAMILIES, AFFIXES, DROP_BONUSES, DROP_BONUS_SLOT_CATEGORIES,
@@ -28,29 +29,29 @@ import { forgeGateAtMl, promotionFromTier } from '../data/biomes.js';
 /* ------------------------- словарь статов: что это и зачем ------------------------- */
 
 export const STAT_TEXT = {
-  ad: ['урон атаки (Attack Damage)', 'база любого урона — умножается критами и доп. ударами'],
-  crit: ['шанс крита (Crit Chance)', 'чем чаще криты, тем сильнее работают Crit Damage и DD'],
-  critDmg: ['урон крита (Crit Damage)', 'множитель крита; всё, что выше 100% крита, уходит сюда 1:1'],
-  dd: ['Double Damage (шанс двойного урона)', 'целые сотни дают гарантированные ×N удары'],
-  dh: ['Double Hit (доп. удары)', 'целые сотни = гарантированные дополнительные удары'],
-  maxHp: ['максимум здоровья (Max Health)', 'выживаемость и урон Retaliation'],
-  defense: ['защита (Defense)', 'снижает входящий урон и напрямую усиливает Retaliation'],
-  dr: ['плоское снижение урона (DR)', 'режет каждый входящий удар'],
-  dodge: ['уклонение (Dodge)', 'полностью избегает удара (в стойке Bulwark — 0)'],
-  block: ['блок (Block)', 'щит: шанс блокировать удар и усилить Retaliation'],
-  retal: ['возмездие (Retaliation)', 'урон, который считается от вашей защиты'],
-  petDamage: ['урон пета (Pet Damage)', 'основной урон пет-билда'],
-  loh: ['лечение за удар (Life on Hit)', 'выживаемость в затяжном бою'],
-  lok: ['лечение за убийство (Life on Kill)', 'восстановление между монстрами'],
-  gold: ['золото (Gold Gain)', 'фарм золота'],
-  exp: ['опыт (EXP Gain)', 'скорость прокачки персонажа'],
-  itemDrop: ['шанс дропа предметов (Item Drop)', 'фарм предметов'],
-  mat: ['материалы (Material Drop)', 'фарм материалов для Кузницы'],
-  eggDrop: ['шанс яиц (Egg Drop)', 'фарм петов'],
-  lucky: ['удача (Lucky)', 'редкие находки'],
-  boss: ['урон по боссам (Boss Damage)', 'работает в босс-контенте: Daily/Guild Boss, Tower, Rifts'],
-  allSkills: ['+All Class Skills', 'поднимает ВСЕ классовые навыки — самый универсальный бонус в игре'],
-  mainstat: ['основной атрибут (Strength / Dexterity / Intelligence)', 'даёт и урон, и защиту по формуле класса'],
+  ad: [tr('урон атаки (Attack Damage)', 'Attack Damage'), tr('база любого урона — умножается критами и доп. ударами', 'critical hits and extra hits multiply this base damage')],
+  crit: [tr('шанс крита (Crit Chance)', 'Crit Chance'), tr('чем чаще криты, тем сильнее работают Crit Damage и DD', 'more critical hits increase the benefit of Crit Damage and Double Damage')],
+  critDmg: [tr('урон крита (Crit Damage)', 'Crit Damage'), tr('множитель крита; всё, что выше 100% крита, уходит сюда 1:1', 'multiplies critical hits and gains 1 point for every point of Crit Chance above 100%')],
+  dd: [tr('Double Damage (шанс двойного урона)', 'Double Damage'), tr('целые сотни дают гарантированные ×N удары', 'each full 100% guarantees another step in the damage multiplier')],
+  dh: [tr('Double Hit (доп. удары)', 'Double Hit'), tr('целые сотни = гарантированные дополнительные удары', 'each full 100% guarantees an extra hit')],
+  maxHp: [tr('максимум здоровья (Max Health)', 'Max Health'), tr('выживаемость и урон Retaliation', 'improves survivability and supports Retaliation builds')],
+  defense: [tr('защита (Defense)', 'Defense'), tr('снижает входящий урон и напрямую усиливает Retaliation', 'reduces incoming damage and directly scales Retaliation')],
+  dr: [tr('плоское снижение урона (DR)', 'Flat Damage Reduction'), tr('режет каждый входящий удар', 'reduces damage from every incoming hit')],
+  dodge: [tr('уклонение (Dodge)', 'Dodge'), tr('полностью избегает удара (в стойке Bulwark — 0)', 'avoids the whole hit, but drops to zero in Bulwark stance')],
+  block: [tr('блок (Block)', 'Block'), tr('щит: шанс блокировать удар и усилить Retaliation', 'a shield can block a hit and increase Retaliation')],
+  retal: [tr('возмездие (Retaliation)', 'Retaliation'), tr('урон, который считается от вашей защиты', 'deals damage based on Defense')],
+  petDamage: [tr('урон пета (Pet Damage)', 'Pet Damage'), tr('основной урон пет-билда', 'the primary source of damage in pet builds')],
+  loh: [tr('лечение за удар (Life on Hit)', 'Life on Hit'), tr('выживаемость в затяжном бою', 'restores health during long fights')],
+  lok: [tr('лечение за убийство (Life on Kill)', 'Life on Kill'), tr('восстановление между монстрами', 'restores health between monsters')],
+  gold: [tr('золото (Gold Gain)', 'Gold Gain'), tr('фарм золота', 'increases gold gained while farming')],
+  exp: [tr('опыт (EXP Gain)', 'EXP Gain'), tr('скорость прокачки персонажа', 'speeds up character leveling')],
+  itemDrop: [tr('шанс дропа предметов (Item Drop)', 'Item Drop'), tr('фарм предметов', 'increases item drops')],
+  mat: [tr('материалы (Material Drop)', 'Material Drop'), tr('фарм материалов для Кузницы', 'helps you farm materials for the Forge')],
+  eggDrop: [tr('шанс яиц (Egg Drop)', 'Egg Drop'), tr('фарм петов', 'helps you farm pets')],
+  lucky: [tr('удача (Lucky)', 'Lucky'), tr('редкие находки', 'improves your chance of rare finds')],
+  boss: [tr('урон по боссам (Boss Damage)', 'Boss Damage'), tr('работает в босс-контенте: Daily/Guild Boss, Tower, Rifts', 'applies to Daily and Guild Bosses, the Tower, and Rifts')],
+  allSkills: ['+All Class Skills', tr('поднимает ВСЕ классовые навыки — самый универсальный бонус в игре', 'raises all class skills at once')],
+  mainstat: [tr('основной атрибут (Strength / Dexterity / Intelligence)', 'Main attribute (Strength / Dexterity / Intelligence)'), tr('даёт и урон, и защиту по формуле класса', 'grants damage and defense according to the class formula')],
 };
 
 export const statText = (key) => (STAT_TEXT[key] ? STAT_TEXT[key][0] : key);
@@ -185,9 +186,9 @@ export const ATTRIBUTE_EFFECTS = {
 };
 
 export const ATTRIBUTE_LABELS = {
-  strength: ['Сила', 'Strength'],
-  dexterity: ['Ловкость', 'Dexterity'],
-  intelligence: ['Интеллект', 'Intelligence'],
+  strength: [tr('Сила', 'Strength'), 'Strength'],
+  dexterity: [tr('Ловкость', 'Dexterity'), 'Dexterity'],
+  intelligence: [tr('Интеллект', 'Intelligence'), 'Intelligence'],
 };
 
 /** Линии украшений: какое семейство какую линию атрибутов даёт. */
@@ -283,7 +284,7 @@ export function recommendBuild(classId, goal, opts = {}) {
         cellId: cell.id, slot: cell.slot, slotRu: cell.ru, slotEn: cell.en,
         family: null, familyId: null, talismanId: talisman.id,
         why: [
-          `Талисман ${talisman.ru} (${talisman.name}): ${talisman.stats}.`,
+          tr(`Талисман ${talisman.ru} (${talisman.name}): ${talisman.stats}.`, `${talisman.name} talisman: ${talisman.stats}.`),
           ...stats.filter((s) => weightOf(s) > 0).slice(0, 2).map((s) => `${statText(s)} — ${STAT_TEXT[s][1]}`),
         ],
         forge: null,
@@ -318,8 +319,11 @@ export function recommendBuild(classId, goal, opts = {}) {
           const w = weightOf(stat);
           if (w > 0) score += gain * w;
           if (w > 0) {
-            const note = own ? ' — это атрибут вашего класса' : (stat === 'ad' ? ' — чужой атрибут, для вашего класса слабее (оценка)' : '');
-            parts.push(`${ATTRIBUTE_LABELS[attr][0]} (${ATTRIBUTE_LABELS[attr][1]}): +${per}% ${statText(stat)} за пункт → при прокруте ~${Math.round(roll)} это ≈ +${gain.toFixed(1)}%${note}`);
+            const note = own ? tr(' — это атрибут вашего класса', ' (your main class attribute)') : (stat === 'ad' ? tr(' — чужой атрибут, для вашего класса слабее (оценка)', ' (estimated lower damage scaling for your class)') : '');
+            parts.push(tr(
+              `${ATTRIBUTE_LABELS[attr][0]} (${ATTRIBUTE_LABELS[attr][1]}): +${per}% ${statText(stat)} за пункт → при прокруте ~${Math.round(roll)} это ≈ +${gain.toFixed(1)}%${note}`,
+              `${ATTRIBUTE_LABELS[attr][1]}: +${per}% ${statText(stat)} per point. A roll of about ${Math.round(roll)} gives roughly +${gain.toFixed(1)}%${note}.`,
+            ));
           }
         }
       }
@@ -327,7 +331,7 @@ export function recommendBuild(classId, goal, opts = {}) {
       const flat = /life on hit/i.test(family.implicit) ? 'loh' : (/life on kill/i.test(family.implicit) ? 'lok' : null);
       if (flat && weightOf(flat) > 0) {
         score += roll * weightOf(flat);
-        parts.push(`${statText(flat)} → +${roll} за удар/убийство`);
+        parts.push(tr(`${statText(flat)} → +${roll} за удар/убийство`, `${statText(flat)}: +${roll} per hit or kill`));
       }
       return { score: score * slotMultPre, parts, attrs, roll };
     };
@@ -388,42 +392,51 @@ export function recommendBuild(classId, goal, opts = {}) {
 
     const why = [];
     if (chosen) {
-      why.push(`Предмет падает на вашем Monster Level: T${dropTier.tier} ${dropTier.ru} (${dropTier.name}) — около ${dropTier.chance}% дропа. Кузница слота качается до T${forgeTier} и от предмета не зависит: материалы берутся с монстров ${forgeGate.biome ? forgeGate.biome.name : '—'} (ML ${forgeGate.ml}).`);
+      why.push(tr(
+        `Предмет падает на вашем Monster Level: T${dropTier.tier} ${dropTier.ru} (${dropTier.name}) — около ${dropTier.chance}% дропа. Кузница слота качается до T${forgeTier} и от предмета не зависит: материалы берутся с монстров ${forgeGate.biome ? forgeGate.biome.name : '—'} (ML ${forgeGate.ml}).`,
+        `At your Monster Level, T${dropTier.tier} ${dropTier.name} accounts for about ${dropTier.chance}% of drops. The slot can reach Forge tier T${forgeTier} independently of the equipped item. Farm materials from monsters in ${forgeGate.biome ? forgeGate.biome.name : '—'} (ML ${forgeGate.ml}).`,
+      ));
       if (forgeGate.next) {
-        why.push(`Следующий тир слота — T${forgeGate.next.tier}: материалы ${forgeGate.next.biome ? forgeGate.next.biome.name : ''} (ML ${forgeGate.next.ml}), осталось ${forgeGate.next.mlLeft} ML.`);
+        why.push(tr(
+          `Следующий тир слота — T${forgeGate.next.tier}: материалы ${forgeGate.next.biome ? forgeGate.next.biome.name : ''} (ML ${forgeGate.next.ml}), осталось ${forgeGate.next.mlLeft} ML.`,
+          `Next slot tier: T${forgeGate.next.tier}. Find materials in ${forgeGate.next.biome ? forgeGate.next.biome.name : ''} at ML ${forgeGate.next.ml} (${forgeGate.next.mlLeft} ML to go).`,
+        ));
       }
       if (promotion) {
-        why.push(`Промоушен слота T${promotion.from} → T${promotion.to}: ${promotion.gold.toLocaleString('ru-RU')} золота, ${promotion.essenceRu} ×1 и материалы: ${promotion.materials.map((m) => `${m[0]} ×${m[1]}`).join(', ')} (успех ${100 - promotion.fail}%).`);
+        why.push((isEnglish ? `Promoting the slot from T${promotion.from} to T${promotion.to} costs ${promotion.gold.toLocaleString('en-US')} gold, 1 × ${promotion.essenceRu}, and ${promotion.materials.map((m) => `${m[0]} ×${m[1]}`).join(', ')}. Success chance: ${100 - promotion.fail}%.` : `Промоушен слота T${promotion.from} → T${promotion.to}: ${promotion.gold.toLocaleString('ru-RU')} золота, ${promotion.essenceRu} ×1 и материалы: ${promotion.materials.map((m) => `${m[0]} ×${m[1]}`).join(', ')} (успех ${100 - promotion.fail}%).`));
       }
     }
     if (chosen && isJewelry) {
       const info = (chosenRecord && chosenRecord.info) || jewelryScore(chosen);
       const attrsText = info.attrs.length === 3
-        ? 'все атрибуты сразу: Сила (Strength) + Ловкость (Dexterity) + Интеллект (Intelligence)'
-        : info.attrs.map((a) => `${ATTRIBUTE_LABELS[a][0]} (${ATTRIBUTE_LABELS[a][1]})`).join(' + ');
+        ? tr('все атрибуты сразу: Сила (Strength) + Ловкость (Dexterity) + Интеллект (Intelligence)', 'All attributes: Strength, Dexterity, and Intelligence')
+        : info.attrs.map((a) => bi(...ATTRIBUTE_LABELS[a])).join(' + ');
       why.push(jewelryLine !== 'auto'
-        ? `Линия украшений выбрана вами вручную: ${chosen.ru} (${chosen.name}) — ${attrsText}.`
-        : `Линия подобрана расчётом под цель «${goalRu}»: ${chosen.ru} (${chosen.name}) — ${attrsText}. На T${dropTier.tier} это прокрут ${Math.round(info.roll)} пунктов на атрибут.`);
-      for (const p2 of info.parts.slice(0, 4)) why.push(`${p2} (официальные значения за пункт атрибута).`);
-      why.push(`Для сравнения: ${alternatives.slice(0, 2).map((a) => `${a.family.ru} — ${a.why}`).join('; ') || 'ближайших вариантов нет'}.`);
+        ? tr(`Линия украшений выбрана вами вручную: ${chosen.ru} (${chosen.name}) — ${attrsText}.`, `Your chosen jewelry line: ${chosen.name} (${attrsText}).`)
+        : tr(
+          `Линия подобрана расчётом под цель «${goalRu}»: ${chosen.ru} (${chosen.name}) — ${attrsText}. На T${dropTier.tier} это прокрут ${Math.round(info.roll)} пунктов на атрибут.`,
+          `Recommended jewelry for ${goalRu}: ${chosen.name} (${attrsText}). At T${dropTier.tier}, the estimated roll is ${Math.round(info.roll)} points per attribute.`,
+        ));
+      for (const p2 of info.parts.slice(0, 4)) why.push(tr(`${p2} (официальные значения за пункт атрибута).`, `${p2} (official values per attribute point).`));
+      why.push((isEnglish ? `Compare: ${alternatives.slice(0, 2).map((a) => `${a.family.ru} — ${a.why}`).join('; ') || 'no close alternatives'}.` : `Для сравнения: ${alternatives.slice(0, 2).map((a) => `${a.family.ru} — ${a.why}`).join('; ') || 'ближайших вариантов нет'}.`));
     }
     if (chosen && !isJewelry) {
-      why.push(`Имплисит: ${chosen.implicit} — это гарантированный стат, он не зависит от ролла аффиксов.`);
+      why.push(tr(`Имплисит: ${chosen.implicit} — это гарантированный стат, он не зависит от ролла аффиксов.`, `Implicit: ${chosen.implicit}. This stat is guaranteed regardless of the affix rolls.`));
       const matched = implicitStats(chosen.implicit).filter((s) => weightOf(s) > 0).sort((a, b) => weightOf(b) - weightOf(a));
       for (const s of matched.slice(0, 2)) {
         const place = priority.indexOf(s);
         why.push(place === -1
-          ? `${statText(s)} — особый бонус цели «${goalRu}»: ${STAT_TEXT[s][1]}.`
-          : `${statText(s)} — приоритет №${place + 1} цели «${goalRu}»: ${STAT_TEXT[s][1]}.`);
+          ? tr(`${statText(s)} — особый бонус цели «${goalRu}»: ${STAT_TEXT[s][1]}.`, `${statText(s)} is a special bonus for ${goalRu}: ${STAT_TEXT[s][1]}.`)
+          : tr(`${statText(s)} — приоритет №${place + 1} цели «${goalRu}»: ${STAT_TEXT[s][1]}.`, `${statText(s)} ranks #${place + 1} for ${goalRu}: ${STAT_TEXT[s][1]}.`));
       }
       const affMatched = affixStats(chosen).filter((s) => weightOf(s) > 0).sort((a, b) => weightOf(b) - weightOf(a));
       if (affMatched.length) {
-        why.push(`Аффиксами здесь можно добрать: ${affMatched.slice(0, 3).map(statText).join(', ')} — ищите именно их.`);
+        why.push((isEnglish ? `Look for affixes that add ${affMatched.slice(0, 3).map(statText).join(', ')}.` : `Аффиксами здесь можно добрать: ${affMatched.slice(0, 3).map(statText).join(', ')} — ищите именно их.`));
       }
       if (chosen.note) why.push(chosen.note);
-      if (alternatives.length) why.push(`Альтернатива: ${alternatives.map((a) => `${a.family.ru} (${a.family.name}) — ${a.why}`).join('; ')}.`);
+      if (alternatives.length) why.push((isEnglish ? `Alternatives: ${alternatives.map((a) => `${a.family.name} — ${a.why}`).join('; ')}.` : `Альтернатива: ${alternatives.map((a) => `${a.family.ru} (${a.family.name}) — ${a.why}`).join('; ')}.`));
       if (lockedNotes.length) {
-        why.push(`Пока не выпадает на ML ${ml}: ${lockedNotes.map((f) => `${f.ru} (${f.name}) — с ML ${familyUnlockMl(f)}`).join(', ')}.`);
+        why.push((isEnglish ? `Outside the drop pool at ML ${ml}: ${lockedNotes.map((f) => `${f.name} (available at ML ${familyUnlockMl(f)})`).join(', ')}.` : `Пока не выпадает на ML ${ml}: ${lockedNotes.map((f) => `${f.ru} (${f.name}) — с ML ${familyUnlockMl(f)}`).join(', ')}.`));
       }
     }
 
@@ -454,8 +467,8 @@ export function recommendBuild(classId, goal, opts = {}) {
     const gemFamily = gemFamilyForRegion(region, classId, profile.gems, mainStat);
     const gemValue = gemFamily.slots[region];
     const gemWhy = [
-      `${gemFamily.ru} (${gemFamily.name}) в этом слоте: ${gemValue}.`,
-      ...gemValueStats(gemValue).filter((s) => weightOf(s) > 0).slice(0, 2).map((s) => `${statText(s)} — приоритет №${priority.indexOf(s) + 1} цели «${goalRu}».`),
+      tr(`${gemFamily.ru} (${gemFamily.name}) в этом слоте: ${gemValue}.`, `${gemFamily.name} gives ${gemValue} in this slot.`),
+      ...gemValueStats(gemValue).filter((s) => weightOf(s) > 0).slice(0, 2).map((s) => tr(`${statText(s)} — приоритет №${priority.indexOf(s) + 1} цели «${goalRu}».`, `${statText(s)} ranks #${priority.indexOf(s) + 1} for ${goalRu}.`)),
     ];
 
     const entry = {
@@ -514,14 +527,17 @@ export function recommendBuild(classId, goal, opts = {}) {
       if (e.slot === 'mainhand' || e.slot === 'hand2') score += 4; // урон оружия множится критами и DD
       if (e.slot === 'torch' && ml < 50) score = -1; // факела ещё нет в дропе
       const reasons = [];
-      if (imp.includes('allSkills')) reasons.push('+All Class Skills поднимает все ваши навыки сразу — самый выгодный слот для вложений.');
-      reasons.push(`Слот качается до T${e.forge.tier} (материалы с монстров ${e.forge.gate.biome ? e.forge.gate.biome.name : '—'}, ML ${e.forge.gate.ml}) — это не зависит от того, какой предмет вам выпал.`);
-      if (e.slot === 'mainhand' || e.slot === 'hand2') reasons.push('урон оружия — база, которую множат криты, DD и DH.');
+      if (imp.includes('allSkills')) reasons.push(tr('+All Class Skills поднимает все ваши навыки сразу — самый выгодный слот для вложений.', '+All Class Skills raises every skill at once, making this the most valuable slot to upgrade.'));
+      reasons.push(tr(
+        `Слот качается до T${e.forge.tier} (материалы с монстров ${e.forge.gate.biome ? e.forge.gate.biome.name : '—'}, ML ${e.forge.gate.ml}) — это не зависит от того, какой предмет вам выпал.`,
+        `This slot can reach T${e.forge.tier}. Farm the materials from monsters in ${e.forge.gate.biome ? e.forge.gate.biome.name : '—'} at ML ${e.forge.gate.ml}. The tier limit is independent of the equipped item.`,
+      ));
+      if (e.slot === 'mainhand' || e.slot === 'hand2') reasons.push(tr('урон оружия — база, которую множат криты, DD и DH.', 'Critical hits, Double Damage, and Double Hit multiply your base weapon damage.'));
       for (const s of imp.filter((x) => weightOf(x) > 0).sort((a, b) => weightOf(b) - weightOf(a)).slice(0, 2)) {
         const place = priority.indexOf(s);
-        reasons.push(`${statText(s)} — ${place === -1 ? 'нужный цели стат' : `приоритет №${place + 1} цели «${goalRu}»`}.`);
+        reasons.push(`${statText(s)} — ${place === -1 ? tr('нужный цели стат', 'a stat for this goal') : tr(`приоритет №${place + 1} цели «${goalRu}»`, `priority #${place + 1} for ${goalRu}`)}.`);
       }
-      if (!reasons.length) reasons.push('слот под цель: предмет и аффиксы подобраны по приоритету статов.');
+      if (!reasons.length) reasons.push(tr('слот под цель: предмет и аффиксы подобраны по приоритету статов.', 'The item and affixes in this slot match your stat priorities.'));
       return { cellId: c.id, slotRu: c.ru, slotEn: c.en, family: e.family, score, reasons, forge: e.forge };
     })
     .filter((x) => x.score >= 0)

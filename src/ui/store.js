@@ -19,6 +19,8 @@
  *   iac:helper:loadouts:v1   — именованные наборы («Набор 1», «Набор 2», …), как в игре.
  */
 
+import { t } from '../i18n.js';
+
 export const STATE_KEY = 'iac:helper:state:v1';
 export const BACKUP_KEY = 'iac:helper:state:v1:prev';
 export const LOADOUTS_KEY = 'iac:helper:loadouts:v1';
@@ -97,10 +99,10 @@ function nameRead(key) {
 export const saveInfo = { at: null, where: [], durable: false, note: '' };
 
 function noteFor(where) {
-  if (where.includes('local')) return 'хранится в браузере (localStorage)';
-  if (where.includes('session')) return 'хранится в сессии браузера (sessionStorage)';
-  if (where.includes('window')) return 'хранится в окне браузера (резервный канал)';
-  return 'хранится только до перезагрузки страницы';
+  if (where.includes('local')) return t('хранится в браузере (localStorage)', 'Saved in this browser (localStorage)');
+  if (where.includes('session')) return t('хранится в сессии браузера (sessionStorage)', 'Saved in this browser session (sessionStorage)');
+  if (where.includes('window')) return t('хранится в окне браузера (резервный канал)', 'Saved in the browser window (backup location)');
+  return t('хранится только до перезагрузки страницы', 'Saved until the page reloads');
 }
 
 const isDurable = (where) => where.includes('local') || where.includes('session') || where.includes('window');
@@ -194,7 +196,7 @@ export function saveState(snapshot, opts = {}) {
     saveInfo.at = lastSaved;
     saveInfo.where = [existing.channel];
     saveInfo.durable = isDurable([existing.channel]);
-    saveInfo.note = 'в браузере уже есть снимок — не перезаписываем до первого действия';
+    saveInfo.note = t('в браузере уже есть снимок — не перезаписываем до первого действия', 'Existing save is protected until you make a change');
     return lastSaved;
   }
 

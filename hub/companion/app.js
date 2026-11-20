@@ -19,7 +19,7 @@
 
 
   /* ---------------- i18n ---------------- */
-  let LANG = (() => { try { return localStorage.getItem('iac:lang') || 'ru'; } catch { return 'ru'; } })();
+  let LANG = IdleArcLanguage.current;
   const I18N = {
     ru: {
       nav_home:'Главная', nav_codex:'Кодекс', nav_tools:'Инструменты', nav_passive:'Пассивка', nav_build:'Билды',
@@ -83,14 +83,7 @@
     if (vars) Object.entries(vars).forEach(([k, v]) => { s = s.split('{' + k + '}').join(String(v)); });
     return s;
   }
-  function setLang(next) {
-    LANG = next;
-    try { localStorage.setItem('iac:lang', next); } catch {}
-    document.documentElement.lang = next;
-    setupNav();
-    render({preserveViewport:false});
-  }
-  window.IA_SET_LANG = setLang;
+  window.IA_SET_LANG = IdleArcLanguage.set;
   window.IA_GET_LANG = () => LANG;
 
   const ROUTES = [
@@ -237,10 +230,29 @@
     state.skillClassId = state.build.classId || 1;
   }
 
-  function setupNav() {
+  function paintNav() {
     const side = ROUTES.map(r => `<button class="nav-btn" data-route="${r.id}"><span class="nav-icon">${r.icon}</span><span>${t('nav_'+r.id)}</span></button>`).join('');
     $('#sideNav').innerHTML = side;
     $('#bottomNav').innerHTML = side;
+    $$('#langSwitch button').forEach(button => {
+      const active = button.dataset.lang === LANG;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function setupNav() {
+    LANG = IdleArcLanguage.current;
+    paintNav();
+    $('#langSwitch').addEventListener('click', e => {
+      const button = e.target.closest('[data-lang]');
+      if (button) IdleArcLanguage.set(button.dataset.lang);
+    });
+    window.addEventListener('ia-language', () => {
+      LANG = IdleArcLanguage.current;
+      paintNav();
+      render();
+    });
     $$('.brand').forEach(b => b.addEventListener('click', () => {
       if (window.parent && window.parent !== window) { window.parent.postMessage({type:'ia-flip'}, '*'); }
       else go('home');

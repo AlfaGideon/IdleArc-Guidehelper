@@ -9,6 +9,7 @@
  *     легендарные петы) и показывает, какой эффект дал этот бонус.
  *  3) buildGearPlan / buildGemPlan — план по предметам и гемам для каждого слота.
  */
+import { t as tr, isEnglish, bi } from '../i18n.js';
 import {
   CLASSES, classById, classPointsForLevel, isSkillUnlocked, spentInBranch, CLASS_SKILL_RULES,
 } from '../data/classes.js';
@@ -188,8 +189,8 @@ export function validateAllocation(classId, allocations, totalPoints) {
   for (const s of cls.skills) {
     const pts = allocations[s.id] || 0;
     spent += pts;
-    if (pts < 0) problems.push({ skill: s.name, reason: 'Отрицательное значение' });
-    if (pts > s.max) problems.push({ skill: s.name, reason: `Больше максимума (${s.max})` });
+    if (pts < 0) problems.push({ skill: s.name, reason: tr('Отрицательное значение', "Points cannot be negative") });
+    if (pts > s.max) problems.push({ skill: s.name, reason: tr(`Больше максимума (${s.max})`, `Exceeds the maximum (${s.max})`) });
   }
   // порядок проверки: сначала фиксируем очки, потом проверяем гейты
   const tmp = { ...allocations };
@@ -198,11 +199,11 @@ export function validateAllocation(classId, allocations, totalPoints) {
     if (s.branch && s.tier > 1) {
       const spentHere = spentInBranch(s.branch, tmp);
       const need = CLASS_SKILL_RULES.tierUnlock[s.tier];
-      if (spentHere < need) problems.push({ skill: s.name, reason: `Нужно ${need} очков в ветке «${s.branch}» (сейчас ${spentHere})` });
+      if (spentHere < need) problems.push({ skill: s.name, reason: tr(`Нужно ${need} очков в ветке «${s.branch}» (сейчас ${spentHere})`, `Requires ${need} points in ${s.branch} (currently ${spentHere})`) });
     }
     if (s.requires && !(tmp[s.requires] > 0)) {
       const req = cls.skills.find((x) => x.id === s.requires);
-      problems.push({ skill: s.name, reason: `Требуется навык «${req ? req.name : s.requires}»` });
+      problems.push({ skill: s.name, reason: tr(`Требуется навык «${req ? req.name : s.requires}»`, `Requires ${req ? req.name : s.requires}`) });
     }
   }
   return { spent, available: totalPoints, left: totalPoints - spent, over: spent > totalPoints, problems };
@@ -374,7 +375,7 @@ function recommendDropBonuses(slot, goalList) {
 
 function familyReason(family, goal, slot) {
   if (family.note) return family.note;
-  if (slot === 'mainhand') return `${family.hand === '2H' ? 'Двуручное' : 'Одноручное'} оружие класса.`;
+  if (slot === 'mainhand') return tr(`${family.hand === '2H' ? 'Двуручное' : 'Одноручное'} оружие класса.`, `${family.hand === '2H' ? "Two-handed" : "One-handed"} class weapon.`);
   return '';
 }
 
@@ -443,7 +444,7 @@ export function buildGearPlan(classId, goal, opts = {}) {
     torch.alternatives = [];
     torch.implicitNow = null;
     torch.tierNameNow = null;
-    torch.note = 'Torch появляется в дропе с ML 50 — до этого слот пустой. Как только выпадет, обязательно ставьте его: это главный источник +All Class Skills.';
+    torch.note = tr('Torch появляется в дропе с ML 50 — до этого слот пустой. Как только выпадет, обязательно ставьте его: это главный источник +All Class Skills.', "Torches start dropping at ML 50. Leave the slot empty until then, and equip one when it drops. It is your main source of +All Class Skills.");
   }
 
   // Двуручное оружие занимает обе руки: слот оффхенда остаётся пустым.
@@ -453,16 +454,19 @@ export function buildGearPlan(classId, goal, opts = {}) {
     if (classId === 'druid') {
       off.primary = null; off.alternatives = []; off.locked = [];
       off.implicitNow = null; off.tierNameNow = null;
-      off.note = 'Оффхенд пуст: Gnarled Stick — двуручное оружие друида.';
+      off.note = tr('Оффхенд пуст: Gnarled Stick — двуручное оружие друида.', "The off-hand stays empty because the Druid’s Gnarled Stick uses both hands.");
     } else if (main?.primary?.hand === '2H') {
-      const alt = off.alternatives.map((a) => `${a.ru} (${a.name}) — ${a.implicit}`).join(', ');
+      const alt = off.alternatives.map((a) => `${bi(a.ru, a.name)} — ${a.implicit}`).join(', ');
       off.primary = null;
       off.implicitNow = null; off.tierNameNow = null;
-      off.note = `Оффхенд пуст: ${main.primary.ru} (${main.primary.name}) — двуручное оружие, оно занимает обе руки. Альтернатива — одноручное оружие + оффхенд: ${alt}.`;
+      off.note = tr(
+        `Оффхенд пуст: ${main.primary.ru} (${main.primary.name}) — двуручное оружие, оно занимает обе руки. Альтернатива — одноручное оружие + оффхенд: ${alt}.`,
+        `${main.primary.name} uses both hands, leaving the off-hand empty. One-handed weapon and off-hand alternatives: ${alt}.`,
+      );
       off.alternatives = [];
     } else if (off.primary) {
       off.note = classId === 'rogue'
-        ? 'Второе оружие: его имплисит (Double Hit или крит) работает так же, как в основной руке.'
+        ? tr('Второе оружие: его имплисит (Double Hit или крит) работает так же, как в основной руке.', "The second weapon’s implicit (Double Hit or Crit Chance) works just as it does in the main hand.")
         : '';
     }
   }
@@ -490,33 +494,39 @@ export function buildGemPlan(classId, goal, opts = {}) {
 function buildTodo({ cls, classId, goal, level, ml, pointsAvailable, itemTier, sockets, profile }) {
   const out = [];
   out.push({
-    title: 'Персонаж',
-    text: `Уровень ${level}: доступно ${pointsAvailable} классовых очков. Следующий очок дадут на уровне ${nextPointLevel(level)}.`,
+    title: tr('Персонаж', "Character"),
+    text: tr(
+      `Уровень ${level}: доступно ${pointsAvailable} классовых очков. Следующий очок дадут на уровне ${nextPointLevel(level)}.`,
+      `Level ${level} grants ${pointsAvailable} class skill points. Your next point comes at level ${nextPointLevel(level)}.`,
+    ),
   });
   out.push({
     title: 'Monster Level',
     text: ml < 20
-      ? `ML ${ml}: гемы и первый сокет открываются на ML 20 — поднимите ML, потом вставляйте камни.`
-      : `ML ${ml}: чаще всего падает ${itemTier.ru} (${itemTier.name}, ${itemTier.tierLabel}) — около ${itemTier.chance}% дропа, аффиксов: ${itemTier.affixes}. Сокетов можно открыть: ${sockets.count}${sockets.next ? `, следующий — на ML ${sockets.next.ml}` : ' (максимум)'}.`,
+      ? tr(`ML ${ml}: гемы и первый сокет открываются на ML 20 — поднимите ML, потом вставляйте камни.`, `ML ${ml}: gems and the first socket unlock at ML 20. Raise your ML to start using gems.`)
+      : tr(
+        `ML ${ml}: чаще всего падает ${itemTier.ru} (${itemTier.name}, ${itemTier.tierLabel}) — около ${itemTier.chance}% дропа, аффиксов: ${itemTier.affixes}. Сокетов можно открыть: ${sockets.count}${sockets.next ? `, следующий — на ML ${sockets.next.ml}` : ' (максимум)'}.`,
+        `ML ${ml}: the most common drop is ${itemTier.name} (${itemTier.tierLabel}), about ${itemTier.chance}% of drops, with ${itemTier.affixes} affixes. Available sockets: ${sockets.count}${sockets.next ? `, next at ML ${sockets.next.ml}` : " (maximum)"}.`,
+      ),
   });
-  if (ml < 25) out.push({ title: 'ML 25', text: 'Откроются двуручное оружие, когти Rogue и сайдгрейды брони — план экипировки обновится сам.' });
-  if (ml < 50) out.push({ title: 'ML 50', text: 'Появится Torch — отдельный слот с +All Class Skills, который поднимает эффективные ранги всех навыков.' });
-  if (ml < 65) out.push({ title: 'ML 65', text: 'Второй сокет и гемы Polished — держите камни во всех открытых сокетах.' });
-  if (ml < 115) out.push({ title: 'ML 115', text: 'Третий сокет и гемы Brilliant (2 вторичных стата) — с этого ML реролл вторичек уже имеет смысл.' });
-  if (ml < 160) out.push({ title: 'ML 160', text: 'Четвёртый сокет и гемы Flawless (3 вторички) — дроп-only, фьюзом не получить.' });
-  if (ml < 260) out.push({ title: 'ML 260', text: 'Появятся предметы T6 Infernal и бонусы дропа T7–T9 (Gilded/Radiant/Mythic).' });
+  if (ml < 25) out.push({ title: 'ML 25', text: tr('Откроются двуручное оружие, когти Rogue и сайдгрейды брони — план экипировки обновится сам.', "Two-handed weapons, Rogue Claws, and alternative armor families unlock. Your equipment plan updates automatically.") });
+  if (ml < 50) out.push({ title: 'ML 50', text: tr('Появится Torch — отдельный слот с +All Class Skills, который поднимает эффективные ранги всех навыков.', "Torches unlock in their own slot. Their +All Class Skills bonus increases every skill’s effective rank.") });
+  if (ml < 65) out.push({ title: 'ML 65', text: tr('Второй сокет и гемы Polished — держите камни во всех открытых сокетах.', "The second socket and Polished gems unlock. Fill every open socket.") });
+  if (ml < 115) out.push({ title: 'ML 115', text: tr('Третий сокет и гемы Brilliant (2 вторичных стата) — с этого ML реролл вторичек уже имеет смысл.', "The third socket and Brilliant gems unlock. Brilliant gems have two secondary stats, making rerolls worthwhile.") });
+  if (ml < 160) out.push({ title: 'ML 160', text: tr('Четвёртый сокет и гемы Flawless (3 вторички) — дроп-only, фьюзом не получить.', "The fourth socket and Flawless gems unlock. Flawless gems have three secondary stats and are available only as drops.") });
+  if (ml < 260) out.push({ title: 'ML 260', text: tr('Появятся предметы T6 Infernal и бонусы дропа T7–T9 (Gilded/Radiant/Mythic).', "T6 Infernal items and T7–T9 Drop Bonuses (Gilded, Radiant, Mythic) unlock.") });
 
   const goalTodo = {
-    progress: 'Прогресс: держите баланс урона и выживаемости; когда снижение урона близко к капу 95%, перекладывайте статы в урон.',
-    farm: "Фарм: на броню и украшения ищите Drop Bonus-ы Prosperous / Scavenger's / Scholarly, в камни — Amber.",
-    boss: "Боссы: Slayer's (Boss Damage) падает только с T4 — до этого берите Brutal (урон крита), Precise (крит) и Devastating (Double Damage).",
-    pets: 'Пет-билд: бонус Companion\u2019s на украшениях, Jade в оружие и броню, Lapis в факел. Петов не разгоняйте выше самого слабого в команде — компоунд обрежется по нему.',
-    retaliation: 'Retaliation: каждая единица Defense — это и защита, и урон (Retaliation = Reflecting% × Defense). В стойке Bulwark уклонение обнуляется — Dodge не собирайте.',
+    progress: tr('Прогресс: держите баланс урона и выживаемости; когда снижение урона близко к капу 95%, перекладывайте статы в урон.', "Progression: balance damage and survivability. As Damage Reduction approaches the 95% soft cap, shift more points into damage."),
+    farm: tr("Фарм: на броню и украшения ищите Drop Bonus-ы Prosperous / Scavenger's / Scholarly, в камни — Amber.", "Farming: look for Prosperous, Scavenger’s, and Scholarly Drop Bonuses on armor and jewelry. Socket Amber gems."),
+    boss: tr("Боссы: Slayer's (Boss Damage) падает только с T4 — до этого берите Brutal (урон крита), Precise (крит) и Devastating (Double Damage).", "Bosses: Slayer’s (Boss Damage) starts dropping at T4. Until then, use Brutal (Crit Damage), Precise (Crit Chance), and Devastating (Double Damage)."),
+    pets: tr('Пет-билд: бонус Companion\u2019s на украшениях, Jade в оружие и броню, Lapis в факел. Петов не разгоняйте выше самого слабого в команде — компоунд обрежется по нему.', "Pet builds: use Companion’s on jewelry, Jade in weapons and armor, and Lapis in your Torch. Level the team evenly because the weakest pet limits compounding."),
+    retaliation: tr('Retaliation: каждая единица Defense — это и защита, и урон (Retaliation = Reflecting% × Defense). В стойке Bulwark уклонение обнуляется — Dodge не собирайте.', "Retaliation: each point of Defense adds protection and damage (Retaliation = Reflecting % × Defense). Bulwark sets Dodge to zero, so skip Dodge."),
   };
-  out.push({ title: 'Под цель', text: goalTodo[goal] || goalTodo.progress });
-  out.push({ title: 'Снаряжение и мелочи', text: `Талисманы: ${(profile.talismans || []).join(' + ') || '—'}. Петы: ${profile.pets || '—'}` });
-  out.push({ title: '+All Class Skills', text: 'В шаге 3 укажите реальный бонус (Torch + легендарные петы + Sage Diadem) — эффективные ранги навыков и итоговые бонусы пересчитаются.' });
-  if (classId === 'druid') out.push({ title: 'Druid', text: 'Ветки Lodge / Tunnels / Symbiosis: по два навыка на тир, у Gnaw, Digger и Kinship — по 10 очков. Пет-урон идёт из Gnaw / Dam Builder / One Soul, а Kinship и Feral Bond конвертируют ваш плоский урон в урон пета (общий кап 75%).' });
+  out.push({ title: tr('Под цель', "Goal priorities"), text: goalTodo[goal] || goalTodo.progress });
+  out.push({ title: tr('Снаряжение и мелочи', "Equipment and companions"), text: tr(`Талисманы: ${(profile.talismans || []).join(' + ') || '—'}. Петы: ${profile.pets || '—'}`, `Talismans: ${(profile.talismans || []).join(' + ') || '—'}. Pets: ${profile.pets || '—'}`) });
+  out.push({ title: '+All Class Skills', text: tr('В шаге 3 укажите реальный бонус (Torch + легендарные петы + Sage Diadem) — эффективные ранги навыков и итоговые бонусы пересчитаются.', "In step 3, enter your actual +All Class Skills bonus from your Torch, Legendary pets, and Sage Diadem. Effective ranks and bonuses update automatically.") });
+  if (classId === 'druid') out.push({ title: 'Druid', text: tr('Ветки Lodge / Tunnels / Symbiosis: по два навыка на тир, у Gnaw, Digger и Kinship — по 10 очков. Пет-урон идёт из Gnaw / Dam Builder / One Soul, а Kinship и Feral Bond конвертируют ваш плоский урон в урон пета (общий кап 75%).', "Druid’s Lodge, Tunnels, and Symbiosis branches each have two skills per tier. Gnaw, Digger, and Kinship have 10 ranks. Gnaw, Dam Builder, and One Soul add Pet Damage. Kinship and Feral Bond convert flat damage to Pet Damage, up to a combined 75%.") });
   return out;
 }
 
@@ -556,16 +566,19 @@ export function planBuild({
 
   const warnings = [];
   const tips = [];
-  if (validation.over) warnings.push(`Вложено ${validation.spent} очков, а доступно ${validation.available}. Уберите лишние очки.`);
-  if (validation.left > 0) warnings.push(`Нераспределённых очков: ${validation.left}.`);
+  if (validation.over) warnings.push(tr(
+    `Вложено ${validation.spent} очков, а доступно ${validation.available}. Уберите лишние очки.`,
+    `You have allocated ${validation.spent} of ${validation.available} available points. Remove the extra points.`,
+  ));
+  if (validation.left > 0) warnings.push(tr(`Нераспределённых очков: ${validation.left}.`, `Unspent points: ${validation.left}.`));
   for (const p of validation.problems) warnings.push(`${p.skill}: ${p.reason}.`);
-  if (!usingManual && auto.leftover > 0) warnings.push(`Осталось ${auto.leftover} очков, которые некуда вложить в рамках весов цели.`);
-  if (goal === 'retaliation' && classId !== 'warrior') warnings.push('Retaliation вне Warrior слабее: нет щита (Block) и защитных классовых навыков.');
-  if (level < 25) tips.push('С ML 25 в пул дропа добавляются двуручное оружие, Claws (Rogue) и сайдгрейды брони.');
-  if (level < 50) tips.push('Torch (отдельный слот, +All Class Skills) начинает падать с ML 50 — это главный источник бонуса.');
-  if (level < 65) tips.push('До ML 65 доступны только гемы Cut: не тратьте Gem Dust на реролл вторичек так рано.');
-  if (goal === 'pets' && !['archer', 'druid'].includes(classId)) tips.push('Пет-билд вне Archer/Druid опирается на экипировку, руны и талисманы — у класса нет пет-навыков.');
-  if (plusAll > 30) warnings.push('Очень большой +All Class Skills — проверьте значение: реальный максимум ниже.');
+  if (!usingManual && auto.leftover > 0) warnings.push(tr(`Осталось ${auto.leftover} очков, которые некуда вложить в рамках весов цели.`, `Your goal’s priorities leave ${auto.leftover} points unspent.`));
+  if (goal === 'retaliation' && classId !== 'warrior') warnings.push(tr('Retaliation вне Warrior слабее: нет щита (Block) и защитных классовых навыков.', "Retaliation is weaker outside Warrior because other classes lack its shield block and defensive class skills."));
+  if (level < 25) tips.push(tr('С ML 25 в пул дропа добавляются двуручное оружие, Claws (Rogue) и сайдгрейды брони.', "Two-handed weapons, Rogue Claws, and alternative armor families start dropping at ML 25."));
+  if (level < 50) tips.push(tr('Torch (отдельный слот, +All Class Skills) начинает падать с ML 50 — это главный источник бонуса.', "Torches start dropping at ML 50. The separate Torch slot is your main source of +All Class Skills."));
+  if (level < 65) tips.push(tr('До ML 65 доступны только гемы Cut: не тратьте Gem Dust на реролл вторичек так рано.', "Until ML 65, Cut is the highest available gem rarity. Save your Gem Dust for later rerolls."));
+  if (goal === 'pets' && !['archer', 'druid'].includes(classId)) tips.push(tr('Пет-билд вне Archer/Druid опирается на экипировку, руны и талисманы — у класса нет пет-навыков.', "Outside Archer and Druid, pet builds rely on gear, runes, and talismans because the other classes lack pet skills."));
+  if (plusAll > 30) warnings.push(tr('Очень большой +All Class Skills — проверьте значение: реальный максимум ниже.', "Check the +All Class Skills value. It exceeds the attainable maximum."));
 
   // Объяснение авто-распределения: почему очки пошли именно так.
   const explanation = auto.branchOrder.map((branch) => {
@@ -603,41 +616,52 @@ export function planBuild({
 /* ------------------------------- Экспорт и обмен ------------------------------- */
 
 export function planToText(plan) {
-  const bi = (ru, en) => (ru && en && ru !== en ? `${ru} (${en})` : (ru || en || ''));
   const L = [];
-  L.push(`IdleArc — план сборки: ${bi(plan.classRu, plan.className)}`);
-  L.push(`Уровень персонажа: ${plan.level} (даёт ${plan.points.available} классовых очков) · Monster Level: ${plan.ml}`);
-  L.push(`Цель: ${plan.goalDef.ru} · Стойка: ${plan.profile.stance} · +All Class Skills: ${plan.bonuses.plusAll ?? 0}`);
-  L.push(`Очки: ${plan.points.spent}/${plan.points.available} · основной дроп: ${plan.itemTier.tierLabel} ${bi(plan.itemTier.ru, plan.itemTier.name)} (${plan.itemTier.chance}%) · гемы до ${bi(plan.gemRarity.ru, plan.gemRarity.name)}`);
+  L.push(tr(`IdleArc — план сборки: ${bi(plan.classRu, plan.className)}`, `IdleArc build plan: ${bi(plan.classRu, plan.className)}`));
+  L.push(tr(
+    `Уровень персонажа: ${plan.level} (даёт ${plan.points.available} классовых очков) · Monster Level: ${plan.ml}`,
+    `Character level: ${plan.level} (${plan.points.available} class skill points) · Monster Level: ${plan.ml}`,
+  ));
+  L.push(tr(
+    `Цель: ${plan.goalDef.ru} · Стойка: ${plan.profile.stance} · +All Class Skills: ${plan.bonuses.plusAll ?? 0}`,
+    `Goal: ${plan.goalDef.ru} · Stance: ${plan.profile.stance} · +All Class Skills: ${plan.bonuses.plusAll ?? 0}`,
+  ));
+  L.push(tr(
+    `Очки: ${plan.points.spent}/${plan.points.available} · основной дроп: ${plan.itemTier.tierLabel} ${bi(plan.itemTier.ru, plan.itemTier.name)} (${plan.itemTier.chance}%) · гемы до ${bi(plan.gemRarity.ru, plan.gemRarity.name)}`,
+    `Points: ${plan.points.spent}/${plan.points.available} · Most common drop: ${plan.itemTier.tierLabel} ${bi(plan.itemTier.ru, plan.itemTier.name)} (${plan.itemTier.chance}%) · Gems up to ${bi(plan.gemRarity.ru, plan.gemRarity.name)}`,
+  ));
   L.push('');
-  L.push('КЛАССОВЫЕ НАВЫКИ');
+  L.push(tr('КЛАССОВЫЕ НАВЫКИ', "CLASS SKILLS"));
   for (const s of plan.skillList) {
-    const capNote = s.capped.length ? ` [кап: ${s.capped.join(', ')}]` : '';
-    L.push(`  ${s.branch || '—'} · T${s.tier ?? '?'} · ${bi(s.ru, s.name)}: вложено ${s.points}/${s.max}, эффективный ранг ${s.effRank}${capNote}`);
+    const capNote = s.capped.length ? tr(` [кап: ${s.capped.join(', ')}]`, ` [capped: ${s.capped.join(', ')}]`) : '';
+    L.push(tr(
+      `  ${s.branch || '—'} · T${s.tier ?? '?'} · ${bi(s.ru, s.name)}: вложено ${s.points}/${s.max}, эффективный ранг ${s.effRank}${capNote}`,
+      `  ${s.branch || '—'} · T${s.tier ?? '?'} · ${bi(s.ru, s.name)}: ${s.points}/${s.max} points, effective rank ${s.effRank}${capNote}`,
+    ));
   }
   L.push('');
-  L.push(`ЭКИПИРОВКА (имплиситы для ${plan.itemTier.tierLabel})`);
+  L.push(tr(`ЭКИПИРОВКА (имплиситы для ${plan.itemTier.tierLabel})`, `EQUIPMENT (implicit values at ${plan.itemTier.tierLabel})`));
   for (const s of plan.gear.slots) {
     const fam = s.primary ? bi(s.primary.ru, s.primary.name) : '—';
-    const alts = s.alternatives.length ? ` | альтернативы: ${s.alternatives.map((a) => bi(a.ru, a.name)).join(', ')}` : '';
+    const alts = s.alternatives.length ? (isEnglish ? ` | Alternatives: ${s.alternatives.map((a) => bi(a.ru, a.name)).join(', ')}` : ` | альтернативы: ${s.alternatives.map((a) => bi(a.ru, a.name)).join(', ')}`) : '';
     L.push(`  ${s.slotRu}: ${fam}${alts}`);
-    L.push(`      ${s.tierNameNow ? `${s.tierNameNow}: ` : ''}имплисит: ${s.implicitNow || '—'}${s.primary ? ` (полная лестница: ${s.primary.implicitTiers.map((v, i) => `T${i + 1} ${v}`).join(' / ')})` : ''}`);
-    L.push(`      аффиксы: ${[...s.affixes.prefixes.map((a) => bi(a.ru, a.name)), ...s.affixes.suffixes.map((a) => bi(a.ru, a.name))].join(', ') || '—'}`);
-    L.push(`      Drop Bonus: ${s.dropBonuses.map((d) => bi(d.ru, d.name)).join(', ') || '—'} · камень: ${bi(s.gem.family.ru, s.gem.family.name)} (${s.gem.baseValue || '—'}), редкость ${bi(s.gem.rarityRu, s.gem.rarity)}`);
+    L.push((isEnglish ? `      ${s.tierNameNow ? `${s.tierNameNow}: ` : ''}Implicit: ${s.implicitNow || '—'}${s.primary ? ` (all tiers: ${s.primary.implicitTiers.map((v, i) => `T${i + 1} ${v}`).join(' / ')})` : ''}` : `      ${s.tierNameNow ? `${s.tierNameNow}: ` : ''}имплисит: ${s.implicitNow || '—'}${s.primary ? ` (полная лестница: ${s.primary.implicitTiers.map((v, i) => `T${i + 1} ${v}`).join(' / ')})` : ''}`));
+    L.push((isEnglish ? `      Affixes: ${[...s.affixes.prefixes.map((a) => bi(a.ru, a.name)), ...s.affixes.suffixes.map((a) => bi(a.ru, a.name))].join(', ') || '—'}` : `      аффиксы: ${[...s.affixes.prefixes.map((a) => bi(a.ru, a.name)), ...s.affixes.suffixes.map((a) => bi(a.ru, a.name))].join(', ') || '—'}`));
+    L.push((isEnglish ? `      Drop Bonus: ${s.dropBonuses.map((d) => bi(d.ru, d.name)).join(', ') || '—'} · Gem: ${bi(s.gem.family.ru, s.gem.family.name)} (${s.gem.baseValue || '—'}), rarity: ${bi(s.gem.rarityRu, s.gem.rarity)}` : `      Drop Bonus: ${s.dropBonuses.map((d) => bi(d.ru, d.name)).join(', ') || '—'} · камень: ${bi(s.gem.family.ru, s.gem.family.name)} (${s.gem.baseValue || '—'}), редкость ${bi(s.gem.rarityRu, s.gem.rarity)}`));
   }
   L.push('');
-  L.push('ЧТО ДЕЛАТЬ ДАЛЬШЕ');
+  L.push(tr('ЧТО ДЕЛАТЬ ДАЛЬШЕ', "NEXT STEPS"));
   for (const t of plan.todo) L.push(`  • ${t.title}: ${t.text}`);
   L.push('');
-  L.push(`Приоритет статов: ${plan.statPriority.join(' → ')}`);
-  L.push(`Талисманы: ${plan.profile.talismans.join(' + ')}`);
-  L.push(`Петы: ${plan.profile.pets}`);
+  L.push(tr(`Приоритет статов: ${plan.statPriority.join(' → ')}`, `Stat priority: ${plan.statPriority.join(' → ')}`));
+  L.push(tr(`Талисманы: ${plan.profile.talismans.join(' + ')}`, `Talismans: ${plan.profile.talismans.join(' + ')}`));
+  L.push(tr(`Петы: ${plan.profile.pets}`, `Pets: ${plan.profile.pets}`));
   L.push('');
-  L.push('ЗАМЕТКИ');
+  L.push(tr('ЗАМЕТКИ', "NOTES"));
   for (const n of plan.profile.notes) L.push(`  • ${n}`);
   for (const w of plan.warnings) L.push(`  ! ${w}`);
   L.push('');
-  L.push('Источники: idlearc.com/patch-notes/1-3-1, idlearc.com/classes, idlearc.fandom.com/wiki/Item_Codex (снапшот 04.10.2026)');
+  L.push(tr('Источники: idlearc.com/patch-notes/1-3-1, idlearc.com/classes, idlearc.fandom.com/wiki/Item_Codex (снапшот 04.10.2026)', "Sources: idlearc.com/patch-notes/1-3-1, idlearc.com/classes, idlearc.fandom.com/wiki/Item_Codex (October 4, 2026 snapshot)"));
   return L.join('\n');
 }
 

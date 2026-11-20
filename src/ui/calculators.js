@@ -1,3 +1,4 @@
+import { t as tr, bi } from '../i18n.js';
 import { el, card, table, kpi } from './dom.js';
 import { critModel, doubleHitModel, doubleDamageModel, drModel, retaliationModel, gemValue, masteryShards, petCompoundEffective, expectedHitModel, fmt } from '../core/calc.js';
 import { classPointsForLevel, CLASS_SKILL_RULES } from '../data/classes.js';
@@ -27,14 +28,14 @@ const dmgState = { ad: 0, crit: 150, critDmg: 100, dh: 100, dd: 60, boss: 40, is
 function damageCard() {
   const box = el('div');
   const inputs = el('div', { class: 'controls' }, [
-    field('Attack Damage % (Fierce и т.п.)', dmgState.ad, (v) => { dmgState.ad = v; redraw(); }),
+    field(tr('Attack Damage % (Fierce и т.п.)', 'Attack Damage % (Fierce, etc.)'), dmgState.ad, (v) => { dmgState.ad = v; redraw(); }),
     field('Crit Chance %', dmgState.crit, (v) => { dmgState.crit = v; redraw(); }),
     field('Crit Damage %', dmgState.critDmg, (v) => { dmgState.critDmg = v; redraw(); }),
     field('Double Hit %', dmgState.dh, (v) => { dmgState.dh = v; redraw(); }),
     field('Double Damage %', dmgState.dd, (v) => { dmgState.dd = v; redraw(); }),
     field('Boss Damage %', dmgState.boss, (v) => { dmgState.boss = v; redraw(); }),
     field('Shadow Echo % (Rogue)', dmgState.echo, (v) => { dmgState.echo = v; redraw(); }),
-    field('Эхо: урон %', dmgState.echoDmg, (v) => { dmgState.echoDmg = v; redraw(); }),
+    field(tr('Эхо: урон %', 'Echo damage %'), dmgState.echoDmg, (v) => { dmgState.echoDmg = v; redraw(); }),
   ]);
   function redraw() {
     const crit = critModel(dmgState.crit, dmgState.critDmg);
@@ -47,31 +48,31 @@ function damageCard() {
     });
     box.innerHTML = '';
     box.appendChild(el('div', { class: 'grid cols-2' }, [
-      card('Криты и мультиудары', [
-        table(['Параметр', 'Значение', 'Комментарий'], [
-          ['Крит-шанс эффективный', pct(crit.effectiveChance), crit.overflow > 0 ? `излишек ${pct(crit.overflow)} → Crit Damage` : 'ниже 100% — часть ударов обычные'],
-          ['Crit Damage эффективный', pct(crit.effectiveCritDamage), `множитель крита ×${crit.critMult.toFixed(2)}`],
-          ['Double Hit', `${dh.guaranteed} + ${pct(dh.chance)}`, `ожидаемо ударов: ${dh.expectedHits.toFixed(2)}`],
-          ['Double Damage', `×${(dd.minMult).toFixed(2)} + ${pct(dd.chanceForNext)} на след.`, `ожидаемый множитель ×${dd.expectedMult.toFixed(2)}`],
-          ['Shadow Echo (если Rogue)', pct(dmgState.echo), `повтор на ${pct(dmgState.echoDmg)} урона`],
+      card(tr('Криты и мультиудары', 'Critical hits and extra hits'), [
+        table([tr('Параметр', 'Parameter'), tr('Значение', 'Value'), tr('Комментарий', 'Notes')], [
+          [tr('Крит-шанс эффективный', 'Effective Crit Chance'), pct(crit.effectiveChance), crit.overflow > 0 ? tr(`излишек ${pct(crit.overflow)} → Crit Damage`, `${pct(crit.overflow)} overflow converts to Crit Damage`) : tr('ниже 100% — часть ударов обычные', 'Below 100%, some hits are normal hits')],
+          [tr('Crit Damage эффективный', 'Effective Crit Damage'), pct(crit.effectiveCritDamage), tr(`множитель крита ×${crit.critMult.toFixed(2)}`, `Critical hit multiplier ×${crit.critMult.toFixed(2)}`)],
+          ['Double Hit', `${dh.guaranteed} + ${pct(dh.chance)}`, tr(`ожидаемо ударов: ${dh.expectedHits.toFixed(2)}`, `Expected hits: ${dh.expectedHits.toFixed(2)}`)],
+          ['Double Damage', tr(`×${(dd.minMult).toFixed(2)} + ${pct(dd.chanceForNext)} на след.`, `×${(dd.minMult).toFixed(2)} + ${pct(dd.chanceForNext)} chance of the next multiplier`), tr(`ожидаемый множитель ×${dd.expectedMult.toFixed(2)}`, `Expected multiplier ×${dd.expectedMult.toFixed(2)}`)],
+          [tr('Shadow Echo (если Rogue)', 'Shadow Echo (Rogue)'), pct(dmgState.echo), tr(`повтор на ${pct(dmgState.echoDmg)} урона`, `Repeats the hit at ${pct(dmgState.echoDmg)} damage`)],
         ]),
       ]),
-      card('Ожидаемый множитель удара', [
+      card(tr('Ожидаемый множитель удара', 'Expected hit multiplier'), [
         kpi([
-          { label: 'AD-множитель', value: `×${model.adMult.toFixed(2)}` },
-          { label: 'Крит (сред.)', value: `×${model.crit.expected.toFixed(2)}` },
-          { label: 'Доп. удары (сред.)', value: `×${model.hits.expectedHits.toFixed(2)}` },
-          { label: 'Double Damage (сред.)', value: `×${model.dd.expectedMult.toFixed(2)}` },
-          { label: 'Босс', value: `×${model.bossMult.toFixed(2)}` },
-          { label: 'Эхо', value: `×${model.echo.toFixed(2)}` },
-          { label: 'ИТОГО', value: `×${fmt(model.total, 2)}` },
+          { label: tr('AD-множитель', 'Attack Damage multiplier'), value: `×${model.adMult.toFixed(2)}` },
+          { label: tr('Крит (сред.)', 'Critical hits (average)'), value: `×${model.crit.expected.toFixed(2)}` },
+          { label: tr('Доп. удары (сред.)', 'Extra hits (average)'), value: `×${model.hits.expectedHits.toFixed(2)}` },
+          { label: tr('Double Damage (сред.)', 'Double Damage (average)'), value: `×${model.dd.expectedMult.toFixed(2)}` },
+          { label: tr('Босс', 'Boss'), value: `×${model.bossMult.toFixed(2)}` },
+          { label: tr('Эхо', 'Echo'), value: `×${model.echo.toFixed(2)}` },
+          { label: tr('ИТОГО', 'TOTAL'), value: `×${fmt(model.total, 2)}` },
         ]),
-        el('p', { class: 'muted', text: 'Оценка при допущении, что слои перемножаются (как описано в игре для Fierce → криты → доп. удары). Порядок слоёв официально не раскрыт, поэтому цифра — ориентир для сравнения вариантов, а не точный DPS.' }),
+        el('p', { class: 'muted', text: tr('Оценка при допущении, что слои перемножаются (как описано в игре для Fierce → криты → доп. удары). Порядок слоёв официально не раскрыт, поэтому цифра — ориентир для сравнения вариантов, а не точный DPS.', 'This estimate multiplies damage layers in the sequence described for Fierce, critical hits and extra hits. The game does not publish the full damage formula. Use the result to compare builds.') }),
       ]),
     ]));
   }
   redraw();
-  return card('Калькулятор урона', [inputs, box]);
+  return card(tr('Калькулятор урона', 'Damage calculator'), [inputs, box]);
 }
 
 /* 2. Защита и возмездие */
@@ -83,9 +84,9 @@ function defenseCard() {
     field('Defense', defState.defense, (v) => { defState.defense = v; redraw(); }),
     field('Reflecting % (Drop Bonus)', defState.reflect, (v) => { defState.reflect = v; redraw(); }),
     field('Strength', defState.strength, (v) => { defState.strength = v; redraw(); }),
-    el('div', {}, [el('label', { text: 'Блокированный удар?' }), el('select', { onchange: (e) => { defState.blocked = e.target.value === 'yes'; redraw(); } }, [
-      el('option', { value: 'no', selected: !defState.blocked ? 'selected' : null }, ['Нет']),
-      el('option', { value: 'yes', selected: defState.blocked ? 'selected' : null }, ['Да (+50% к возмездию)']),
+    el('div', {}, [el('label', { text: tr('Блокированный удар?', 'Was the hit blocked?') }), el('select', { onchange: (e) => { defState.blocked = e.target.value === 'yes'; redraw(); } }, [
+      el('option', { value: 'no', selected: !defState.blocked ? 'selected' : null }, [tr('Нет', 'No')]),
+      el('option', { value: 'yes', selected: defState.blocked ? 'selected' : null }, [tr('Да (+50% к возмездию)', 'Yes (+50% Retaliation)')]),
     ])]),
   ]);
   function redraw() {
@@ -95,24 +96,24 @@ function defenseCard() {
     box.appendChild(el('div', { class: 'grid cols-2' }, [
       card('Damage Reduction', [
         kpi([
-          { label: 'Входящий DR', value: pct(dr.raw, 1) },
-          { label: 'Эффективный DR', value: pct(dr.effective, 2) },
-          { label: 'Проходит урона', value: pct(dr.taken * 100, 2) },
-          { label: '«Съедено» капом', value: pct(dr.extraWasted, 2) },
+          { label: tr('Входящий DR', 'Raw DR'), value: pct(dr.raw, 1) },
+          { label: tr('Эффективный DR', 'Effective DR'), value: pct(dr.effective, 2) },
+          { label: tr('Проходит урона', 'Damage taken'), value: pct(dr.taken * 100, 2) },
+          { label: tr('«Съедено» капом', 'DR lost to the cap'), value: pct(dr.extraWasted, 2) },
         ]),
-        el('p', { class: 'muted', text: 'Софт-кап 95%: выше него DR работает на 10% эффективности. Хард-кап 99%, минимум 1% удара проходит всегда.' }),
+        el('p', { class: 'muted', text: tr('Софт-кап 95%: выше него DR работает на 10% эффективности. Хард-кап 99%, минимум 1% удара проходит всегда.', 'Above the 95% soft cap, additional DR works at 10% effectiveness. The hard cap is 99%. At least 1% of each hit gets through.') }),
       ]),
-      card('Возмездие (Retaliation)', [
+      card(tr('Возмездие (Retaliation)', 'Retaliation'), [
         kpi([
-          { label: 'Retaliation за атаку', value: fmt(ret.perAttack, 0) },
-          { label: 'С учётом блока', value: fmt(ret.hit, 0) },
+          { label: tr('Retaliation за атаку', 'Retaliation per attack'), value: fmt(ret.perAttack, 0) },
+          { label: tr('С учётом блока', 'With block applied'), value: fmt(ret.hit, 0) },
         ]),
-        el('p', { class: 'muted', text: 'Формула игры: Retaliation = Reflecting% × Defense (+0.5 за пункт Strength). Срабатывает на каждую атаку монстра, даже если он промахнулся.' }),
+        el('p', { class: 'muted', text: tr('Формула игры: Retaliation = Reflecting% × Defense (+0.5 за пункт Strength). Срабатывает на каждую атаку монстра, даже если он промахнулся.', 'Retaliation equals Reflecting % × Defense, with 0.5 Defense per point of Strength. It triggers on every monster attack, even a miss.') }),
       ]),
     ]));
   }
   redraw();
-  return card('Калькулятор защиты и Retaliation', [inputs, box]);
+  return card(tr('Калькулятор защиты и Retaliation', 'Defense and Retaliation calculator'), [inputs, box]);
 }
 
 /* 3. Гем */
@@ -120,38 +121,38 @@ const gemState = { family: 'garnet', slot: 'weapon', base: 0.5, rarity: 'brillia
 function gemCard() {
   const box = el('div');
   const inputs = el('div', { class: 'controls' }, [
-    el('div', {}, [el('label', { text: 'Семья гема' }), el('select', { onchange: (e) => { gemState.family = e.target.value; redraw(); } },
-      GEM_FAMILIES.map((f) => el('option', { value: f.id, selected: f.id === gemState.family ? 'selected' : null }, [`${f.ru} (${f.name})`])))]),
-    el('div', {}, [el('label', { text: 'Слот' }), el('select', { onchange: (e) => { gemState.slot = e.target.value; redraw(); } },
-      [['weapon', 'Оружие'], ['torch', 'Torch'], ['armor', 'Броня'], ['jewelry', 'Украшения']].map(([v, t]) => el('option', { value: v, selected: v === gemState.slot ? 'selected' : null }, [t])))]),
-    el('div', {}, [el('label', { text: 'База (Rough, quality 100, socket 0)' }), el('input', { type: 'number', step: '0.05', value: String(gemState.base), oninput: (e) => { gemState.base = num(e.target.value); redraw(); } })]),
-    el('div', {}, [el('label', { text: 'Редкость' }), el('select', { onchange: (e) => { gemState.rarity = e.target.value; redraw(); } },
+    el('div', {}, [el('label', { text: tr('Семья гема', 'Gem family') }), el('select', { onchange: (e) => { gemState.family = e.target.value; redraw(); } },
+      GEM_FAMILIES.map((f) => el('option', { value: f.id, selected: f.id === gemState.family ? 'selected' : null }, [bi(f.ru, f.name)])))]),
+    el('div', {}, [el('label', { text: tr('Слот', 'Slot') }), el('select', { onchange: (e) => { gemState.slot = e.target.value; redraw(); } },
+      [['weapon', tr('Оружие', 'Weapon')], ['torch', 'Torch'], ['armor', tr('Броня', 'Armor')], ['jewelry', tr('Украшения', 'Jewelry')]].map(([v, t]) => el('option', { value: v, selected: v === gemState.slot ? 'selected' : null }, [t])))]),
+    el('div', {}, [el('label', { text: tr('База (Rough, quality 100, socket 0)', 'Base value (Rough, quality 100, socket level 0)') }), el('input', { type: 'number', step: '0.05', value: String(gemState.base), oninput: (e) => { gemState.base = num(e.target.value); redraw(); } })]),
+    el('div', {}, [el('label', { text: tr('Редкость', 'Rarity') }), el('select', { onchange: (e) => { gemState.rarity = e.target.value; redraw(); } },
       GEM_RARITY.map((r) => el('option', { value: r.id, selected: r.id === gemState.rarity ? 'selected' : null }, [`${r.name} ×${r.mult}`])))]),
-    field('Качество (1–100)', gemState.quality, (v) => { gemState.quality = Math.max(1, Math.min(100, v)); redraw(); }),
-    field('Уровень сокета', gemState.socket, (v) => { gemState.socket = v; redraw(); }),
+    field(tr('Качество (1–100)', 'Quality (1–100)'), gemState.quality, (v) => { gemState.quality = Math.max(1, Math.min(100, v)); redraw(); }),
+    field(tr('Уровень сокета', 'Socket level'), gemState.socket, (v) => { gemState.socket = v; redraw(); }),
   ]);
   function redraw() {
     const r = GEM_RARITY.find((x) => x.id === gemState.rarity);
     const value = gemValue(gemState.base, r.mult, gemState.quality, gemState.socket);
     box.innerHTML = '';
     box.appendChild(el('div', { class: 'grid cols-2' }, [
-      card('Результат', [
+      card(tr('Результат', 'Result'), [
         kpi([
-          { label: 'Значение эффекта', value: value.toFixed(2) },
-          { label: 'Множитель сокета', value: `×${(1 + 0.04 * gemState.socket).toFixed(2)}` },
-          { label: 'Множитель редкости', value: `×${r.mult}` },
+          { label: tr('Значение эффекта', 'Effect value'), value: value.toFixed(2) },
+          { label: tr('Множитель сокета', 'Socket multiplier'), value: `×${(1 + 0.04 * gemState.socket).toFixed(2)}` },
+          { label: tr('Множитель редкости', 'Rarity multiplier'), value: `×${r.mult}` },
         ]),
-        el('p', { class: 'muted', text: 'Формула игры: base × rarity × (quality / 100) × (1 + 0.04 × socket level).' }),
+        el('p', { class: 'muted', text: tr('Формула игры: base × rarity × (quality / 100) × (1 + 0.04 × socket level).', 'Formula: base × rarity × (quality / 100) × (1 + 0.04 × socket level).') }),
       ]),
-      card('Справка', [
-        table(['Редкость', 'Множ.', 'Вторичек', 'Кап сокета'], GEM_RARITY.map((g) => [g.name, `×${g.mult}`, String(g.secondary), g.socketCap == null ? 'нет' : String(g.socketCap)])),
-        el('p', { class: 'muted', text: 'Дроп гемов и открытие сокетов:' }),
+      card(tr('Справка', 'Reference'), [
+        table([tr('Редкость', 'Rarity'), tr('Множ.', 'Multiplier'), tr('Вторичек', 'Secondary stats'), tr('Кап сокета', 'Socket cap')], GEM_RARITY.map((g) => [g.name, `×${g.mult}`, String(g.secondary), g.socketCap == null ? tr('нет', 'None') : String(g.socketCap)])),
+        el('p', { class: 'muted', text: tr('Дроп гемов и открытие сокетов:', 'Gem drops and socket unlocks') }),
         table(['ML', 'Rough', 'Cut', 'Polished', 'Brilliant'], GEM_DROP_TABLE.map((t) => [t.ml, `${t.rough}%`, `${t.cut}%`, `${t.polished}%`, `${t.brilliant}%`])),
       ]),
     ]));
   }
   redraw();
-  return card('Калькулятор гема', [inputs, box]);
+  return card(tr('Калькулятор гема', 'Gem calculator'), [inputs, box]);
 }
 
 /* 4. Mastery */
@@ -159,8 +160,8 @@ const mState = { from: 0, to: 10 };
 function masteryCard() {
   const box = el('div');
   const inputs = el('div', { class: 'controls' }, [
-    field('Текущий уровень Mastery', mState.from, (v) => { mState.from = Math.max(0, Math.min(10, v)); redraw(); }),
-    field('Желаемый уровень', mState.to, (v) => { mState.to = Math.max(0, Math.min(10, v)); redraw(); }),
+    field(tr('Текущий уровень Mastery', 'Current Mastery level'), mState.from, (v) => { mState.from = Math.max(0, Math.min(10, v)); redraw(); }),
+    field(tr('Желаемый уровень', 'Target level'), mState.to, (v) => { mState.to = Math.max(0, Math.min(10, v)); redraw(); }),
   ]);
   function redraw() {
     const need = Math.max(0, masteryShards(mState.to) - masteryShards(mState.from));
@@ -168,13 +169,13 @@ function masteryCard() {
     box.appendChild(el('div', { class: 'grid cols-2' }, [
       card('Elemental Shards', [
         kpi([
-          { label: 'Нужно шардов', value: String(need) },
-          { label: 'Дней Conflux (кап 100/день)', value: String(Math.ceil(need / 100)) },
+          { label: tr('Нужно шардов', 'Shards needed'), value: String(need) },
+          { label: tr('Дней Conflux (кап 100/день)', 'Conflux days (100 shards/day)'), value: String(Math.ceil(need / 100)) },
         ]),
-        el('p', { class: 'muted', text: 'Elemental Conflux: 60 минут в день, до 100 шардов в день, ×2 EXP; с ML 90 — ×3 к редким материалам.' }),
+        el('p', { class: 'muted', text: tr('Elemental Conflux: 60 минут в день, до 100 шардов в день, ×2 EXP; с ML 90 — ×3 к редким материалам.', 'Elemental Conflux lasts 60 minutes per day and grants up to 100 shards daily and ×2 EXP. At ML 90 it also grants ×3 rare materials.') }),
       ]),
-      card('Таблица Mastery', [
-        table(['Ур.', 'Бонус', 'Стоимость до след.', 'Всего'], [
+      card(tr('Таблица Mastery', 'Mastery table'), [
+        table([tr('Ур.', 'Level'), tr('Бонус', 'Bonus'), tr('Стоимость до след.', 'Cost to next level'), tr('Всего', 'Total')], [
           [0, '0%', 10, 0], [1, '7%', 35, 10], [2, '9%', 55, 45], [3, '11%', 80, 100], [4, '13%', 110, 180],
           [5, '15%', 150, 290], [6, '17%', 200, 440], [7, '19%', 260, 640], [8, '21%', 330, 900],
           [9, '23%', 420, 1230], [10, '25%', 'MAX', 1650],
@@ -183,7 +184,7 @@ function masteryCard() {
     ]));
   }
   redraw();
-  return card('Калькулятор Mastery', [inputs, box]);
+  return card(tr('Калькулятор Mastery', 'Mastery calculator'), [inputs, box]);
 }
 
 /* 5. Петы и очки */
@@ -191,38 +192,52 @@ const pState = { myLevel: 30, weakest: 5, realm: 'seasonal', charLevel: 30, extr
 function petCard() {
   const box = el('div');
   const inputs = el('div', { class: 'controls' }, [
-    field('Компоунд-уровень пета', pState.myLevel, (v) => { pState.myLevel = v; redraw(); }),
-    field('Уровень самого слабого надетого пета', pState.weakest, (v) => { pState.weakest = v; redraw(); }),
-    el('div', {}, [el('label', { text: 'Реалм' }), el('select', { onchange: (e) => { pState.realm = e.target.value; redraw(); } }, [
+    field(tr('Компоунд-уровень пета', 'Pet compound level'), pState.myLevel, (v) => { pState.myLevel = v; redraw(); }),
+    field(tr('Уровень самого слабого надетого пета', 'Weakest equipped pet level'), pState.weakest, (v) => { pState.weakest = v; redraw(); }),
+    el('div', {}, [el('label', { text: tr('Реалм', 'Realm') }), el('select', { onchange: (e) => { pState.realm = e.target.value; redraw(); } }, [
       el('option', { value: 'seasonal', selected: pState.realm === 'seasonal' ? 'selected' : null }, ['Seasonal (+10)']),
       el('option', { value: 'permanent', selected: pState.realm === 'permanent' ? 'selected' : null }, ['Permanent (+25)']),
     ])]),
-    field('Уровень персонажа', pState.charLevel, (v) => { pState.charLevel = v; redraw(); }),
-    field('Доп. классовые очки', pState.extra, (v) => { pState.extra = v; redraw(); }),
+    field(tr('Уровень персонажа', 'Character level'), pState.charLevel, (v) => { pState.charLevel = v; redraw(); }),
+    field(tr('Доп. классовые очки', 'Extra class skill points'), pState.extra, (v) => { pState.extra = v; redraw(); }),
   ]);
   function redraw() {
     const eff = petCompoundEffective(pState.myLevel, pState.weakest, pState.realm);
     const lost = pState.myLevel - eff;
     box.innerHTML = '';
     box.appendChild(el('div', { class: 'grid cols-2' }, [
-      card('Компоунд пета', [
+      card(tr('Компоунд пета', 'Pet compounding'), [
         kpi([
-          { label: 'Заявленный уровень', value: `+${pState.myLevel}` },
-          { label: 'Считается как', value: `+${eff}` },
-          { label: 'Потеряно', value: lost > 0 ? `+${lost}` : '0' },
+          { label: tr('Заявленный уровень', 'Pet level'), value: `+${pState.myLevel}` },
+          { label: tr('Считается как', 'Effective level'), value: `+${eff}` },
+          { label: tr('Потеряно', 'Levels lost'), value: lost > 0 ? `+${lost}` : '0' },
         ]),
-        el('p', { class: 'muted', text: 'Правило игры: пет считается не выше чем на 10 уровней (25 на Permanent) выше САМОГО СЛАБОГО надетого пета. Пустой слот = +0. Качайте команду ровно.' }),
-        el('p', { class: 'muted', text: 'Капы: Uncommon +10, Rare +20, Epic +30, Legendary — без капа.' }),
+        el('p', { class: 'muted', text: tr('Правило игры: пет считается не выше чем на 10 уровней (25 на Permanent) выше САМОГО СЛАБОГО надетого пета. Пустой слот = +0. Качайте команду ровно.', 'A pet can count as up to 10 levels above your weakest equipped pet (25 on Permanent). An empty slot counts as +0. Level your team evenly.') }),
+        el('p', { class: 'muted', text: tr('Капы: Uncommon +10, Rare +20, Epic +30, Legendary — без капа.', 'Compound caps: Uncommon +10, Rare +20, Epic +30, Legendary uncapped.') }),
       ]),
-      card('Классовые очки', [
+      card(tr('Классовые очки', 'Class skill points'), [
         kpi([
-          { label: 'Очков на уровне', value: String(classPointsForLevel(pState.charLevel) + pState.extra) },
-          { label: 'Всего уровней навыков', value: `${CLASS_SKILL_RULES.levelsPerPoint} ур. = 1 очко` },
+          { label: tr('Очков на уровне', 'Points at this level'), value: String(classPointsForLevel(pState.charLevel) + pState.extra) },
+          { label: tr('Всего уровней навыков', 'Levels per skill point'), value: tr(`${CLASS_SKILL_RULES.levelsPerPoint} ур. = 1 очко`, `${CLASS_SKILL_RULES.levelsPerPoint} levels = 1 point`) },
         ]),
-        el('p', { class: 'muted', text: 'Первый классовый скилл-поинт — на 1 уровне, далее по одному каждые 3 уровня персонажа. Tier 2 открывается после 5 очков в ветке, Tier 3 — после 10.' }),
+        el('p', { class: 'muted', text: tr('Первый классовый скилл-поинт — на 1 уровне, далее по одному каждые 3 уровня персонажа. Tier 2 открывается после 5 очков в ветке, Tier 3 — после 10.', 'You gain your first class skill point at level 1 and another every 3 character levels. Tier 2 requires 5 points in the branch. Tier 3 requires 10.') }),
       ]),
     ]));
   }
   redraw();
-  return card('Петы и очки навыков', [inputs, box]);
+  return card(tr('Петы и очки навыков', 'Pets and skill points'), [inputs, box]);
+}
+
+const calculatorStates = { damage: dmgState, defense: defState, gem: gemState, mastery: mState, pet: pState };
+
+export const getViewState = () => Object.fromEntries(Object.entries(calculatorStates).map(([name, state]) => [name, { ...state }]));
+
+export function restoreViewState(snapshot) {
+  for (const [name, state] of Object.entries(calculatorStates)) {
+    const saved = snapshot?.[name];
+    if (!saved) continue;
+    for (const key of Object.keys(state)) {
+      if (typeof saved[key] === typeof state[key]) state[key] = saved[key];
+    }
+  }
 }

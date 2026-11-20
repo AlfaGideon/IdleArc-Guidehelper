@@ -1,3 +1,5 @@
+import { t } from '../i18n.js';
+
 /**
  * Кузница (Forge) — Season 2: прогресс экипировки по СЛОТАМ, а не по отдельным предметам.
  *
@@ -23,12 +25,12 @@
 
 /** Таблица тиров Кузницы: лимит шагов, аффикс-слоты, база золота, множитель фрагментов, порог провала. */
 export const FORGE_TIERS = [
-  { tier: 1, name: 'Normal', ru: 'Обычный', maxLevel: 4, affixSlots: 0, baseGold: 200, fragMult: 1, failBase: 0, failFrom: 999, fragment: 'Iron Fragment', fragmentRu: 'Железный фрагмент', fragmentSlug: 'iron-fragment' },
-  { tier: 2, name: 'Uncommon', ru: 'Необычный', maxLevel: 9, affixSlots: 1, baseGold: 1200, fragMult: 1, failBase: 0, failFrom: 6, fragment: 'Steel Fragment', fragmentRu: 'Стальной фрагмент', fragmentSlug: 'steel-fragment' },
-  { tier: 3, name: 'Rare', ru: 'Редкий', maxLevel: 14, affixSlots: 2, baseGold: 7000, fragMult: 0.75, failBase: 0.05, failFrom: 5, fragment: 'Mithril Fragment', fragmentRu: 'Мифриловый фрагмент', fragmentSlug: 'mithril-fragment' },
-  { tier: 4, name: 'Epic', ru: 'Эпический', maxLevel: 19, affixSlots: 3, baseGold: 40000, fragMult: 1, failBase: 0.1, failFrom: 8, fragment: 'Adamantine Fragment', fragmentRu: 'Адамантиновый фрагмент', fragmentSlug: 'adamantine-fragment' },
-  { tier: 5, name: 'Legendary', ru: 'Легендарный', maxLevel: 24, affixSlots: 4, baseGold: 200000, fragMult: 1.5, failBase: 0.15, failFrom: 10, fragment: 'Celestial Fragment', fragmentRu: 'Небесный фрагмент', fragmentSlug: 'celestial-fragment' },
-  { tier: 6, name: 'Infernal', ru: 'Инфернальный', maxLevel: 30, affixSlots: 5, baseGold: 1200000, fragMult: 2.5, failBase: 0.25, failFrom: 12, fragment: 'Infernal Fragment', fragmentRu: 'Инфернальный фрагмент', fragmentSlug: 'infernal-fragment' },
+  { tier: 1, name: 'Normal', ru: t('Обычный', 'Normal'), maxLevel: 4, affixSlots: 0, baseGold: 200, fragMult: 1, failBase: 0, failFrom: 999, fragment: 'Iron Fragment', fragmentRu: t('Железный фрагмент', 'Iron Fragment'), fragmentSlug: 'iron-fragment' },
+  { tier: 2, name: 'Uncommon', ru: t('Необычный', 'Uncommon'), maxLevel: 9, affixSlots: 1, baseGold: 1200, fragMult: 1, failBase: 0, failFrom: 6, fragment: 'Steel Fragment', fragmentRu: t('Стальной фрагмент', 'Steel Fragment'), fragmentSlug: 'steel-fragment' },
+  { tier: 3, name: 'Rare', ru: t('Редкий', 'Rare'), maxLevel: 14, affixSlots: 2, baseGold: 7000, fragMult: 0.75, failBase: 0.05, failFrom: 5, fragment: 'Mithril Fragment', fragmentRu: t('Мифриловый фрагмент', 'Mithril Fragment'), fragmentSlug: 'mithril-fragment' },
+  { tier: 4, name: 'Epic', ru: t('Эпический', 'Epic'), maxLevel: 19, affixSlots: 3, baseGold: 40000, fragMult: 1, failBase: 0.1, failFrom: 8, fragment: 'Adamantine Fragment', fragmentRu: t('Адамантиновый фрагмент', 'Adamantine Fragment'), fragmentSlug: 'adamantine-fragment' },
+  { tier: 5, name: 'Legendary', ru: t('Легендарный', 'Legendary'), maxLevel: 24, affixSlots: 4, baseGold: 200000, fragMult: 1.5, failBase: 0.15, failFrom: 10, fragment: 'Celestial Fragment', fragmentRu: t('Небесный фрагмент', 'Celestial Fragment'), fragmentSlug: 'celestial-fragment' },
+  { tier: 6, name: 'Infernal', ru: t('Инфернальный', 'Infernal'), maxLevel: 30, affixSlots: 5, baseGold: 1200000, fragMult: 2.5, failBase: 0.25, failFrom: 12, fragment: 'Infernal Fragment', fragmentRu: t('Инфернальный фрагмент', 'Infernal Fragment'), fragmentSlug: 'infernal-fragment' },
 ];
 
 /** Информация о тире кузницы (T1…T6). */
@@ -126,5 +128,5 @@ export function awakenGold(tier, rank) {
 }
 
 /** Пояснение к Awaken (показывается в интерфейсе). */
-export const AWAKEN_NOTE = 'Awaken (просыпание, до 5 рангов) меняет имя и иконку предмета на «эволюцию» семейства '
-  + '(например, Broken Sword → Royal Dragonblade). Цена растёт ×2.5 за ранг — число оценочное, точное видно в Кузнице.';
+export const AWAKEN_NOTE = t('Awaken (просыпание, до 5 рангов) меняет имя и иконку предмета на «эволюцию» семейства ', 'Awaken has up to 5 ranks and changes the item’s name and icon to the next form in its family ')
+  + t('(например, Broken Sword → Royal Dragonblade). Цена растёт ×2.5 за ранг — число оценочное, точное видно в Кузнице.', '(for example, Broken Sword → Royal Dragonblade). The estimated cost increases by ×2.5 per rank. Check the Forge for the exact price.');
